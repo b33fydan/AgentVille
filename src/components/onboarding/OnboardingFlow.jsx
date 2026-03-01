@@ -67,7 +67,7 @@ export default function OnboardingFlow({ isOpen, captureContext, onComplete }) {
     setIncomeDraft(income > 0 ? String(income) : '');
     setBillDraft({ name: '', amount: '', category: 'housing' });
     setError('');
-  }, [isOpen, kingdomName, bannerColor, income]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || step !== 4 || !captureContext?.camera) {
@@ -263,10 +263,7 @@ export default function OnboardingFlow({ isOpen, captureContext, onComplete }) {
                   min="0"
                   inputMode="decimal"
                   value={incomeDraft}
-                  onChange={(event) => {
-                    setIncomeDraft(event.target.value);
-                    setIncome(toNumber(event.target.value));
-                  }}
+                  onChange={(event) => setIncomeDraft(event.target.value)}
                   className="w-full bg-transparent text-lg text-white outline-none"
                   placeholder="3000"
                 />

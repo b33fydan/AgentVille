@@ -192,3 +192,34 @@ Validation:
   - `npm run dev -- --host 127.0.0.1 --port 5173` fails with `listen EPERM: operation not permitted 127.0.0.1:5173`.
 - Playwright loop (develop-web-game skill) is blocked by missing dependency:
   - `web_game_playwright_client.js` fails with `ERR_MODULE_NOT_FOUND: Cannot find package 'playwright'`.
+
+Day 7 bugfix update (Dan post-launch bugs):
+- Fixed BUG 1 settings modal trap:
+  - `HUD.jsx`: moved `KingdomSetup` outside HUD `pointer-events-none` overlay tree so modal is fully interactive.
+  - `KingdomSetup.jsx`: added explicit `onCancel` flow, backdrop-click close, and `Escape` key close when `allowClose` is true.
+  - Save/Cancel now both close predictably via shared callbacks.
+- Fixed BUG 2 onboarding income reset:
+  - `OnboardingFlow.jsx`: onboarding init/reset effect now runs only when `isOpen` changes.
+  - Screen 3 income input `onChange` now updates only local `incomeDraft`; persisted store `setIncome` happens only on Continue.
+- Fixed BUG 3 XP bar depletion behavior:
+  - `gameStore.js`: adjusted cumulative level thresholds to start level-up at 3000 XP (`[3000, 6000, ...]`).
+  - Persist merge now recomputes `level` from persisted `xp` to keep XP/level progression consistent after threshold change.
+- Fixed BUG 4 island crowding:
+  - `budgetSceneBuilder.js`: `buildDynamicEntities` now accepts `islandStage` and increases monster arc radius/spacing as stage rises.
+  - `IslandScene.jsx`: passes `islandStage` into dynamic entity builds and adds stage-based camera distance scaling (`updateCameraForStage`) so view zooms out with progression.
+
+Validation:
+- `npm run build` passes.
+- Verified onboarding handler constraints in source: `setStep` only in flow transitions; `setIncome` only on Continue.
+- Node simulation for XP progression confirms expected cumulative behavior:
+  - 0 XP -> level 1
+  - +1000 XP -> level 1, 33.33%
+  - +2000 XP -> level 1, 66.67%
+  - +3000 XP -> level 2, 0% toward next threshold.
+- Node geometry check confirms stage-based spread increase for 6 bills:
+  - Stage 0 monster center distances ~2.93-3.51
+  - Stage 6 monster center distances ~3.79-4.70
+
+Runtime test blockers in this sandbox:
+- `npm run dev -- --host 127.0.0.1 --port 5173` fails with `listen EPERM` (localhost sockets not permitted).
+- develop-web-game Playwright client fails with `ERR_MODULE_NOT_FOUND: Cannot find package 'playwright'`.

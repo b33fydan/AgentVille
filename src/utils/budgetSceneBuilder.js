@@ -546,19 +546,23 @@ function createIncomePile(income) {
   return pile;
 }
 
-export function buildDynamicEntities(group, bills, income) {
+export function buildDynamicEntities(group, bills, income, options = {}) {
+  const safeStage = Math.max(0, Math.min(6, Math.floor(Number(options?.islandStage) || 0)));
+
   if (bills.length === 0) {
     group.add(createQuestionBlock());
   } else {
-    const radius = bills.length > 4 ? 3.8 : 3.4;
+    const baseRadius = bills.length > 8 ? 4.2 : bills.length > 4 ? 3.8 : 3.4;
+    const radius = Math.min(5.5, baseRadius + safeStage * 0.22);
     const startAngle = Math.PI * 0.14;
     const endAngle = Math.PI * 0.86;
+    const zOffset = Math.min(1.45, 0.9 + safeStage * 0.08);
 
     bills.forEach((bill, index) => {
       const t = bills.length === 1 ? 0.5 : index / (bills.length - 1);
       const angle = startAngle + (endAngle - startAngle) * t;
       const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius - 0.9;
+      const z = Math.sin(angle) * radius - zOffset;
       const size = getMonsterScale(bill.amount);
       const color = BILL_CATEGORY_COLORS[bill.category] ?? BILL_CATEGORY_COLORS.other;
       const monster = createMonster(x, z, color, size);

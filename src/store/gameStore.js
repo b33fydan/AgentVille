@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-export const LEVEL_THRESHOLDS = [1000, 3000, 6000, 10000, 20000, 50000, 80000, 120000, 170000, 230000, 300000];
+export const LEVEL_THRESHOLDS = [3000, 6000, 10000, 20000, 50000, 80000, 120000, 170000, 230000, 300000, 380000];
 
 const ARMOR_TIER_BY_LEVEL = [
   { minLevel: 12, tier: 'legend' },
@@ -275,7 +275,10 @@ export const useGameStore = create(
           ...transientDefaults
         };
 
-        return withComputed(merged);
+        return withComputed({
+          ...merged,
+          level: getLevelFromXP(merged.xp)
+        });
       }
     }
   )

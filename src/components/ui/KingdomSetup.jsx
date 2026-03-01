@@ -7,6 +7,7 @@ export default function KingdomSetup({
   mode = 'create',
   allowClose = true,
   onClose,
+  onCancel,
   onSaved,
   showReplayOnboarding = false,
   onReplayOnboarding
@@ -18,7 +19,6 @@ export default function KingdomSetup({
 
   const [draftName, setDraftName] = useState(kingdomName);
   const [draftColor, setDraftColor] = useState(bannerColor);
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
@@ -27,8 +27,28 @@ export default function KingdomSetup({
 
     setDraftName(kingdomName);
     setDraftColor(bannerColor);
-    setMessage('');
   }, [isOpen, kingdomName, bannerColor]);
+
+  useEffect(() => {
+    if (!isOpen || !allowClose) {
+      return;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      onCancel?.();
+      onClose?.();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, allowClose, onCancel, onClose]);
 
   const isCreate = mode === 'create';
   const canSubmit = useMemo(() => draftName.trim().length > 0, [draftName]);
@@ -51,13 +71,32 @@ export default function KingdomSetup({
       return;
     }
 
-    setMessage('Kingdom updated.');
     onSaved?.();
+    onClose?.();
+  };
+
+  const handleCancel = () => {
+    onCancel?.();
+    onClose?.();
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-950 p-5 shadow-2xl sm:p-6">
+    <div
+      className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={(event) => {
+        if (!allowClose || event.target !== event.currentTarget) {
+          return;
+        }
+
+        handleCancel();
+      }}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-950 p-5 shadow-2xl sm:p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
         <h2 className="font-pixel text-xs text-amber-300 sm:text-sm">{isCreate ? 'Name Your Kingdom' : 'Edit Kingdom'}</h2>
         <p className="mt-3 text-xs text-slate-300 sm:text-sm">
           {isCreate
@@ -110,7 +149,7 @@ export default function KingdomSetup({
           {!isCreate && allowClose && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleCancel}
               className="min-h-11 flex-1 rounded-lg border border-slate-500 bg-slate-800 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-slate-700"
             >
               Cancel
@@ -131,14 +170,12 @@ export default function KingdomSetup({
         {allowClose && isCreate && (
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleCancel}
             className="mt-3 min-h-11 w-full rounded-lg border border-slate-500 bg-slate-800 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-slate-700"
           >
             Maybe Later
           </button>
         )}
-
-        {message ? <p className="mt-3 text-xs text-emerald-300">{message}</p> : null}
       </div>
     </div>
   );

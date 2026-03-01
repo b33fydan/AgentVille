@@ -31,6 +31,11 @@ function easeInOutSine(t) {
   return -(Math.cos(Math.PI * t) - 1) / 2;
 }
 
+function getCameraDistanceForStage(stage) {
+  const safeStage = Math.max(0, Math.min(6, Math.floor(Number(stage) || 0)));
+  return 13.5 + safeStage * 0.65;
+}
+
 function formatCurrency(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -337,6 +342,32 @@ export default function IslandScene({ onSceneReady = null }) {
     kingdomFlagRef.current = flag;
   };
 
+  const updateCameraForStage = (stage, snapToStageDistance = false) => {
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+
+    if (!camera || !controls) {
+      return;
+    }
+
+    const targetDistance = getCameraDistanceForStage(stage);
+    controls.minDistance = Math.max(8, targetDistance - 3.5);
+    controls.maxDistance = targetDistance + 3.5;
+
+    const target = controls.target.clone();
+    const offset = camera.position.clone().sub(target);
+    if (offset.lengthSq() <= 0.0001) {
+      offset.set(1, 1, 1);
+    }
+
+    const currentDistance = offset.length();
+    const nextDistance = snapToStageDistance ? targetDistance : Math.max(currentDistance, targetDistance);
+    offset.setLength(nextDistance);
+    camera.position.copy(target.add(offset));
+    camera.lookAt(controls.target);
+    controls.update();
+  };
+
   const setMonsterFlash = (monster, colorHex) => {
     monster.traverse((node) => {
       if (node instanceof THREE.Mesh && node.material instanceof THREE.MeshStandardMaterial) {
@@ -359,8 +390,11 @@ export default function IslandScene({ onSceneReady = null }) {
     gameStore.setBattleDisplayXP(openingXP);
 
     const runtimeIncome = useBudgetStore.getState().income;
+    const runtimeIslandStage = useGameStore.getState().islandStage;
     clearGroup(dynamicBudgetGroupRef.current);
-    buildDynamicEntities(dynamicBudgetGroupRef.current, battleBills, runtimeIncome);
+    buildDynamicEntities(dynamicBudgetGroupRef.current, battleBills, runtimeIncome, {
+      islandStage: runtimeIslandStage
+    });
 
     const hero = ensureHero(useGameStore.getState().armorTier);
 
@@ -538,13 +572,16 @@ export default function IslandScene({ onSceneReady = null }) {
     }
 
     mountedRef.current = true;
+    const initialIslandStage = useGameStore.getState().islandStage;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(SCENE_BACKGROUND);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 120);
-    camera.position.set(7.8, 7.8, 7.8);
+    const initialDistance = getCameraDistanceForStage(initialIslandStage);
+    const initialAxis = initialDistance / Math.sqrt(3);
+    camera.position.set(initialAxis, initialAxis, initialAxis);
     camera.lookAt(0, 0.4, 0);
     cameraRef.current = camera;
 
@@ -600,7 +637,7 @@ export default function IslandScene({ onSceneReady = null }) {
     growthGroup.userData.builtStages = new Set();
     scene.add(growthGroup);
     islandGrowthGroupRef.current = growthGroup;
-    const initialGrowthObjects = buildIslandStage(growthGroup, useGameStore.getState().islandStage);
+    const initialGrowthObjects = buildIslandStage(growthGroup, initialIslandStage);
     if (initialGrowthObjects.length > 0) {
       soundManager.playIslandGrow();
     }
@@ -608,7 +645,9 @@ export default function IslandScene({ onSceneReady = null }) {
     const dynamicBudgetGroup = new THREE.Group();
     scene.add(dynamicBudgetGroup);
     dynamicBudgetGroupRef.current = dynamicBudgetGroup;
-    buildDynamicEntities(dynamicBudgetGroup, useBudgetStore.getState().bills, useBudgetStore.getState().income);
+    buildDynamicEntities(dynamicBudgetGroup, useBudgetStore.getState().bills, useBudgetStore.getState().income, {
+      islandStage: initialIslandStage
+    });
 
     const effectsGroup = new THREE.Group();
     scene.add(effectsGroup);
@@ -618,8 +657,8 @@ export default function IslandScene({ onSceneReady = null }) {
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.target.set(0, 0.4, 0);
-    controls.minDistance = 8;
-    controls.maxDistance = 14;
+    controls.minDistance = Math.max(8, initialDistance - 3.5);
+    controls.maxDistance = initialDistance + 3.5;
     controls.minPolarAngle = Math.PI / 4 - 0.1;
     controls.maxPolarAngle = Math.PI / 4 + 0.2;
     controls.minAzimuthAngle = Math.PI / 4 - 0.45;
@@ -631,6 +670,7 @@ export default function IslandScene({ onSceneReady = null }) {
     };
     controls.update();
     controlsRef.current = controls;
+    updateCameraForStage(initialIslandStage, true);
     onSceneReady?.({ renderer, scene, camera, controls });
 
     let previous = performance.now();
@@ -774,8 +814,10 @@ export default function IslandScene({ onSceneReady = null }) {
     }
 
     clearGroup(dynamicBudgetGroupRef.current);
-    buildDynamicEntities(dynamicBudgetGroupRef.current, bills, income);
-  }, [bills, income, isInBattle]);
+    buildDynamicEntities(dynamicBudgetGroupRef.current, bills, income, {
+      islandStage
+    });
+  }, [bills, income, isInBattle, islandStage]);
 
   useEffect(() => {
     if (!islandGrowthGroupRef.current) {
@@ -786,6 +828,8 @@ export default function IslandScene({ onSceneReady = null }) {
     if (addedObjects.length > 0) {
       soundManager.playIslandGrow();
     }
+
+    updateCameraForStage(islandStage);
   }, [islandStage]);
 
   useEffect(() => {
