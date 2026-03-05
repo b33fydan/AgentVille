@@ -713,7 +713,7 @@ export function buildDynamicEntities(group, bills, income, options = {}) {
     const mediumRadius = PLAYABLE_HALF_SPAN * 1.02;
     const denseRadius = PLAYABLE_HALF_SPAN * 1.08;
     const baseRadius = bills.length > 8 ? denseRadius : bills.length > 4 ? mediumRadius : sparseRadius;
-    const radius = Math.min(PLAYABLE_HALF_SPAN * 1.2, baseRadius + safeStage * 0.2);
+    const radius = Math.min(PLAYABLE_HALF_SPAN * 1.2, baseRadius + safeStage * 0.2) * 0.9;
     const startAngle = Math.PI * 0.08;
     const endAngle = Math.PI * 0.92;
     const zOffset = Math.min(1.95, 1.22 + safeStage * 0.12);
@@ -750,11 +750,25 @@ export function updateDynamicEntityAnimations(group, nowMs) {
       return;
     }
 
+    const originX = child.userData?.idleOriginX ?? child.position.x;
+    const originZ = child.userData?.idleOriginZ ?? child.position.z;
+    const driftRadius = child.userData?.idleDriftRadius ?? VOXEL_SIZE * 0.1;
+    const driftSpeed = child.userData?.idleDriftSpeed ?? 0.6;
+    const driftPhase = child.userData?.idleDriftPhase ?? 0;
+    child.position.x = originX + Math.sin(time * driftSpeed + driftPhase) * driftRadius;
+    child.position.z = originZ + Math.cos(time * driftSpeed * 0.85 + driftPhase) * driftRadius * 0.7;
+
     const bobAmplitude = child.userData?.idleBobAmplitude ?? 0.1;
     const bobSpeed = child.userData?.idleBobSpeed ?? 1.8;
     const bobPhase = child.userData?.idleBobPhase ?? 0;
     const baseY = child.userData?.baseY ?? VOXEL_HALF;
     child.position.y = baseY + Math.sin(time * bobSpeed + bobPhase) * bobAmplitude;
+
+    const yawBase = child.userData?.idleYawBase ?? 0;
+    const yawAmplitude = child.userData?.idleYawAmplitude ?? 0.06;
+    const yawSpeed = child.userData?.idleYawSpeed ?? 0.9;
+    const yawPhase = child.userData?.idleYawPhase ?? 0;
+    child.rotation.y = yawBase + Math.sin(time * yawSpeed + yawPhase) * yawAmplitude;
 
     const orbiters = child.userData?.orbiters;
     if (Array.isArray(orbiters) && orbiters.length > 0) {

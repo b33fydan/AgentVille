@@ -308,3 +308,14 @@ Git/deploy status (Day 9):
   - `git add ... && git commit ...` fails with `fatal: Unable to create '.git/index.lock': Operation not permitted`.
 - Push attempt also blocked by network/DNS in this environment:
   - `git push` fails with `ssh: Could not resolve hostname github.com`.
+
+Day 8 bugfix update (spawn radius + idle monster roaming):
+- Tightened monster spawn radius in `buildDynamicEntities` by multiplying the final computed radius by `0.9` to keep monsters inside the island edge.
+- Added subtle idle roaming for bill monsters:
+  - gentle orbital x/z drift around spawn origin
+  - light yaw wobble
+  - existing bob preserved
+- Idle monster animation now pauses during payday battle frames in `IslandScene` by skipping dynamic idle updates while battle is active.
+
+Validation:
+- `npm run build` passes.

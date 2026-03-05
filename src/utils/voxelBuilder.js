@@ -380,10 +380,19 @@ export function createMonster(x, z, color = COLORS.monsterGoblin, size = 1, cate
 
   monster.position.set(x, VOXEL_HALF, z);
   monster.userData.type = 'monster';
+  monster.userData.idleOriginX = x;
+  monster.userData.idleOriginZ = z;
   monster.userData.baseY = monster.position.y;
   monster.userData.idleBobAmplitude = 0.1;
   monster.userData.idleBobSpeed = 1.6 + Math.random() * 0.7;
   monster.userData.idleBobPhase = Math.random() * Math.PI * 2;
+  monster.userData.idleDriftRadius = VOXEL_SIZE * (0.08 + Math.random() * 0.09);
+  monster.userData.idleDriftSpeed = 0.45 + Math.random() * 0.3;
+  monster.userData.idleDriftPhase = Math.random() * Math.PI * 2;
+  monster.userData.idleYawBase = monster.rotation.y;
+  monster.userData.idleYawAmplitude = 0.05 + Math.random() * 0.04;
+  monster.userData.idleYawSpeed = 0.8 + Math.random() * 0.35;
+  monster.userData.idleYawPhase = Math.random() * Math.PI * 2;
 
   return monster;
 }

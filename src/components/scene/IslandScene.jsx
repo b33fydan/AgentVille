@@ -676,7 +676,8 @@ export default function IslandScene({ onSceneReady = null }) {
         updateIslandGrowthAnimations(islandGrowthGroupRef.current, now);
       }
 
-      if (dynamicBudgetGroupRef.current) {
+      const battleActive = battleRunningRef.current || useGameStore.getState().isInBattle;
+      if (dynamicBudgetGroupRef.current && !battleActive) {
         updateDynamicEntityAnimations(dynamicBudgetGroupRef.current, now);
       }
 
