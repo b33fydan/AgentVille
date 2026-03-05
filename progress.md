@@ -279,3 +279,32 @@ Validation run:
 Outstanding due environment constraints:
 - Could not perform the requested post-step visual checks (ground/trees/structures) in a live browser from this sandbox.
 - Could not measure FPS interactively in DevTools; ground instancing was applied proactively for performance headroom.
+
+Day 9 update (map expansion + tree spread + HUD XP visibility):
+- Expanded terrain footprint in `src/utils/budgetSceneBuilder.js`:
+  - Increased `GROUND_GRID_SIZE` from 24 to 29 (~20.8% larger).
+  - Added footprint-aware span constants so decor/entity placement scales with the larger island.
+  - Updated rock cluster edge/tangent ranges and flower scatter bounds to use the expanded map area.
+- Rebalanced island growth placements to use the full larger footprint:
+  - Shifted major structures further into open space (`hut`, `house`, `tower`, `castle` positions).
+  - Repositioned cloud clusters for the wider stage.
+- Redistributed trees across all island quadrants (NW/NE/SW/SE) across stage builders:
+  - `buildStage0` through `buildStage6` now include trees in all quadrants with varied coordinates/styles per stage.
+  - Increased variety and count per stage to avoid one-sided clustering and better cover the expanded island.
+- Spread dynamic bill entities over the larger arena:
+  - Updated battle spawn arc radius, angular spread, and z-offset scaling in `buildDynamicEntities(...)` to use more of the expanded footprint.
+- Fixed HUD XP bar visibility/regression in `src/components/ui/HUD.jsx`:
+  - Corrected `battleDisplayXP` fallback logic so `null` no longer resolves to `0` XP after payday.
+  - XP bar now remains visible and correctly filled using persistent XP when battle display XP is cleared.
+  - Smoothed XP width animation to `transition-[width] duration-500 ease-out` for cleaner updates.
+
+Validation (Day 9):
+- `npm run build` passes.
+- develop-web-game Playwright client check remains blocked in this sandbox:
+  - `node ~/.codex/skills/develop-web-game/scripts/web_game_playwright_client.js --help` fails with `ERR_MODULE_NOT_FOUND: Cannot find package 'playwright'`.
+
+Git/deploy status (Day 9):
+- Commit attempt blocked by sandbox write restrictions on `.git`:
+  - `git add ... && git commit ...` fails with `fatal: Unable to create '.git/index.lock': Operation not permitted`.
+- Push attempt also blocked by network/DNS in this environment:
+  - `git push` fails with `ssh: Could not resolve hostname github.com`.

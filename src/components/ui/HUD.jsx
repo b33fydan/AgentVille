@@ -71,7 +71,8 @@ export default function HUD({ captureContext = null, onReplayOnboarding = null }
     () => soundManager.isMuted()
   );
 
-  const visualXP = Number.isFinite(Number(battleDisplayXP)) ? Number(battleDisplayXP) : xp;
+  const hasBattleDisplayXP = battleDisplayXP !== null && battleDisplayXP !== undefined;
+  const visualXP = hasBattleDisplayXP && Number.isFinite(Number(battleDisplayXP)) ? Number(battleDisplayXP) : xp;
   const xpWindow = useMemo(() => computeXPWindow(visualXP, level), [visualXP, level]);
 
   const totalSaved = useMemo(
@@ -125,7 +126,7 @@ export default function HUD({ captureContext = null, onReplayOnboarding = null }
             </div>
             <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-slate-900/80">
               <div
-                className="h-full transition-all duration-200"
+                className="h-full transition-[width] duration-500 ease-out"
                 style={{
                   width: `${Math.max(0, Math.min(100, xpWindow.progress))}%`,
                   backgroundImage: 'linear-gradient(90deg, #22c55e 0%, #facc15 100%)'

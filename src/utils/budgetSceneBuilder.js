@@ -11,8 +11,13 @@ import {
 } from './voxelBuilder.js';
 
 const GROWTH_ANIMATION_MS = 500;
-const GROUND_GRID_SIZE = 24;
+const GROUND_GRID_SIZE = 29;
 const GROUND_HALF_SPAN = (GROUND_GRID_SIZE * VOXEL_SIZE) / 2;
+const PLAYABLE_HALF_SPAN = GROUND_HALF_SPAN - VOXEL_SIZE * 1.5;
+const ROCK_EDGE_MIN = GROUND_HALF_SPAN * 0.72;
+const ROCK_EDGE_MAX = GROUND_HALF_SPAN * 0.95;
+const ROCK_TANGENT_LIMIT = GROUND_HALF_SPAN * 0.82;
+const FLOWER_SCATTER_LIMIT = GROUND_HALF_SPAN * 0.92;
 const GRASS_VARIANTS = [COLORS.grassDark, COLORS.grassBase, COLORS.grassLight, COLORS.grassMoss];
 const FLOWER_COLORS = ['#ef4444', '#fbbf24', '#ec4899', '#ffffff'];
 const ROCK_COLORS = ['#9ca3af', '#6b7280'];
@@ -50,8 +55,8 @@ function createRockClusters(clusterCount = 4) {
 
   for (let clusterIndex = 0; clusterIndex < clusterCount; clusterIndex += 1) {
     const edge = Math.floor(Math.random() * 4);
-    const edgeDistance = randomBetween(3.48, 4.44);
-    const tangent = randomBetween(-3.12, 3.12);
+    const edgeDistance = randomBetween(ROCK_EDGE_MIN, ROCK_EDGE_MAX);
+    const tangent = randomBetween(-ROCK_TANGENT_LIMIT, ROCK_TANGENT_LIMIT);
 
     let cx = tangent;
     let cz = tangent;
@@ -90,9 +95,9 @@ function createRockClusters(clusterCount = 4) {
 function createFlowerScatter(count = 10) {
   const flowers = new THREE.Group();
   const blockedZones = [
-    { x: 2.64, z: -1.44, r: 1.5 },
-    { x: 2.16, z: -0.48, r: 1.7 },
-    { x: 3.0, z: 2.16, r: 1.8 }
+    { x: 3.24, z: -1.86, r: 1.5 },
+    { x: 2.76, z: -0.84, r: 1.7 },
+    { x: 3.54, z: 2.4, r: 1.8 }
   ];
 
   let placed = 0;
@@ -100,12 +105,8 @@ function createFlowerScatter(count = 10) {
 
   while (placed < count && attempts < count * 25) {
     attempts += 1;
-    const x = randomBetween(-3.84, 3.84);
-    const z = randomBetween(-3.84, 3.84);
-
-    if (Math.abs(x) > 4.2 || Math.abs(z) > 4.2) {
-      continue;
-    }
+    const x = randomBetween(-FLOWER_SCATTER_LIMIT, FLOWER_SCATTER_LIMIT);
+    const z = randomBetween(-FLOWER_SCATTER_LIMIT, FLOWER_SCATTER_LIMIT);
 
     const blocked = blockedZones.some((zone) => {
       const dx = x - zone.x;
@@ -449,73 +450,97 @@ function createCastle(x, z) {
 
 function buildStage0() {
   return [
-    createTree(-3.42, -2.82, 'dead'),
-    createTree(-3.9, 0.84, 'dead'),
-    createRockClusters(4)
+    createTree(-4.08, 3.96, 'dead'),
+    createTree(4.26, 3.78, 'dead'),
+    createTree(-3.9, -3.84, 'dead'),
+    createTree(4.08, -3.96, 'dead'),
+    createRockClusters(5)
   ];
 }
 
 function buildStage1() {
   return [
-    createTree(-2.64, 3.12, 'pine'),
-    createTree(3.12, 2.7, 'oak'),
-    createTree(-1.38, 3.72, 'pine'),
-    createTree(2.16, 3.48, 'bush'),
-    createFlowerScatter(10)
+    createTree(-3.42, 3.12, 'pine'),
+    createTree(3.54, 3.24, 'oak'),
+    createTree(-3.12, -2.88, 'pine'),
+    createTree(3.3, -2.64, 'bush'),
+    createTree(-1.38, 4.2, 'pine'),
+    createTree(1.68, -4.08, 'oak'),
+    createFlowerScatter(14)
   ];
 }
 
 function buildStage2() {
-  const hut = createHut(2.64, -1.38);
+  const hut = createHut(3.24, -1.86);
   hut.userData.stageSlot = 'main-structure';
 
   return [
     hut,
-    createTree(-0.78, 3.54, 'oak'),
-    createTree(3.6, 0.24, 'pine')
+    createTree(-4.26, 3.9, 'oak'),
+    createTree(4.44, 3.6, 'pine'),
+    createTree(-4.02, -3.72, 'pine'),
+    createTree(4.38, -4.08, 'oak'),
+    createTree(-1.56, 0.96, 'bush')
   ];
 }
 
 function buildStage3() {
-  const house = createHouse(2.64, -1.32);
+  const house = createHouse(3.3, -1.8);
   house.userData.stageSlot = 'main-structure';
 
   return [
     house,
-    createTree(-1.5, 2.1, 'oak'),
-    createTree(0.66, 2.82, 'bush')
+    createTree(-4.32, 3.42, 'oak'),
+    createTree(4.08, 3.96, 'pine'),
+    createTree(-3.66, -3.36, 'oak'),
+    createTree(4.5, -3.24, 'bush'),
+    createTree(-0.84, -4.2, 'pine')
   ];
 }
 
 function buildStage4() {
   return [
-    createTree(-3.24, 3.54, 'pine'),
-    createTree(-2.46, 3.06, 'oak'),
-    createTree(1.44, 3.54, 'oak')
+    createTree(-4.44, 4.08, 'pine'),
+    createTree(4.32, 4.2, 'oak'),
+    createTree(-4.14, -4.08, 'oak'),
+    createTree(4.2, -4.2, 'pine'),
+    createTree(-2.16, 3.3, 'bush'),
+    createTree(2.52, -3.18, 'oak')
   ];
 }
 
 function buildStage5() {
-  const tower = createTower(2.94, -1.38);
+  const tower = createTower(3.6, -1.92);
   tower.userData.stageSlot = 'main-structure';
 
   return [
     tower,
-    createCloudCluster(-3.36, 6.4, -0.84),
-    createCloudCluster(0.42, 7.1, 2.58),
-    createCloudCluster(3.36, 6.7, -2.4)
+    createCloudCluster(-3.84, 6.4, -1.26),
+    createCloudCluster(0.6, 7.1, 3.18),
+    createCloudCluster(3.9, 6.7, -2.82),
+    createTree(-4.2, 3.9, 'pine'),
+    createTree(4.5, 3.48, 'oak'),
+    createTree(-4.44, -3.78, 'oak'),
+    createTree(4.56, -3.9, 'pine'),
+    createTree(-1.2, 4.38, 'bush'),
+    createTree(1.38, -4.32, 'oak')
   ];
 }
 
 function buildStage6() {
-  const castle = createCastle(1.92, -0.66);
+  const castle = createCastle(2.4, -0.84);
   castle.userData.stageSlot = 'main-structure';
 
   return [
     castle,
-    createTree(-3.42, 3.36, 'pine'),
-    createTree(-2.82, 2.82, 'oak'),
-    createTree(-2.16, 3.54, 'oak')
+    createTree(-4.56, 4.02, 'pine'),
+    createTree(4.5, 4.2, 'oak'),
+    createTree(-4.5, -4.2, 'oak'),
+    createTree(4.62, -4.08, 'pine'),
+    createTree(-2.82, 3.24, 'oak'),
+    createTree(2.94, -3.18, 'oak'),
+    createTree(-0.42, -4.5, 'bush'),
+    createTree(1.02, 4.44, 'pine')
   ];
 }
 
@@ -684,11 +709,14 @@ export function buildDynamicEntities(group, bills, income, options = {}) {
   if (bills.length === 0) {
     group.add(createQuestionBlock());
   } else {
-    const baseRadius = bills.length > 8 ? 4.44 : bills.length > 4 ? 4.02 : 3.66;
-    const radius = Math.min(5.76, baseRadius + safeStage * 0.14);
-    const startAngle = Math.PI * 0.15;
-    const endAngle = Math.PI * 0.85;
-    const zOffset = Math.min(1.38, 0.96 + safeStage * 0.1);
+    const sparseRadius = PLAYABLE_HALF_SPAN * 0.95;
+    const mediumRadius = PLAYABLE_HALF_SPAN * 1.02;
+    const denseRadius = PLAYABLE_HALF_SPAN * 1.08;
+    const baseRadius = bills.length > 8 ? denseRadius : bills.length > 4 ? mediumRadius : sparseRadius;
+    const radius = Math.min(PLAYABLE_HALF_SPAN * 1.2, baseRadius + safeStage * 0.2);
+    const startAngle = Math.PI * 0.08;
+    const endAngle = Math.PI * 0.92;
+    const zOffset = Math.min(1.95, 1.22 + safeStage * 0.12);
 
     bills.forEach((bill, index) => {
       const t = bills.length === 1 ? 0.5 : index / (bills.length - 1);
