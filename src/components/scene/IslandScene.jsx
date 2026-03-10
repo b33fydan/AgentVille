@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useAgentStore } from '../../store/agentStore.js';
 import { generateTerrainGrid, buildTerrainScene } from '../../utils/terrainBuilder.js';
-import { createVoxel, VOXEL_SIZE, VOXEL_HALF, COLORS } from '../../utils/voxelBuilder.js';
+import { createAgentModel, createAgentLabel } from '../../utils/agentBuilder.js';
+import { VOXEL_SIZE, VOXEL_HALF, COLORS } from '../../utils/voxelBuilder.js';
 
 const SCENE_WIDTH = window.innerWidth;
 const SCENE_HEIGHT = window.innerHeight;
@@ -170,102 +171,31 @@ export default function IslandScene() {
     // Clear old agents
     agentGroupRef.current.clear();
 
-    // Add new agents
+    // Add new agents with enhanced models + labels
     agents.forEach((agent, index) => {
-      const agentMesh = createAgentMesh(agent, index);
-      agentGroupRef.current.add(agentMesh);
+      const agentWrapper = new THREE.Group();
+
+      // Create enhanced voxel model
+      const agentModel = createAgentModel(agent);
+      agentWrapper.add(agentModel);
+
+      // Create label with name + morale bar
+      const label = createAgentLabel(agent);
+      agentModel.add(label);
+
+      // Position agent on island (starting positions, will be updated by zone assignments)
+      const positions = [
+        { x: -2, z: -2 },
+        { x: 0, z: -2.2 },
+        { x: 2, z: -2 }
+      ];
+      const pos = positions[index % positions.length];
+      agentWrapper.position.set(pos.x, 0.5, pos.z);
+
+      agentWrapper.userData.agentId = agent.id;
+      agentGroupRef.current.add(agentWrapper);
     });
   }, [agents]);
 
   return <div ref={mountRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }} />;
-}
-
-// ============= Agent Mesh Builder =============
-
-function createAgentMesh(agent, index) {
-  const agentGroup = new THREE.Group();
-
-  // Agent body voxel (cube)
-  const bodySize = 0.3;
-  const bodyGeometry = new THREE.BoxGeometry(bodySize, bodySize * 1.2, bodySize);
-  const bodyMaterial = new THREE.MeshStandardMaterial({
-    color: getAgentColor(agent),
-    metalness: 0.3,
-    roughness: 0.7
-  });
-  const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-  body.position.y = bodySize / 2 + 0.1;
-  body.castShadow = true;
-  body.receiveShadow = true;
-  agentGroup.add(body);
-
-  // Agent head (small sphere)
-  const headGeometry = new THREE.SphereGeometry(0.12, 8, 8);
-  const headMaterial = new THREE.MeshStandardMaterial({
-    color: getAgentColor(agent),
-    metalness: 0.3,
-    roughness: 0.7
-  });
-  const head = new THREE.Mesh(headGeometry, headMaterial);
-  head.position.y = bodySize + 0.3;
-  head.castShadow = true;
-  head.receiveShadow = true;
-  agentGroup.add(head);
-
-  // Agent name label (Canvas texture)
-  const nameLabel = createNameLabel(agent.name);
-  nameLabel.position.set(0, bodySize + 0.6, 0);
-  agentGroup.add(nameLabel);
-
-  // Position agent on island (starting positions)
-  const positions = [
-    { x: -1.5, z: -1.5 },
-    { x: 0, z: -1.8 },
-    { x: 1.5, z: -1.5 }
-  ];
-  const pos = positions[index % positions.length];
-  agentGroup.position.set(pos.x, 0, pos.z);
-
-  agentGroup.userData.agentId = agent.id;
-  agentGroup.userData.morale = agent.morale;
-
-  return agentGroup;
-}
-
-/**
- * Get agent color based on specialization + traits
- */
-function getAgentColor(agent) {
-  const colors = {
-    forest: '#2d7d2f',    // Green
-    plains: '#d4af37',    // Gold
-    wetlands: '#2f87c6'   // Blue
-  };
-
-  return colors[agent.traits?.specialization] || '#7c858a';
-}
-
-/**
- * Create a text label for the agent using Canvas + Texture
- */
-function createNameLabel(name) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 64;
-
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 24px Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText(name, 128, 40);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const geometry = new THREE.PlaneGeometry(1.2, 0.3);
-  const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-  const label = new THREE.Mesh(geometry, material);
-
-  // Face camera (billboarding would be better, but this works for MVP)
-  label.rotation.x = -Math.PI / 6;
-
-  return label;
 }
