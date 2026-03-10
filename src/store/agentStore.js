@@ -144,6 +144,14 @@ export const useAgentStore = create(
       },
       setAgentZone: (agentId, zoneName) => {
         get().updateAgent(agentId, { zoneName });
+
+        // Apply morale bonus/penalty based on zone fit
+        const agent = get().agents.find((a) => a.id === agentId);
+        if (agent && zoneName) {
+          const isFit = agent.traits?.specialization === zoneName;
+          const moraleDelta = isFit ? 5 : -2; // +5 if matched, -2 if mismatched
+          get().updateAgentMorale(agentId, moraleDelta);
+        }
       },
       updateAgentMorale: (agentId, delta) => {
         set((state) => ({
@@ -200,6 +208,21 @@ export const useAgentStore = create(
         isInSaleDay: false
       },
       advanceDay: () => {
+        // Apply morale effects before day advance
+        const { agents } = get();
+        agents.forEach((agent) => {
+          if (!agent.zoneName) {
+            // Idle agents lose morale (-2 per day)
+            get().updateAgentMorale(agent.id, -2);
+          } else {
+            // Working agents gain morale (+1 per day)
+            get().updateAgentMorale(agent.id, 1);
+          }
+        });
+
+        // Generate resources from assigned agents
+        get().generateResourcesFromAgents();
+
         set((state) => {
           const nextDay = state.season.currentDay + 1;
           if (nextDay > 7) {
@@ -283,6 +306,29 @@ export const useAgentStore = create(
         const lossessFactor = profit < 0 ? 0.0005 : 0;
 
         return Math.min(1, baseRisk + ignoredFactor + moraleFactor + lossessFactor);
+      },
+
+      // ===== Resource Generation =====
+      generateResourcesFromAgents: () => {
+        const { agents } = get();
+
+        // Each agent generates resources based on zone + efficiency
+        agents.forEach((agent) => {
+          if (!agent.zoneName) return;
+
+          const baseAmount = 0.5; // Resources per agent per generation tick
+          const efficiency = agent.efficiency || 1.0;
+          const totalGeneration = baseAmount * efficiency;
+
+          // Assign resources by zone specialization
+          if (agent.zoneName === 'forest') {
+            get().addResource('wood', totalGeneration);
+          } else if (agent.zoneName === 'plains') {
+            get().addResource('wheat', totalGeneration);
+          } else if (agent.zoneName === 'wetlands') {
+            get().addResource('hay', totalGeneration);
+          }
+        });
       }
     }),
     {

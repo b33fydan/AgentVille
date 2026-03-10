@@ -183,15 +183,34 @@ export default function IslandScene() {
       const label = createAgentLabel(agent);
       agentModel.add(label);
 
-      // Position agent on island (starting positions, will be updated by zone assignments)
-      const positions = [
-        { x: -2, z: -2 },
-        { x: 0, z: -2.2 },
-        { x: 2, z: -2 }
-      ];
-      const pos = positions[index % positions.length];
-      agentWrapper.position.set(pos.x, 0.5, pos.z);
+      // Position agent based on zone assignment
+      let agentX = 0;
+      let agentZ = 0;
 
+      if (agent.zoneName) {
+        // Position agents in their assigned zones (biome clusters)
+        // Forest = left, Plains = center, Wetlands = right
+        const zonePositions = {
+          forest: { x: -2, z: 0 },
+          plains: { x: 0, z: 1 },
+          wetlands: { x: 2, z: 0 }
+        };
+        const pos = zonePositions[agent.zoneName] || zonePositions.plains;
+        agentX = pos.x + (Math.random() - 0.5) * 0.4; // Small randomness
+        agentZ = pos.z + (Math.random() - 0.5) * 0.4;
+      } else {
+        // Default starting positions (bottom of island)
+        const defaultPositions = [
+          { x: -2, z: -2 },
+          { x: 0, z: -2.2 },
+          { x: 2, z: -2 }
+        ];
+        const pos = defaultPositions[index % defaultPositions.length];
+        agentX = pos.x;
+        agentZ = pos.z;
+      }
+
+      agentWrapper.position.set(agentX, 0.5, agentZ);
       agentWrapper.userData.agentId = agent.id;
       agentGroupRef.current.add(agentWrapper);
     });
