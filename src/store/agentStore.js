@@ -265,11 +265,13 @@ export const useAgentStore = create(
         }));
       },
 
-      // ===== Crisis History =====
-      crisisLog: [], // Array of { day, crisis, choice, outcome }
+      // ===== Crisis System =====
+      crisisLog: [], // Array of { season, day, crisis, choice, outcome }
+      crisisCount: 0, // Crises triggered this day (max 2)
       recordCrisis: (crisisData) => {
         set((state) => ({
-          crisisLog: [...state.crisisLog, crisisData]
+          crisisLog: [...state.crisisLog, crisisData],
+          crisisCount: state.crisisCount + 1
         }));
       },
 

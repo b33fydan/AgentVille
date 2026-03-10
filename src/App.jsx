@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import IslandScene from './components/scene/IslandScene.jsx';
 import AgentPanel from './components/ui/AgentPanel.jsx';
 import SeasonHUD from './components/ui/SeasonHUD.jsx';
+import CrisisModal from './components/ui/CrisisModal.jsx';
 
 export default function App() {
   return (
@@ -25,6 +26,9 @@ export default function App() {
       <section className="md:hidden w-full border-t border-slate-700 bg-slate-900/95 p-4">
         <AgentPanel />
       </section>
+
+      {/* Crisis Modal */}
+      <CrisisModal />
     </main>
   );
 }
