@@ -1,12 +1,27 @@
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import IslandScene from './components/scene/IslandScene.jsx';
 import AgentPanel from './components/ui/AgentPanel.jsx';
 import SeasonHUD from './components/ui/SeasonHUD.jsx';
 import CrisisModal from './components/ui/CrisisModal.jsx';
 import SaleDay from './components/ui/SaleDay.jsx';
 import OnboardingFlow from './components/ui/OnboardingFlow.jsx';
+import LandingPage from './components/ui/LandingPage.jsx';
+
+const GAME_STARTED_KEY = 'agentville-game-started';
 
 export default function App() {
+  const [gameStarted, setGameStarted] = useState(() => {
+    return localStorage.getItem(GAME_STARTED_KEY) === 'true';
+  });
+
+  const handleStartGame = () => {
+    localStorage.setItem(GAME_STARTED_KEY, 'true');
+    setGameStarted(true);
+  };
+  if (!gameStarted) {
+    return <LandingPage onStart={handleStartGame} />;
+  }
+
   return (
     <main className="flex min-h-screen w-full min-w-0 flex-col overflow-x-hidden bg-slate-900 text-white md:flex-row">
       {/* Island Scene (Main) */}
