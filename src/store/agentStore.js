@@ -143,11 +143,17 @@ export const useAgentStore = create(
         }));
       },
       setAgentZone: (agentId, zoneName) => {
-        get().updateAgent(agentId, { zoneName });
+        const agent = get().agents.find((a) => a.id === agentId);
+        if (!agent) return;
+
+        // Update zone
+        get().updateAgent(agentId, { 
+          zoneName,
+          efficiency: calculateEfficiency(agent.morale, agent.traits, zoneName)
+        });
 
         // Apply morale bonus/penalty based on zone fit
-        const agent = get().agents.find((a) => a.id === agentId);
-        if (agent && zoneName) {
+        if (zoneName) {
           const isFit = agent.traits?.specialization === zoneName;
           const moraleDelta = isFit ? 5 : -2; // +5 if matched, -2 if mismatched
           get().updateAgentMorale(agentId, moraleDelta);
@@ -158,10 +164,11 @@ export const useAgentStore = create(
           agents: state.agents.map((agent) => {
             if (agent.id !== agentId) return agent;
             const newMorale = Math.max(0, Math.min(100, agent.morale + delta));
+            const newEfficiency = calculateEfficiency(newMorale, agent.traits, agent.zoneName);
             return {
               ...agent,
               morale: newMorale,
-              efficiency: calculateEfficiency(newMorale, agent.traits)
+              efficiency: newEfficiency
             };
           })
         }));
@@ -353,12 +360,22 @@ export const useAgentStore = create(
 
 // ============= Efficiency Calculation =============
 
-function calculateEfficiency(morale, traits) {
+function calculateEfficiency(morale, traits, zoneName) {
   // Morale: 0-100 → 0.2-1.0 multiplier
   const moraleMultiplier = 0.2 + (morale / 100) * 0.8;
 
   // Work ethic factor
-  const workEthicBonus = traits.workEthic / 100 * 0.2; // Up to +20%
+  const workEthicBonus = (traits?.workEthic || 50) / 100 * 0.2; // Up to +20%
 
-  return moraleMultiplier + workEthicBonus;
+  // Zone fit bonus
+  let zoneFitBonus = 0;
+  if (zoneName && traits?.specialization === zoneName) {
+    // Perfect match: +10% efficiency bonus
+    zoneFitBonus = 0.1;
+  } else if (zoneName) {
+    // Mismatch: -5% efficiency penalty
+    zoneFitBonus = -0.05;
+  }
+
+  return Math.max(0.1, moraleMultiplier + workEthicBonus + zoneFitBonus);
 }

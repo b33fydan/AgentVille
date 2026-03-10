@@ -1,4 +1,5 @@
 import { useAgentStore } from '../../store/agentStore';
+import FieldLog from './FieldLog';
 
 export default function AgentPanel() {
   const agents = useAgentStore((state) => state.agents);
@@ -20,11 +21,13 @@ export default function AgentPanel() {
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-900 p-4">
-      <h2 className="text-lg font-bold text-white">👥 Agents</h2>
+    <div className="flex flex-col gap-4">
+      {/* Agents Section */}
+      <div className="flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-900 p-4">
+        <h2 className="text-lg font-bold text-white">👥 Agents</h2>
 
-      <div className="flex flex-col gap-3">
-        {agents.map((agent) => (
+        <div className="flex flex-col gap-3">
+          {agents.map((agent) => (
           <div key={agent.id} className="rounded-md border border-slate-600 bg-slate-800 p-3">
             {/* Agent Name & Morale */}
             <div className="mb-2 flex items-center justify-between">
@@ -81,7 +84,11 @@ export default function AgentPanel() {
             )}
           </div>
         ))}
+        </div>
       </div>
+
+      {/* Field Log Section */}
+      <FieldLog />
     </div>
   );
 }
