@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { generateCrisis, resolveCrisis, getCrisisDescription } from '../../utils/crisisEngine';
+import { soundManager } from '../../utils/soundManager';
 
 export default function CrisisModal() {
   const [currentCrisis, setCurrentCrisis] = useState(null);
@@ -18,6 +19,8 @@ export default function CrisisModal() {
       const crisis = generateCrisis();
       setCurrentCrisis(crisis);
       setSelectedChoice(null);
+      // Play alert sound
+      soundManager.playCrisisAlert();
     }
   }, [currentCrisis, isResolving]);
 
@@ -37,6 +40,15 @@ export default function CrisisModal() {
           choice: choiceIndex,
           outcome
         });
+
+        // Play outcome sound
+        if (outcome.moraleDelta > 0) {
+          soundManager.playSaleSuccess();
+        } else if (outcome.moraleDelta < 0) {
+          soundManager.playNegative();
+        } else {
+          soundManager.playResourceCollect();
+        }
 
         // TODO: Apply outcome to game state (morale, resources)
         // This will be wired to the store in AV-005

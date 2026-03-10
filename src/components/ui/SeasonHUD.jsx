@@ -1,4 +1,5 @@
 import { useAgentStore } from '../../store/agentStore';
+import { soundManager } from '../../utils/soundManager';
 
 export default function SeasonHUD() {
   const resources = useAgentStore((state) => state.resources);
@@ -15,6 +16,11 @@ export default function SeasonHUD() {
     if (day <= 5) return 'Survival';
     if (day === 6) return 'Profit Push';
     return 'Sale Day';
+  };
+
+  const handleAdvanceDay = () => {
+    soundManager.playDayAdvance();
+    advanceDay();
   };
 
   return (
@@ -78,7 +84,7 @@ export default function SeasonHUD() {
 
       {/* Day Advance Button */}
       <button
-        onClick={advanceDay}
+        onClick={handleAdvanceDay}
         disabled={season.currentDay >= 7}
         className={`rounded-lg px-4 py-3 font-bold uppercase tracking-wider transition-all ${
           season.currentDay >= 7

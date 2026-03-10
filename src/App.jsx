@@ -3,6 +3,7 @@ import IslandScene from './components/scene/IslandScene.jsx';
 import AgentPanel from './components/ui/AgentPanel.jsx';
 import SeasonHUD from './components/ui/SeasonHUD.jsx';
 import CrisisModal from './components/ui/CrisisModal.jsx';
+import SaleDay from './components/ui/SaleDay.jsx';
 
 export default function App() {
   return (
@@ -29,6 +30,9 @@ export default function App() {
 
       {/* Crisis Modal */}
       <CrisisModal />
+
+      {/* Sale Day Modal */}
+      <SaleDay />
     </main>
   );
 }
