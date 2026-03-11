@@ -7,6 +7,7 @@ import { generateTerrainGrid, buildTerrainScene } from '../../utils/terrainBuild
 import { createAgentModel, createAgentLabel } from '../../utils/agentBuilder.js';
 import { VOXEL_SIZE, VOXEL_HALF, COLORS } from '../../utils/voxelBuilder.js';
 import { IslandSceneManager } from '../../utils/islandSceneManager.js';
+import { populateTerrainProps } from '../../utils/terrainPropsBuilder.js';
 
 const SCENE_WIDTH = window.innerWidth;
 const SCENE_HEIGHT = window.innerHeight;
@@ -118,6 +119,10 @@ export default function IslandScene() {
       terrain: terrainGrid,
       islandSeed: 12345
     });
+
+    // ============= Populate Ambient Terrain Props =============
+    // Add trees, grass, reeds, rocks, fence, path (one-time on init)
+    populateTerrainProps(scene, terrainGrid, 12345);
 
     // ============= Initialize Scene Manager =============
 
