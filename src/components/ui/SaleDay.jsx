@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { soundManager } from '../../utils/soundManager';
+import { generateAgentReview } from '../../utils/claudeService';
 
 const MARKET_PRICES = {
   wood: 2,
@@ -18,8 +19,28 @@ export default function SaleDay() {
 
   const [stage, setStage] = useState('harvest'); // harvest → sale → review → complete
   const [displayProfit, setDisplayProfit] = useState(0);
+  const [review, setReview] = useState('');
+  const [reviewSource, setReviewSource] = useState('loading'); // loading | claude | template
   const profit = getProfit();
   const avgMorale = getAverageMorale();
+
+  // Fetch Claude review when entering review stage
+  useEffect(() => {
+    if (stage !== 'review' || review !== '') return;
+
+    const fetchReview = async () => {
+      const result = await generateAgentReview({
+        agentNames: agents.map(a => a.name).join(', '),
+        avgMorale,
+        profit,
+        season: season.seasonNumber
+      });
+      setReview(result.review);
+      setReviewSource(result.source);
+    };
+
+    fetchReview();
+  }, [stage, review, agents, avgMorale, profit, season.seasonNumber]);
 
   // Auto-progress through stages
   useEffect(() => {
@@ -75,22 +96,6 @@ export default function SaleDay() {
   };
 
   const profitTier = getProfitTier();
-
-  const getReview = () => {
-    if (profit > 50 && avgMorale > 70) {
-      return "🌟 Agents are thrilled! Your exceptional management has earned their loyalty.";
-    }
-    if (profit > 20 && avgMorale > 60) {
-      return "😊 A solid season! Your agents are happy and productive.";
-    }
-    if (profit > 0) {
-      return "😐 You broke even. Could be better, but agents aren't complaining.";
-    }
-    if (avgMorale < 30) {
-      return "😠 Disaster! Agents are furious and your farm is failing.";
-    }
-    return "😞 You lost money this season. Better luck next time.";
-  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -154,7 +159,21 @@ export default function SaleDay() {
             {(stage === 'review' || stage === 'complete') && (
               <div className="rounded-lg border border-slate-600 bg-slate-800 p-4">
                 <div className="text-sm font-semibold text-slate-300 mb-2">👥 Agent Review</div>
-                <p className="text-slate-200 text-center">{getReview()}</p>
+                {reviewSource === 'loading' ? (
+                  <div className="text-center text-slate-400 text-sm">
+                    <div className="inline-flex items-center gap-2">
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-yellow-400 border-t-transparent" />
+                      Gathering thoughts...
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-slate-200 text-center">{review}</p>
+                    <div className="mt-3 text-xs text-slate-500 text-center">
+                      {reviewSource === 'claude' && '✨ Powered by Claude'}
+                    </div>
+                  </>
+                )}
                 <div className="mt-3 text-xs text-slate-400 text-center">
                   Average Morale: <span className="font-bold text-slate-200">{avgMorale}%</span>
                 </div>
