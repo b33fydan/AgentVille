@@ -1,17 +1,18 @@
-import { useAgentStore } from '../../store/agentStore';
+import { useGameStore } from '../../store/gameStore';
 import { soundManager } from '../../utils/soundManager';
 
 export default function SeasonHUD() {
-  const resources = useAgentStore((state) => state.resources);
-  const season = useAgentStore((state) => state.season);
-  const advanceDay = useAgentStore((state) => state.advanceDay);
-  const getProfit = useAgentStore((state) => state.getProfit);
+  const resources = useGameStore((state) => state.resources);
+  const season = useGameStore((state) => state.season);
+  const day = useGameStore((state) => state.day);
+  const timeOfDay = useGameStore((state) => state.timeOfDay);
+  const advanceTime = useGameStore((state) => state.advanceTime);
+  const getProfit = useGameStore((state) => state.getProfit);
 
   const profit = getProfit();
   const marketPrices = { wood: 2, wheat: 5, hay: 3 };
 
   const getDayPhase = () => {
-    const day = season.currentDay;
     if (day <= 2) return 'Setup';
     if (day <= 5) return 'Survival';
     if (day === 6) return 'Profit Push';
@@ -20,7 +21,7 @@ export default function SeasonHUD() {
 
   const handleAdvanceDay = () => {
     soundManager.playDayAdvance();
-    advanceDay();
+    advanceTime();
   };
 
   const handleShare = async () => {
@@ -28,12 +29,12 @@ export default function SeasonHUD() {
       if (navigator.share) {
         await navigator.share({
           title: '🏝️ AgentVille',
-          text: `Season ${season.seasonNumber}, Day ${season.currentDay}/7 - Profit: $${Math.round(profit)}`,
+          text: `Season ${season}, Day ${day}/7 - Profit: $${Math.round(profit)}`,
           url: window.location.href
         });
       } else {
         // Fallback: copy to clipboard
-        const text = `🏝️ AgentVille - Season ${season.seasonNumber}: $${Math.round(profit)} profit! 🌾🌲 Play: agentville.app`;
+        const text = `🏝️ AgentVille - Season ${season}: $${Math.round(profit)} profit! 🌾🌲 Play: agentville.app`;
         await navigator.clipboard.writeText(text);
         alert('Copied to clipboard! Share it on social media.');
       }
@@ -48,11 +49,11 @@ export default function SeasonHUD() {
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded bg-slate-800 p-2 text-center">
           <div className="text-xs uppercase tracking-widest text-slate-400">Season</div>
-          <div className="text-2xl font-bold text-yellow-400">{season.seasonNumber}</div>
+          <div className="text-2xl font-bold text-yellow-400">{season}</div>
         </div>
         <div className="rounded bg-slate-800 p-2 text-center">
           <div className="text-xs uppercase tracking-widest text-slate-400">Day</div>
-          <div className="text-2xl font-bold text-blue-400">{season.currentDay}/7</div>
+          <div className="text-2xl font-bold text-blue-400">{day}/7</div>
         </div>
         <div className="rounded bg-slate-800 p-2 text-center">
           <div className="text-xs uppercase tracking-widest text-slate-400">Phase</div>
@@ -64,7 +65,7 @@ export default function SeasonHUD() {
       <div className="h-2 rounded-full bg-slate-700">
         <div
           className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all"
-          style={{ width: `${(season.currentDay / 7) * 100}%` }}
+          style={{ width: `${(day / 7) * 100}%` }}
         />
       </div>
 
@@ -105,14 +106,14 @@ export default function SeasonHUD() {
       <div className="flex gap-2">
         <button
           onClick={handleAdvanceDay}
-          disabled={season.currentDay >= 7}
+          disabled={day >= 7}
           className={`flex-1 rounded-lg px-4 py-3 font-bold uppercase tracking-wider transition-all ${
-            season.currentDay >= 7
+            day >= 7
               ? 'cursor-not-allowed bg-slate-700 text-slate-500'
               : 'bg-blue-600 hover:bg-blue-500 text-white active:scale-95'
           }`}
         >
-          {season.currentDay >= 7 ? '📊 Sale Day Complete' : '⏭️ Next Day'}
+          {day >= 7 ? '📊 Sale Day Complete' : '⏭️ Next Day'}
         </button>
         <button
           onClick={handleShare}
@@ -124,7 +125,7 @@ export default function SeasonHUD() {
       </div>
 
       {/* Sale Day Message */}
-      {season.currentDay >= 7 && (
+      {day >= 7 && (
         <div className="rounded-lg border border-yellow-600 bg-yellow-900/20 p-3 text-center text-yellow-300">
           <div className="font-bold">🎪 Sale Day!</div>
           <div className="text-xs">Agents review your management...</div>

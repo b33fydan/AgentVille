@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
+import { useGameStore } from '../../store/gameStore';
 import { soundManager } from '../../utils/soundManager';
 import { generateAgentReview } from '../../utils/claudeService';
 
@@ -10,11 +11,12 @@ const MARKET_PRICES = {
 };
 
 export default function SaleDay() {
-  const season = useAgentStore((state) => state.season);
-  const resources = useAgentStore((state) => state.resources);
+  const season = useGameStore((state) => state.season);
+  const day = useGameStore((state) => state.day);
+  const resources = useGameStore((state) => state.resources);
   const agents = useAgentStore((state) => state.agents);
-  const completeSeason = useAgentStore((state) => state.completeSeason);
-  const getProfit = useAgentStore((state) => state.getProfit);
+  const endSeason = useGameStore((state) => state.endSeason);
+  const getProfit = useGameStore((state) => state.getProfit);
   const getAverageMorale = useAgentStore((state) => state.getAverageMorale);
 
   const [stage, setStage] = useState('harvest'); // harvest → sale → review → complete
@@ -33,18 +35,18 @@ export default function SaleDay() {
         agentNames: agents.map(a => a.name).join(', '),
         avgMorale,
         profit,
-        season: season.seasonNumber
+        season
       });
       setReview(result.review);
       setReviewSource(result.source);
     };
 
     fetchReview();
-  }, [stage, review, agents, avgMorale, profit, season.seasonNumber]);
+  }, [stage, review, agents, avgMorale, profit, season]);
 
   // Auto-progress through stages
   useEffect(() => {
-    if (season.currentDay !== 7) return;
+    if (day !== 7) return;
 
     const timings = {
       harvest: 2000,
@@ -82,9 +84,9 @@ export default function SaleDay() {
     }, timings[stage] || 0);
 
     return () => clearTimeout(timer);
-  }, [season.currentDay, stage, profit]);
+  }, [day, stage, profit]);
 
-  if (season.currentDay !== 7) {
+  if (day !== 7) {
     return null;
   }
 
@@ -183,7 +185,7 @@ export default function SaleDay() {
             {/* Complete Button */}
             {stage === 'complete' && (
               <button
-                onClick={completeSeason}
+                onClick={() => endSeason({ profit, finalMorale: avgMorale, events: [] })}
                 className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 transition-all active:scale-95"
               >
                 🔄 Start Next Season
@@ -194,7 +196,7 @@ export default function SaleDay() {
 
         {/* Season Info */}
         <div className="mt-6 text-center text-xs text-slate-400">
-          Season {season.seasonNumber} Complete • Sale Day
+          Season {season} Complete • Sale Day
         </div>
       </div>
     </div>

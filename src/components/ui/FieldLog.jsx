@@ -1,9 +1,11 @@
 import { useAgentStore } from '../../store/agentStore';
+import { useGameStore } from '../../store/gameStore';
 
 export default function FieldLog() {
-  const crisisLog = useAgentStore((state) => state.crisisLog);
+  const crisisLog = useGameStore((state) => state.crisisLog);
   const agents = useAgentStore((state) => state.agents);
-  const season = useAgentStore((state) => state.season);
+  const season = useGameStore((state) => state.season);
+  const day = useGameStore((state) => state.day);
 
   // Generate log entries from crisis history + agent updates
   const getLogEntries = () => {
@@ -24,14 +26,14 @@ export default function FieldLog() {
 
     // Add agent status updates
     agents.forEach((agent) => {
-      if (agent.zoneName) {
+      if (agent.assignedZone) {
         entries.push({
           type: 'status',
           agent: agent.name,
-          title: `${agent.name} assigned to ${agent.zoneName}`,
+          title: `${agent.name} assigned to ${agent.assignedZone}`,
           morale: agent.morale,
           efficiency: Math.round(agent.efficiency * 100),
-          text: `Working in ${agent.zoneName} zone (${Math.round(agent.efficiency * 100)}% efficiency)`
+          text: `Working in ${agent.assignedZone} zone (${Math.round(agent.efficiency * 100)}% efficiency)`
         });
       }
     });
@@ -84,7 +86,7 @@ export default function FieldLog() {
 
       {/* Season Info */}
       <div className="mt-4 rounded-md border border-slate-700 bg-slate-800 p-2 text-xs text-slate-300">
-        <div>Season {season.seasonNumber}, Day {season.currentDay}/7</div>
+        <div>Season {season}, Day {day}/7</div>
         <div>Total events: {entries.length}</div>
       </div>
     </div>

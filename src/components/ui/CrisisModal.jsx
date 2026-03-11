@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
+import { useGameStore } from '../../store/gameStore';
 import { generateCrisis, resolveCrisis, getCrisisDescription } from '../../utils/crisisEngine';
 import { soundManager } from '../../utils/soundManager';
 
@@ -9,8 +10,9 @@ export default function CrisisModal() {
   const [isResolving, setIsResolving] = useState(false);
 
   const agents = useAgentStore((state) => state.agents);
-  const recordCrisis = useAgentStore((state) => state.recordCrisis);
-  const season = useAgentStore((state) => state.season);
+  const addCrisisToLog = useGameStore((state) => state.addCrisisToLog);
+  const season = useGameStore((state) => state.season);
+  const day = useGameStore((state) => state.day);
 
   // Generate a crisis at start or when modal is closed
   useEffect(() => {
@@ -33,9 +35,9 @@ export default function CrisisModal() {
       const outcome = resolveCrisis(currentCrisis, choiceIndex);
       if (outcome) {
         // Record in crisis log
-        recordCrisis({
-          season: season.seasonNumber,
-          day: season.currentDay,
+        addCrisisToLog({
+          season,
+          day,
           crisis: currentCrisis.id,
           choice: choiceIndex,
           outcome
@@ -44,7 +46,7 @@ export default function CrisisModal() {
         // Apply morale delta to all agents
         if (outcome.moraleDelta !== 0) {
           agents.forEach((agent) => {
-            useAgentStore.getState().updateAgentMorale(agent.id, outcome.moraleDelta);
+            useAgentStore.getState().updateMorale(agent.id, outcome.moraleDelta);
           });
         }
 
@@ -52,7 +54,7 @@ export default function CrisisModal() {
         if (outcome.resourceDelta) {
           Object.entries(outcome.resourceDelta).forEach(([resource, delta]) => {
             if (delta !== 0) {
-              useAgentStore.getState().addResource(resource, delta);
+              useGameStore.getState().addResource(resource, delta);
             }
           });
         }

@@ -187,7 +187,7 @@ export default function IslandScene() {
       let agentX = 0;
       let agentZ = 0;
 
-      if (agent.zoneName) {
+      if (agent.assignedZone) {
         // Position agents in their assigned zones (biome clusters)
         // Forest = left, Plains = center, Wetlands = right
         const zonePositions = {
@@ -195,7 +195,7 @@ export default function IslandScene() {
           plains: { x: 0, z: 1 },
           wetlands: { x: 2, z: 0 }
         };
-        const pos = zonePositions[agent.zoneName] || zonePositions.plains;
+        const pos = zonePositions[agent.assignedZone] || zonePositions.plains;
         agentX = pos.x + (Math.random() - 0.5) * 0.4; // Small randomness
         agentZ = pos.z + (Math.random() - 0.5) * 0.4;
       } else {

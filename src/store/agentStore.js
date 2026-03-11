@@ -1,72 +1,9 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-const AGENT_STORAGE_KEY = 'agentville-game';
-const ISLAND_STORAGE_KEY = 'agentville-island';
-const DEFAULT_ISLAND_NAME = 'My Island';
+const STORAGE_KEY = 'agentville-agents';
 
 // ============= Helpers =============
-
-function toNumber(value, fallback = 0) {
-  const next = Number(value);
-  return Number.isFinite(next) ? next : fallback;
-}
-
-function getStorage() {
-  return typeof window === 'undefined' ? null : window.localStorage;
-}
-
-function sanitizeIslandName(value) {
-  const next = String(value ?? '').trim();
-  return next || DEFAULT_ISLAND_NAME;
-}
-
-function readIslandMetadata() {
-  const storage = getStorage();
-  if (!storage) {
-    return {
-      islandName: DEFAULT_ISLAND_NAME
-    };
-  }
-
-  try {
-    const raw = storage.getItem(ISLAND_STORAGE_KEY);
-    if (!raw) {
-      return {
-        islandName: DEFAULT_ISLAND_NAME
-      };
-    }
-
-    const parsed = JSON.parse(raw);
-    return {
-      islandName: sanitizeIslandName(parsed?.islandName)
-    };
-  } catch {
-    return {
-      islandName: DEFAULT_ISLAND_NAME
-    };
-  }
-}
-
-function writeIslandMetadata({ islandName }) {
-  const storage = getStorage();
-  if (!storage) {
-    return;
-  }
-
-  try {
-    storage.setItem(
-      ISLAND_STORAGE_KEY,
-      JSON.stringify({
-        islandName: sanitizeIslandName(islandName)
-      })
-    );
-  } catch {
-    // Ignore localStorage write failures.
-  }
-}
-
-// ============= Agent Generation =============
 
 function generateAgentName() {
   const firstNames = [
@@ -84,7 +21,6 @@ function generateAgentName() {
 }
 
 function generateAgentTraits() {
-  // Sliders: 0-100
   return {
     workEthic: Math.floor(Math.random() * 100), // 0=lazy, 100=overachiever
     risk: Math.floor(Math.random() * 100), // 0=cautious, 100=gambler
@@ -93,23 +29,56 @@ function generateAgentTraits() {
   };
 }
 
+function generateAgentAppearance() {
+  const bodyColors = [
+    '#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981', '#14b8a6',
+    '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef',
+    '#ec4899', '#f43f5e'
+  ];
+
+  const hatTypes = ['hardhat', 'straw', 'cap', 'none'];
+  const toolTypes = ['axe', 'hoe', 'rake', 'spade'];
+
+  return {
+    bodyColor: bodyColors[Math.floor(Math.random() * bodyColors.length)],
+    hatType: hatTypes[Math.floor(Math.random() * hatTypes.length)],
+    toolType: toolTypes[Math.floor(Math.random() * toolTypes.length)]
+  };
+}
+
 function createAgent(index) {
   const id = `agent-${index}-${Date.now()}`;
   return {
     id,
     name: generateAgentName(),
-    morale: 75, // Start at neutral-happy
-    traits: generateAgentTraits(),
+    role: 'Worker',
+    level: 1,
     xp: 0,
-    zoneName: null, // 'forest' | 'plains' | 'wetlands' | null
-    efficiency: 1.0, // Multiplier based on morale + zone fit
-    lastComment: null // For Field Log display
+    traits: generateAgentTraits(),
+    morale: 75,
+    assignedZone: null, // null | tileIndex
+    status: 'idle', // 'idle' | 'working' | 'crisis' | 'riot'
+    appearance: generateAgentAppearance(),
+    efficiency: 1.0
   };
+}
+
+function calculateEfficiency(morale, traits, assignedZone) {
+  // Morale: 0-100 → 0.2-1.0 multiplier
+  const moraleMultiplier = 0.2 + (morale / 100) * 0.8;
+
+  // Work ethic factor
+  const workEthicBonus = (traits?.workEthic || 50) / 100 * 0.2; // Up to +20%
+
+  // Zone fit bonus (if assignedZone is provided, assume it's a zone name)
+  // TODO: This will be enhanced when we have proper tile-to-zone mapping
+  let zoneFitBonus = 0;
+
+  return Math.max(0.1, moraleMultiplier + workEthicBonus + zoneFitBonus);
 }
 
 // ============= Initial State =============
 
-const initialIsland = readIslandMetadata();
 const initialAgents = [
   createAgent(0),
   createAgent(1),
@@ -121,261 +90,138 @@ const initialAgents = [
 export const useAgentStore = create(
   persist(
     (set, get) => ({
-      // ===== Island Metadata & Grid =====
-      islandName: initialIsland.islandName,
-      island: {
-        terrainGrid: [], // 8x8 array of terrain types
-        seed: 0
-      },
+      // ===== Island Metadata =====
+      islandName: 'My Island',
+
       setIslandName: (name) => {
-        const nextName = sanitizeIslandName(name);
-        set({ islandName: nextName });
-        writeIslandMetadata({ islandName: nextName });
+        set({ islandName: String(name ?? '').trim() || 'My Island' });
       },
 
       // ===== Agents =====
       agents: initialAgents,
-      updateAgent: (agentId, updates) => {
-        set((state) => ({
-          agents: state.agents.map((agent) =>
-            agent.id === agentId ? { ...agent, ...updates } : agent
-          )
-        }));
-      },
-      setAgentZone: (agentId, zoneName) => {
-        const agent = get().agents.find((a) => a.id === agentId);
-        if (!agent) return;
 
-        // Update zone
-        get().updateAgent(agentId, { 
-          zoneName,
-          efficiency: calculateEfficiency(agent.morale, agent.traits, zoneName)
-        });
-
-        // Apply morale bonus/penalty based on zone fit
-        if (zoneName) {
-          const isFit = agent.traits?.specialization === zoneName;
-          const moraleDelta = isFit ? 5 : -2; // +5 if matched, -2 if mismatched
-          get().updateAgentMorale(agentId, moraleDelta);
-        }
-      },
-      updateAgentMorale: (agentId, delta) => {
+      assignAgentToZone: (agentId, tileIndex) => {
         set((state) => ({
           agents: state.agents.map((agent) => {
             if (agent.id !== agentId) return agent;
-            const newMorale = Math.max(0, Math.min(100, agent.morale + delta));
-            const newEfficiency = calculateEfficiency(newMorale, agent.traits, agent.zoneName);
+
             return {
               ...agent,
-              morale: newMorale,
-              efficiency: newEfficiency
+              assignedZone: tileIndex,
+              status: 'working',
+              morale: Math.max(0, Math.min(100, agent.morale + 2)), // Small morale boost when assigned
+              efficiency: calculateEfficiency(agent.morale + 2, agent.traits, tileIndex)
             };
           })
         }));
       },
-      hireAgent: () => {
-        const nextIndex = get().agents.length;
+
+      unassignAgent: (agentId) => {
         set((state) => ({
-          agents: [...state.agents, createAgent(nextIndex)]
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            return {
+              ...agent,
+              assignedZone: null,
+              status: 'idle',
+              morale: Math.max(0, Math.min(100, agent.morale - 2)), // Small morale penalty when unassigned
+              efficiency: calculateEfficiency(agent.morale - 2, agent.traits, null)
+            };
+          })
         }));
       },
+
+      updateMorale: (agentId, delta) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            const newMorale = Math.max(0, Math.min(100, agent.morale + delta));
+            return {
+              ...agent,
+              morale: newMorale,
+              efficiency: calculateEfficiency(newMorale, agent.traits, agent.assignedZone)
+            };
+          })
+        }));
+      },
+
+      addAgentXP: (agentId, amount) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            const newXP = agent.xp + amount;
+            const newLevel = agent.level + Math.floor(newXP / 100); // 100 XP per level
+            return {
+              ...agent,
+              xp: newXP % 100, // Keep remainder
+              level: newLevel
+            };
+          })
+        }));
+      },
+
+      setAgentStatus: (agentId, status) => {
+        set((state) => ({
+          agents: state.agents.map((agent) =>
+            agent.id === agentId ? { ...agent, status } : agent
+          )
+        }));
+      },
+
       fireAgent: (agentId) => {
         set((state) => ({
           agents: state.agents.filter((agent) => agent.id !== agentId)
         }));
       },
 
-      // ===== Resources =====
-      resources: {
-        wood: 0,
-        wheat: 0,
-        hay: 0
-      },
-      addResource: (resourceType, amount) => {
+      hireNewAgent: (agentData) => {
+        const newAgent = agentData || createAgent(Math.random());
         set((state) => ({
-          resources: {
-            ...state.resources,
-            [resourceType]: Math.max(0, state.resources[resourceType] + toNumber(amount, 0))
-          }
-        }));
-      },
-      setResource: (resourceType, amount) => {
-        set((state) => ({
-          resources: {
-            ...state.resources,
-            [resourceType]: Math.max(0, toNumber(amount, 0))
-          }
+          agents: [...state.agents, newAgent]
         }));
       },
 
-      // ===== Season State =====
-      season: {
-        currentDay: 1, // 1-7
-        seasonNumber: 1,
-        isInSaleDay: false
-      },
-      advanceDay: () => {
-        // Apply morale effects before day advance
-        const { agents } = get();
-        agents.forEach((agent) => {
-          if (!agent.zoneName) {
-            // Idle agents lose morale (-2 per day)
-            get().updateAgentMorale(agent.id, -2);
-          } else {
-            // Working agents gain morale (+1 per day)
-            get().updateAgentMorale(agent.id, 1);
-          }
-        });
+      updateAgentTraits: (agentId, traitUpdates) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
 
-        // Generate resources from assigned agents
-        get().generateResourcesFromAgents();
-
-        set((state) => {
-          const nextDay = state.season.currentDay + 1;
-          if (nextDay > 7) {
             return {
-              season: {
-                currentDay: 1,
-                seasonNumber: state.season.seasonNumber + 1,
-                isInSaleDay: false
+              ...agent,
+              traits: {
+                ...agent.traits,
+                ...traitUpdates
               }
             };
-          }
-          return {
-            season: {
-              ...state.season,
-              currentDay: nextDay
-            }
-          };
-        });
-      },
-      triggerSaleDay: () => {
-        set((state) => ({
-          season: {
-            ...state.season,
-            isInSaleDay: true
-          }
-        }));
-      },
-      completeSeason: () => {
-        set((state) => ({
-          season: {
-            currentDay: 1,
-            seasonNumber: state.season.seasonNumber + 1,
-            isInSaleDay: false
-          },
-          resources: {
-            wood: 0,
-            wheat: 0,
-            hay: 0
-          }
+          })
         }));
       },
 
-      // ===== Crisis System =====
-      crisisLog: [], // Array of { season, day, crisis, choice, outcome }
-      crisisCount: 0, // Crises triggered this day (max 2)
-      recordCrisis: (crisisData) => {
+      resetAgentsForNewSeason: () => {
         set((state) => ({
-          crisisLog: [...state.crisisLog, crisisData],
-          crisisCount: state.crisisCount + 1
+          agents: state.agents.map((agent) => ({
+            ...agent,
+            status: 'idle',
+            assignedZone: null
+            // Keep morale, xp, level
+          }))
         }));
       },
 
-      // ===== Calculations =====
-      getProfit: () => {
-        const { resources } = get();
-        const marketPrices = { wood: 2, wheat: 5, hay: 3 };
-        const total =
-          resources.wood * marketPrices.wood +
-          resources.wheat * marketPrices.wheat +
-          resources.hay * marketPrices.hay;
-        return total;
-      },
+      // ===== Utilities =====
       getAverageMorale: () => {
         const { agents } = get();
         if (agents.length === 0) return 50;
         const sum = agents.reduce((acc, agent) => acc + agent.morale, 0);
         return Math.round(sum / agents.length);
-      },
-      getRiotRisk: () => {
-        const { agents, crisisLog, season } = get();
-        const ignoredCrises = crisisLog.filter((log) => log.season === season.seasonNumber && log.ignored).length;
-        const lowMoraleAgents = agents.filter((agent) => agent.morale < 20).length;
-        const profit = get().getProfit();
-
-        if (lowMoraleAgents === 0 && ignoredCrises < 3 && profit >= 0) {
-          return 0;
-        }
-
-        // Simplified riot risk: 0.001 baseline if conditions are bad
-        const baseRisk = 0.001;
-        const ignoredFactor = ignoredCrises * 0.0005;
-        const moraleFactor = lowMoraleAgents * 0.0003;
-        const lossessFactor = profit < 0 ? 0.0005 : 0;
-
-        return Math.min(1, baseRisk + ignoredFactor + moraleFactor + lossessFactor);
-      },
-
-      // ===== Resource Generation =====
-      generateResourcesFromAgents: () => {
-        const { agents } = get();
-
-        // Each agent generates resources based on zone + efficiency
-        agents.forEach((agent) => {
-          if (!agent.zoneName) return;
-
-          const baseAmount = 0.5; // Resources per agent per generation tick
-          const efficiency = agent.efficiency || 1.0;
-          const totalGeneration = baseAmount * efficiency;
-
-          // Assign resources by zone specialization
-          if (agent.zoneName === 'forest') {
-            get().addResource('wood', totalGeneration);
-          } else if (agent.zoneName === 'plains') {
-            get().addResource('wheat', totalGeneration);
-          } else if (agent.zoneName === 'wetlands') {
-            get().addResource('hay', totalGeneration);
-          }
-        });
       }
     }),
     {
-      name: AGENT_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-      merge: (persistedState, currentState) => {
-        const merged = {
-          ...currentState,
-          ...(persistedState ?? {})
-        };
-        const islandFromLocal = readIslandMetadata();
-        return {
-          ...merged,
-          islandName: sanitizeIslandName(islandFromLocal.islandName || merged.islandName)
-        };
-      }
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage)
     }
   )
 );
-
-// ============= Efficiency Calculation =============
-
-function calculateEfficiency(morale, traits, zoneName) {
-  // Morale: 0-100 → 0.2-1.0 multiplier
-  const moraleMultiplier = 0.2 + (morale / 100) * 0.8;
-
-  // Work ethic factor
-  const workEthicBonus = (traits?.workEthic || 50) / 100 * 0.2; // Up to +20%
-
-  // Zone fit bonus
-  let zoneFitBonus = 0;
-  if (zoneName && traits?.specialization === zoneName) {
-    // Perfect match: +10% efficiency bonus
-    zoneFitBonus = 0.1;
-  } else if (zoneName) {
-    // Mismatch: -5% efficiency penalty
-    zoneFitBonus = -0.05;
-  }
-
-  return Math.max(0.1, moraleMultiplier + workEthicBonus + zoneFitBonus);
-}

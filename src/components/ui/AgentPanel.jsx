@@ -3,8 +3,9 @@ import FieldLog from './FieldLog';
 
 export default function AgentPanel() {
   const agents = useAgentStore((state) => state.agents);
-  const setAgentZone = useAgentStore((state) => state.setAgentZone);
-  const updateAgentMorale = useAgentStore((state) => state.updateAgentMorale);
+  const assignAgentToZone = useAgentStore((state) => state.assignAgentToZone);
+  const unassignAgent = useAgentStore((state) => state.unassignAgent);
+  const updateMorale = useAgentStore((state) => state.updateMorale);
 
   const zones = ['forest', 'plains', 'wetlands'];
 
@@ -53,8 +54,15 @@ export default function AgentPanel() {
                 Assign Zone
               </label>
               <select
-                value={agent.zoneName || ''}
-                onChange={(e) => setAgentZone(agent.id, e.target.value || null)}
+                value={agent.assignedZone || ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    // For MVP, pass zone name as tileIndex; will be refactored when tile selection is implemented
+                    assignAgentToZone(agent.id, e.target.value);
+                  } else {
+                    unassignAgent(agent.id);
+                  }
+                }}
                 className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm text-white"
               >
                 <option value="">— None —</option>
@@ -77,9 +85,9 @@ export default function AgentPanel() {
             )}
 
             {/* Zone Info */}
-            {agent.zoneName && (
+            {agent.assignedZone && (
               <div className="mt-2 rounded bg-blue-900/30 px-2 py-1 text-xs text-blue-300">
-                ✓ Working: {agent.zoneName}
+                ✓ Working: {agent.assignedZone}
               </div>
             )}
           </div>

@@ -1,23 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
+import { useGameStore } from '../../store/gameStore';
 
 export default function RiotModal() {
-  const season = useAgentStore((state) => state.season);
+  const season = useGameStore((state) => state.season);
+  const day = useGameStore((state) => state.day);
   const agents = useAgentStore((state) => state.agents);
-  const crisisLog = useAgentStore((state) => state.crisisLog);
+  const crisisLog = useGameStore((state) => state.crisisLog);
   const getAverageMorale = useAgentStore((state) => state.getAverageMorale);
-  const getProfit = useAgentStore((state) => state.getProfit);
-  const completeSeason = useAgentStore((state) => state.completeSeason);
+  const getProfit = useGameStore((state) => state.getProfit);
+  const endSeason = useGameStore((state) => state.endSeason);
+  const addRiotToHistory = useGameStore((state) => state.addRiotToHistory);
 
   const [showRiot, setShowRiot] = useState(false);
 
   // Check for riot on Sale Day
   useEffect(() => {
-    if (season.currentDay !== 7) return;
+    if (day !== 7) return;
 
     const avgMorale = getAverageMorale();
     const profit = getProfit();
-    const ignoredCrises = crisisLog.filter((log) => log.season === season.seasonNumber).length === 0;
+    const ignoredCrises = crisisLog.filter((log) => log.season === season).length === 0;
     const lowMoraleCount = agents.filter((a) => a.morale < 20).length;
 
     // Riot conditions
@@ -29,7 +32,7 @@ export default function RiotModal() {
         setShowRiot(true);
       }
     }
-  }, [season.currentDay, agents, crisisLog, getAverageMorale, getProfit]);
+  }, [day, agents, crisisLog, getAverageMorale, getProfit]);
 
   if (!showRiot) {
     return null;
@@ -43,7 +46,7 @@ export default function RiotModal() {
       }
     });
 
-    const crisisCount = crisisLog.filter((log) => log.season === season.seasonNumber).length;
+    const crisisCount = crisisLog.filter((log) => log.season === season).length;
     if (crisisCount > 5) {
       violations.push(`Ignored ${crisisCount} critical events`);
     }
@@ -72,7 +75,7 @@ export default function RiotModal() {
     <div className="fixed inset-0 flex items-center justify-center bg-black/90 backdrop-blur-sm z-50">
       <div className="w-full max-w-2xl rounded-lg border-4 border-red-600 bg-slate-900 p-8 shadow-2xl">
         <h1 className="text-4xl font-bold text-red-500 mb-2">🔥 AGENT CARETAKER ASSOCIATION VIOLATION 🔥</h1>
-        <p className="text-red-400 text-sm mb-6">FARM ID: Island-{season.seasonNumber}</p>
+        <p className="text-red-400 text-sm mb-6">FARM ID: Island-{season}</p>
 
         {/* Violations */}
         <div className="bg-red-900/30 border border-red-700 rounded-lg p-4 mb-6">
@@ -93,18 +96,18 @@ export default function RiotModal() {
         <div className="text-slate-300 text-center text-sm mb-6">
           <p>Your island farm has been seized by the ACA.</p>
           <p>All agents have abandoned their posts.</p>
-          <p className="mt-2 font-bold text-red-400">Season {season.seasonNumber}: TOTAL LOSS</p>
+          <p className="mt-2 font-bold text-red-400">Season {season}: TOTAL LOSS</p>
         </div>
 
         {/* Continue Button */}
         <button
           onClick={() => {
-            completeSeason();
+            endSeason({ profit: getProfit(), finalMorale: getAverageMorale(), events: violations });
             setShowRiot(false);
           }}
           className="w-full rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold py-3 transition-all active:scale-95"
         >
-          🔄 Start Season {season.seasonNumber + 1} (Learn & Retry)
+          🔄 Start Season {season + 1} (Learn & Retry)
         </button>
 
         {/* Share Hint */}
