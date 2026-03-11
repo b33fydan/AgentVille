@@ -1,30 +1,122 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { useGameStore } from '../../store/gameStore';
-import { generateCrisis, resolveCrisis, getCrisisDescription } from '../../utils/crisisEngine';
+import { useLogStore } from '../../store/logStore';
+import {
+  CrisisQueue,
+  generateCrisis,
+  resolveCrisis,
+  enrichCrisisDescription,
+  getAgentReactionQuote
+} from '../../utils/crisisEngine';
 import { soundManager } from '../../utils/soundManager';
 
 export default function CrisisModal() {
   const [currentCrisis, setCurrentCrisis] = useState(null);
+  const [enrichedDescription, setEnrichedDescription] = useState('');
   const [selectedChoice, setSelectedChoice] = useState(null);
   const [isResolving, setIsResolving] = useState(false);
+  const crisisQueueRef = useRef(new CrisisQueue());
 
   const agents = useAgentStore((state) => state.agents);
+  const updateMorale = useAgentStore((state) => state.updateMorale);
+  const addResource = useGameStore((state) => state.addResource);
   const addCrisisToLog = useGameStore((state) => state.addCrisisToLog);
   const season = useGameStore((state) => state.season);
   const day = useGameStore((state) => state.day);
+  const timeOfDay = useGameStore((state) => state.timeOfDay);
+  const addLogEntry = useLogStore((state) => state.addLogEntry);
 
-  // Generate a crisis at start or when modal is closed
+  // Check for crisis trigger on day/time change
   useEffect(() => {
-    if (!currentCrisis && !isResolving) {
-      // Automatically generate crisis
-      const crisis = generateCrisis();
-      setCurrentCrisis(crisis);
+    if (isResolving || currentCrisis) return; // Already has a crisis
+
+    const crisisQueue = crisisQueueRef.current;
+    const newCrisis = crisisQueue.checkTrigger(season, day, timeOfDay);
+
+    if (newCrisis) {
+      setCurrentCrisis(newCrisis);
       setSelectedChoice(null);
-      // Play alert sound
+      setEnrichedDescription(''); // Will be enriched
       soundManager.playCrisisAlert();
     }
-  }, [currentCrisis, isResolving]);
+  }, [season, day, timeOfDay, isResolving, currentCrisis]);
+
+  // Enrich crisis description with Claude when crisis appears
+  useEffect(() => {
+    if (!currentCrisis || enrichedDescription) return;
+
+    const enrich = async () => {
+      const enriched = await enrichCrisisDescription(currentCrisis, agents);
+      setEnrichedDescription(enriched);
+    };
+
+    enrich();
+  }, [currentCrisis, agents, enrichedDescription]);
+
+  // ===== OUTCOME CASCADE =====
+  const applyOutcome = (outcome) => {
+    if (!outcome) return;
+
+    // 1. Apply morale delta to all agents
+    if (outcome.moraleDelta !== 0) {
+      agents.forEach((agent) => {
+        updateMorale(agent.id, outcome.moraleDelta);
+      });
+    }
+
+    // 2. Apply resource delta
+    if (outcome.resourceDelta && Object.keys(outcome.resourceDelta).length > 0) {
+      Object.entries(outcome.resourceDelta).forEach(([resource, delta]) => {
+        if (delta !== 0) {
+          addResource(resource, delta);
+        }
+      });
+    }
+
+    // 3. Log to Field Log with agent reactions
+    addLogEntry({
+      agentId: null,
+      agentName: 'Crisis',
+      type: 'crisis_resolution',
+      message: `${outcome.crisisTitle}: "${outcome.choiceText}". ${outcome.consequenceText}`
+    });
+
+    // 4. Add agent reaction quotes (optional, adds personality)
+    if (agents.length > 0) {
+      const randomAgent = agents[Math.floor(Math.random() * agents.length)];
+      const quote = getAgentReactionQuote(randomAgent, outcome.choiceText, outcome.moraleDelta);
+      if (quote) {
+        addLogEntry({
+          agentId: randomAgent.id,
+          agentName: randomAgent.name,
+          type: 'crisis_reaction',
+          message: quote
+        });
+      }
+    }
+
+    // 5. Record in game crisis log
+    addCrisisToLog({
+      season,
+      day,
+      crisis: currentCrisis.id,
+      choice: outcome.choiceIndex,
+      outcome
+    });
+
+    // 6. Play audio feedback
+    if (outcome.moraleDelta > 0) {
+      soundManager.playSaleSuccess();
+    } else if (outcome.moraleDelta < 0) {
+      soundManager.playNegative();
+    } else {
+      soundManager.playResourceCollect();
+    }
+
+    // TODO: Handle agent status changes (injured, recovering, etc.)
+    // TODO: Handle follow-up crises (nextCrisisHint)
+  };
 
   const handleChoice = (choiceIndex) => {
     setSelectedChoice(choiceIndex);
@@ -32,45 +124,17 @@ export default function CrisisModal() {
 
     // Simulate resolution delay
     setTimeout(() => {
-      const outcome = resolveCrisis(currentCrisis, choiceIndex);
+      const crisisQueue = crisisQueueRef.current;
+      const outcome = crisisQueue.resolveCrisis(currentCrisis.id, choiceIndex);
+
       if (outcome) {
-        // Record in crisis log
-        addCrisisToLog({
-          season,
-          day,
-          crisis: currentCrisis.id,
-          choice: choiceIndex,
-          outcome
-        });
-
-        // Apply morale delta to all agents
-        if (outcome.moraleDelta !== 0) {
-          agents.forEach((agent) => {
-            useAgentStore.getState().updateMorale(agent.id, outcome.moraleDelta);
-          });
-        }
-
-        // Apply resource delta
-        if (outcome.resourceDelta) {
-          Object.entries(outcome.resourceDelta).forEach(([resource, delta]) => {
-            if (delta !== 0) {
-              useGameStore.getState().addResource(resource, delta);
-            }
-          });
-        }
-
-        // Play outcome sound
-        if (outcome.moraleDelta > 0) {
-          soundManager.playSaleSuccess();
-        } else if (outcome.moraleDelta < 0) {
-          soundManager.playNegative();
-        } else {
-          soundManager.playResourceCollect();
-        }
+        applyOutcome(outcome);
       }
 
       // Close modal
       setCurrentCrisis(null);
+      setSelectedChoice(null);
+      setEnrichedDescription('');
       setIsResolving(false);
     }, 800);
   };
@@ -79,18 +143,32 @@ export default function CrisisModal() {
     return null;
   }
 
-  const description = getCrisisDescription(currentCrisis, agents);
   const choice = selectedChoice !== null ? currentCrisis.choices[selectedChoice] : null;
   const isLoading = isResolving && selectedChoice !== null;
+  const displayDescription = enrichedDescription || currentCrisis.baseDescription;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-40">
       <div className="w-full max-w-md rounded-lg border-2 border-amber-600 bg-slate-900 p-6 shadow-2xl">
         {/* Crisis Title */}
-        <h2 className="mb-2 text-2xl font-bold text-amber-400">⚠️ {currentCrisis.title}</h2>
+        <h2 className="mb-2 text-2xl font-bold text-amber-400">{currentCrisis.title}</h2>
 
-        {/* Crisis Description */}
-        <p className="mb-4 text-slate-300">{description}</p>
+        {/* Severity Badge */}
+        {currentCrisis.severity && (
+          <div className="mb-3 inline-block rounded px-2 py-1 text-xs font-bold">
+            {currentCrisis.severity === 1 && <span className="bg-yellow-900/50 text-yellow-300">Minor</span>}
+            {currentCrisis.severity === 2 && <span className="bg-orange-900/50 text-orange-300">Major</span>}
+            {currentCrisis.severity === 3 && <span className="bg-red-900/50 text-red-300">CRITICAL</span>}
+          </div>
+        )}
+
+        {/* Crisis Description (Claude-enriched or template) */}
+        <p className="mb-4 text-slate-300">
+          {displayDescription}
+        </p>
+        {enrichedDescription && (
+          <p className="mb-2 text-xs text-slate-500">✨ Enhanced by Claude</p>
+        )}
 
         {/* Choices */}
         <div className="mb-4 space-y-2">
@@ -107,8 +185,9 @@ export default function CrisisModal() {
                     : 'border-slate-600 bg-slate-800 text-slate-200 hover:border-amber-500 hover:bg-amber-900/30'
               }`}
             >
+              {/* Choice Text + Morale Delta */}
               <div className="flex items-start justify-between">
-                <span>{option.text}</span>
+                <span className="font-medium">{option.text}</span>
                 <span className={`ml-2 text-xs font-bold ${
                   option.moraleDelta > 0 ? 'text-green-300' :
                   option.moraleDelta < 0 ? 'text-red-300' : 'text-slate-400'
@@ -116,6 +195,7 @@ export default function CrisisModal() {
                   {option.moraleDelta > 0 ? '+' : ''}{option.moraleDelta}
                 </span>
               </div>
+
               {/* Resource Delta Preview */}
               {option.resourceDelta && Object.keys(option.resourceDelta).length > 0 && (
                 <div className="mt-1 text-xs text-slate-400">
@@ -125,6 +205,11 @@ export default function CrisisModal() {
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* Consequence Text (what happens) */}
+              {option.consequenceText && (
+                <div className="mt-1 text-xs text-slate-400 italic">{option.consequenceText}</div>
               )}
             </button>
           ))}
