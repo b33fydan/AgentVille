@@ -6,22 +6,35 @@ import * as Tone from 'tone';
 class SoundManager {
   constructor() {
     this.isMuted = false;
-    this.masterGain = new Tone.Gain(0.3);
-    this.masterGain.toDestination();
+    this.masterGain = null;
+    try {
+      this.masterGain = new Tone.Gain(0.3);
+      this.masterGain.toDestination();
+    } catch (e) {
+      console.warn('Audio init failed (will retry on interaction):', e.message);
+    }
   }
 
   async ensureAudioContext() {
+    if (!this.masterGain) {
+      try {
+        this.masterGain = new Tone.Gain(0.3);
+        this.masterGain.toDestination();
+      } catch (e) {
+        return false;
+      }
+    }
     if (Tone.getContext().state === 'suspended') {
       await Tone.start();
     }
+    return true;
   }
 
   /**
    * Crisis alert sound (ascending beep)
    */
   async playCrisisAlert() {
-    if (this.isMuted) return;
-    await this.ensureAudioContext();
+    if (this.isMuted || !(await this.ensureAudioContext())) return;
 
     const synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'square' },
@@ -41,8 +54,7 @@ class SoundManager {
    * Resource collected sound (pleasant chime)
    */
   async playResourceCollect() {
-    if (this.isMuted) return;
-    await this.ensureAudioContext();
+    if (this.isMuted || !(await this.ensureAudioContext())) return;
 
     const synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'triangle' },
@@ -60,8 +72,7 @@ class SoundManager {
    * Sale/Success sound (ascending chord)
    */
   async playSaleSuccess() {
-    if (this.isMuted) return;
-    await this.ensureAudioContext();
+    if (this.isMuted || !(await this.ensureAudioContext())) return;
 
     const synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'sine' },
@@ -80,8 +91,7 @@ class SoundManager {
    * Negative/failure sound (descending notes)
    */
   async playNegative() {
-    if (this.isMuted) return;
-    await this.ensureAudioContext();
+    if (this.isMuted || !(await this.ensureAudioContext())) return;
 
     const synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'square' },
@@ -100,8 +110,7 @@ class SoundManager {
    * Day advance sound (neutral beep)
    */
   async playDayAdvance() {
-    if (this.isMuted) return;
-    await this.ensureAudioContext();
+    if (this.isMuted || !(await this.ensureAudioContext())) return;
 
     const synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'sine' },
@@ -119,7 +128,9 @@ class SoundManager {
   }
 
   setVolume(level) {
-    this.masterGain.gain.value = Math.max(0, Math.min(1, level));
+    if (this.masterGain) {
+      this.masterGain.gain.value = Math.max(0, Math.min(1, level));
+    }
   }
 }
 
