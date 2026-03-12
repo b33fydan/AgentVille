@@ -7,7 +7,8 @@
  * - localStorage tracking for daily call budget
  */
 
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+// API key lives server-side in Vercel env — never exposed to browser
+const PROXY_URL = '/api/claude';
 const CLAUDE_MODEL_HAIKU = 'claude-haiku-4-5-20251001';
 const CLAUDE_MODEL_SONNET = 'claude-sonnet-4-6';
 const DAILY_CALL_LIMIT = 10;
@@ -74,7 +75,7 @@ export async function generateAgentReview({
   // 3. Over daily budget
   // 4. API call fails
   
-  if (forceTemplate || !API_KEY || !isWithinDailyBudget()) {
+  if (forceTemplate || !isWithinDailyBudget()) {
     return {
       review: getReviewTemplate(avgMorale, profit),
       source: 'template'
@@ -111,7 +112,7 @@ export async function enrichCrisisEvent({
   baseDescription,
   forceTemplate = false
 }) {
-  if (forceTemplate || !API_KEY || !isWithinDailyBudget()) {
+  if (forceTemplate || !isWithinDailyBudget()) {
     return {
       description: baseDescription,
       source: 'template'
@@ -150,7 +151,7 @@ export async function generateAgentComment({
   moraleDelta,
   forceTemplate = false
 }) {
-  if (forceTemplate || !API_KEY || !isWithinDailyBudget()) {
+  if (forceTemplate || !isWithinDailyBudget()) {
     return {
       comment: getCommentTemplate(agentName, moraleDelta),
       source: 'template'
@@ -178,31 +179,23 @@ export async function generateAgentComment({
 // ============= Internal Helpers =============
 
 /**
- * Make authenticated call to Claude API
+ * Call Claude via server-side proxy (/api/claude)
+ * API key stays on the server — never sent to the browser
  */
 async function callClaude(prompt, model, maxTokens) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch(PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
+      messages: [{ role: 'user', content: prompt }]
     })
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(`Claude API error: ${error.message}`);
+    throw new Error(`Claude proxy error: ${error.error || error.message}`);
   }
 
   const data = await response.json();

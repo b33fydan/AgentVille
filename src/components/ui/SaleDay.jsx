@@ -13,6 +13,7 @@ const MARKET_PRICES = {
 export default function SaleDay() {
   const season = useGameStore((state) => state.season);
   const day = useGameStore((state) => state.day);
+  const timeOfDay = useGameStore((state) => state.timeOfDay);
   const resources = useGameStore((state) => state.resources);
   const agents = useAgentStore((state) => state.agents);
   const endSeason = useGameStore((state) => state.endSeason);
@@ -46,7 +47,7 @@ export default function SaleDay() {
 
   // Auto-progress through stages
   useEffect(() => {
-    if (day !== 7) return;
+    if (day !== 7 || timeOfDay !== 'evening') return;
 
     const timings = {
       harvest: 2000,
@@ -66,17 +67,22 @@ export default function SaleDay() {
         }
 
         // Animate profit counter
-        setDisplayProfit(0);
-        let current = 0;
-        const interval = setInterval(() => {
-          current += Math.ceil(profit / 20);
-          if (current >= profit) {
-            setDisplayProfit(profit);
-            clearInterval(interval);
-          } else {
-            setDisplayProfit(current);
-          }
-        }, 50);
+        if (profit === 0) {
+          setDisplayProfit(0);
+        } else {
+          setDisplayProfit(0);
+          let current = 0;
+          const step = profit > 0 ? Math.ceil(profit / 20) : Math.floor(profit / 20);
+          const interval = setInterval(() => {
+            current += step;
+            if ((step > 0 && current >= profit) || (step < 0 && current <= profit)) {
+              setDisplayProfit(profit);
+              clearInterval(interval);
+            } else {
+              setDisplayProfit(current);
+            }
+          }, 50);
+        }
         setStage('review');
       } else if (stage === 'review') {
         setStage('complete');
@@ -84,9 +90,10 @@ export default function SaleDay() {
     }, timings[stage] || 0);
 
     return () => clearTimeout(timer);
-  }, [day, stage, profit]);
+  }, [day, timeOfDay, stage, profit]);
 
-  if (day !== 7) {
+  // Only show on Day 7 evening (player gets full Day 7 morning first)
+  if (day !== 7 || timeOfDay !== 'evening') {
     return null;
   }
 

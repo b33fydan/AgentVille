@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { useGameStore } from '../../store/gameStore';
 import { useLogStore } from '../../store/logStore';
@@ -11,12 +11,14 @@ import {
 } from '../../utils/crisisEngine';
 import { soundManager } from '../../utils/soundManager';
 
+// Module-level singleton — survives component remounts
+const crisisQueue = new CrisisQueue();
+
 export default function CrisisModal() {
   const [currentCrisis, setCurrentCrisis] = useState(null);
   const [enrichedDescription, setEnrichedDescription] = useState('');
   const [selectedChoice, setSelectedChoice] = useState(null);
   const [isResolving, setIsResolving] = useState(false);
-  const crisisQueueRef = useRef(new CrisisQueue());
 
   const agents = useAgentStore((state) => state.agents);
   const updateMorale = useAgentStore((state) => state.updateMorale);
@@ -31,7 +33,6 @@ export default function CrisisModal() {
   useEffect(() => {
     if (isResolving || currentCrisis) return; // Already has a crisis
 
-    const crisisQueue = crisisQueueRef.current;
     const newCrisis = crisisQueue.checkTrigger(season, day, timeOfDay);
 
     if (newCrisis) {
@@ -124,7 +125,6 @@ export default function CrisisModal() {
 
     // Simulate resolution delay
     setTimeout(() => {
-      const crisisQueue = crisisQueueRef.current;
       const outcome = crisisQueue.resolveCrisis(currentCrisis.id, choiceIndex);
 
       if (outcome) {
