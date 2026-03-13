@@ -19,6 +19,7 @@ export default function SaleDay() {
   const day = useGameStore((state) => state.day);
   const timeOfDay = useGameStore((state) => state.timeOfDay);
   const resources = useGameStore((state) => state.resources);
+  const crisisLog = useGameStore((state) => state.crisisLog);
   const agents = useAgentStore((state) => state.agents);
   const endSeason = useGameStore((state) => state.endSeason);
   const getProfit = useGameStore((state) => state.getProfit);
@@ -66,7 +67,7 @@ export default function SaleDay() {
         season,
         islandName: agents[0]?.islandName || 'My Island', // Get from first agent or game state
         profit: displayProfit,
-        profitTier: profit > 50 ? 'GREAT SEASON' : profit > 0 ? 'GOOD SEASON' : 'ROUGH SEASON',
+        profitTier: displayProfit > 50 ? 'GREAT SEASON' : displayProfit > 0 ? 'GOOD SEASON' : 'ROUGH SEASON',
         agents: agents.map((a) => ({
           name: a.name,
           level: a.level || 1,
@@ -74,8 +75,8 @@ export default function SaleDay() {
           quote: review // Use the season review as agent quote for now
         })),
         resources: resources,
-        crisisFaced: crisisLog.length,
-        crisisResolved: crisisLog.filter((c) => c.outcome).length,
+        crisisFaced: (crisisLog || []).length,
+        crisisResolved: (crisisLog || []).filter((c) => c.outcome).length,
         avgMorale: Math.round(getAverageMorale()),
         screenshotUrl
       };
