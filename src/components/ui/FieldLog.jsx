@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { useGameStore } from '../../store/gameStore';
 import { useLogStore } from '../../store/logStore';
+import { soundManager } from '../../utils/soundManager';
 
 export default function FieldLog() {
   const crisisLog = useGameStore((state) => state.crisisLog);
@@ -8,6 +10,16 @@ export default function FieldLog() {
   const season = useGameStore((state) => state.season);
   const day = useGameStore((state) => state.day);
   const logEntries = useLogStore((state) => state.entries);
+
+  // Play sound when new log entry appears
+  useEffect(() => {
+    if (logEntries.length > 0) {
+      const lastEntry = logEntries[logEntries.length - 1];
+      if (lastEntry.type === 'crisis_reaction' || lastEntry.type === 'assignment' || lastEntry.type === 'ambient') {
+        soundManager.play('agentReaction');
+      }
+    }
+  }, [logEntries]);
 
   // Get agent color by ID
   const getAgentColor = (agentId) => {

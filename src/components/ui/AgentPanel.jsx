@@ -1,6 +1,7 @@
 import { useAgentStore } from '../../store/agentStore';
 import { useLogStore } from '../../store/logStore';
 import { selectReaction } from '../../utils/agentReactions';
+import { soundManager } from '../../utils/soundManager';
 import FieldLog from './FieldLog';
 
 export default function AgentPanel() {
@@ -40,6 +41,7 @@ export default function AgentPanel() {
     }
 
     // Perform the assignment
+    soundManager.play('agentAssign');
     assignAgentToZone(agentId, zone);
   };
 

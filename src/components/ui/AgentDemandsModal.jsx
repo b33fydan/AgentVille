@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { useGameStore } from '../../store/gameStore';
 import { useLogStore } from '../../store/logStore';
@@ -12,6 +12,13 @@ export default function AgentDemandsModal({ demandQueue, onClose }) {
   const desertAgent = useAgentStore((state) => state.desertAgent);
   const addResource = useGameStore((state) => state.addResource);
   const addLogEntry = useLogStore((state) => state.addLogEntry);
+
+  // Play demand appear sound when modal opens or changes to new agent
+  useEffect(() => {
+    if (demandQueue && demandQueue.length > 0) {
+      soundManager.play('demandAppear');
+    }
+  }, [currentIndex, demandQueue]);
 
   if (!demandQueue || demandQueue.length === 0) {
     return null;
@@ -42,7 +49,7 @@ export default function AgentDemandsModal({ demandQueue, onClose }) {
       emoji: '✅'
     });
 
-    soundManager.playResourceCollect();
+    soundManager.play('demandAccept');
     moveToNext();
   };
 
@@ -58,7 +65,7 @@ export default function AgentDemandsModal({ demandQueue, onClose }) {
         message: `${current.agentName} abandoned the island after you rejected their demand.`,
         emoji: '🚶'
       });
-      soundManager.playNegative();
+      soundManager.play('agentDesert');
     } else {
       // Non-critical: morale drops further
       updateMorale(current.agentId, -5);
@@ -69,7 +76,7 @@ export default function AgentDemandsModal({ demandQueue, onClose }) {
         message: `${current.agentName} is upset: you rejected their demand.`,
         emoji: '😠'
       });
-      soundManager.playNegative();
+      soundManager.play('demandReject');
     }
 
     moveToNext();

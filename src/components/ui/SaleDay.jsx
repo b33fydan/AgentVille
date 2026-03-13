@@ -36,6 +36,21 @@ export default function SaleDay() {
   const profit = getProfit();
   const avgMorale = getAverageMorale();
 
+  // Play sounds when stage changes
+  useEffect(() => {
+    if (stage === 'review') {
+      // Play agent review sounds (one per agent)
+      agents.forEach((_, idx) => {
+        setTimeout(() => {
+          soundManager.play('agentReview');
+        }, idx * 500);
+      });
+    } else if (stage === 'complete') {
+      // Play season complete fanfare
+      soundManager.play('seasonComplete');
+    }
+  }, [stage, agents]);
+
   // Check for strike on first load (harvest phase)
   useEffect(() => {
     if (stage !== 'harvest' || resourcePenalty !== 0) return;
@@ -101,12 +116,20 @@ export default function SaleDay() {
       if (stage === 'harvest') {
         setStage('sale');
       } else if (stage === 'sale') {
-        // Play sale sound
-        if (profit > 0) {
-          soundManager.playSaleSuccess();
-        } else {
-          soundManager.playNegative();
-        }
+        // Play profit reveal sound (play during animation)
+        const tickInterval = setInterval(() => {
+          soundManager.play('harvestTally');
+        }, 100);
+
+        setTimeout(() => {
+          clearInterval(tickInterval);
+          // Final reveal sound
+          if (profit > 0) {
+            soundManager.play('profitReveal');
+          } else {
+            soundManager.play('profitRevealBad');
+          }
+        }, 1500);
 
         // Animate profit counter
         if (profit === 0) {

@@ -26,7 +26,7 @@ export default function SeasonHUD() {
   };
 
   const handleAdvanceDay = () => {
-    soundManager.playDayAdvance();
+    soundManager.play('dayAdvance');
     
     // Generate ambient day-change reactions (1-2 random agents speak)
     if (agents.length > 0) {

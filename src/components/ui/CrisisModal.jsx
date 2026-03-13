@@ -40,7 +40,7 @@ export default function CrisisModal() {
       setCurrentCrisis(newCrisis);
       setSelectedChoice(null);
       setEnrichedDescription(''); // Will be enriched
-      soundManager.playCrisisAlert();
+      soundManager.play('crisisAlert');
     }
   }, [season, day, timeOfDay, isResolving, currentCrisis]);
 
@@ -162,11 +162,11 @@ export default function CrisisModal() {
 
     // 6. Play audio feedback
     if (outcome.moraleDelta > 0) {
-      soundManager.playSaleSuccess();
+      soundManager.play('crisisResolve');
     } else if (outcome.moraleDelta < 0) {
-      soundManager.playNegative();
+      soundManager.play('crisisResolveBad');
     } else {
-      soundManager.playResourceCollect();
+      soundManager.play('crisisResolve');
     }
 
     // 7. Check for morale consequences (desertions, strikes, demands)

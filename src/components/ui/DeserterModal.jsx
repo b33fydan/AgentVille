@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { useLogStore } from '../../store/logStore';
 import { soundManager } from '../../utils/soundManager';
@@ -7,6 +7,13 @@ export default function DeserterModal({ desertion, onClose }) {
   const [dismissed, setDismissed] = useState(false);
   const desertAgent = useAgentStore((state) => state.desertAgent);
   const addLogEntry = useLogStore((state) => state.addLogEntry);
+
+  // Play desert sound when modal appears
+  useEffect(() => {
+    if (desertion && !dismissed) {
+      soundManager.play('agentDesert');
+    }
+  }, [desertion, dismissed]);
 
   if (!desertion || dismissed) {
     return null;

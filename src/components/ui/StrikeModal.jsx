@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useLogStore } from '../../store/logStore';
 import { soundManager } from '../../utils/soundManager';
@@ -6,6 +6,13 @@ import { soundManager } from '../../utils/soundManager';
 export default function StrikeModal({ strike, onClose }) {
   const [dismissed, setDismissed] = useState(false);
   const addLogEntry = useLogStore((state) => state.addLogEntry);
+
+  // Play strike alarm when modal appears
+  useEffect(() => {
+    if (strike && !dismissed) {
+      soundManager.play('strikeAlarm');
+    }
+  }, [strike, dismissed]);
 
   if (!strike || dismissed) {
     return null;

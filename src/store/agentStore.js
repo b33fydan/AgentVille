@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { soundManager } from '../utils/soundManager';
 
 const STORAGE_KEY = 'agentville-agents';
 
@@ -145,6 +146,13 @@ export const useAgentStore = create(
             const oldMorale = agent.morale;
             const newMorale = Math.max(0, Math.min(100, agent.morale + delta));
 
+            // Play morale sounds
+            if (delta > 0) {
+              soundManager.play('moraleUp');
+            } else if (delta < 0 && oldMorale > 20) {
+              soundManager.play('moraleDown');
+            }
+
             // Check for threshold crossings
             if (onThresholdCross) {
               const thresholds = [80, 60, 40, 20];
@@ -152,6 +160,10 @@ export const useAgentStore = create(
                 if (oldMorale >= threshold && newMorale < threshold) {
                   // Crossed down
                   onThresholdCross(agentId, agent.name, agent.traits, 'down', threshold);
+                  // Critical morale sound if crossing below 20
+                  if (threshold === 20) {
+                    soundManager.play('moraleCritical');
+                  }
                 } else if (oldMorale < threshold && newMorale >= threshold) {
                   // Crossed up
                   onThresholdCross(agentId, agent.name, agent.traits, 'up', threshold);
