@@ -5,6 +5,8 @@ import { useLogStore } from '../../store/logStore';
 import { soundManager } from '../../utils/soundManager';
 import { generateAgentReview } from '../../utils/claudeService';
 import { MoraleConsequenceQueue } from '../../utils/moraleConsequences';
+import { cardGenerator } from '../../utils/cardGenerator';
+import ShareModal from './ShareModal';
 
 const MARKET_PRICES = {
   wood: 2,
@@ -28,6 +30,8 @@ export default function SaleDay() {
   const [reviewSource, setReviewSource] = useState('loading'); // loading | claude | template
   const [strikeActive, setStrikeActive] = useState(false);
   const [resourcePenalty, setResourcePenalty] = useState(0); // 0.5 if strike, 1.0 if normal
+  const [seasonCard, setSeasonCard] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const addLogEntry = useLogStore((state) => state.addLogEntry);
   const addResource = useGameStore((state) => state.addResource);
@@ -50,6 +54,39 @@ export default function SaleDay() {
       soundManager.play('seasonComplete');
     }
   }, [stage, agents]);
+
+  // Generate season card when complete
+  useEffect(() => {
+    if (stage !== 'complete' || seasonCard) return;
+
+    const generateCard = async () => {
+      const screenshotUrl = document.querySelector('canvas')?.toDataURL('image/png');
+
+      const cardData = {
+        season,
+        islandName: agents[0]?.islandName || 'My Island', // Get from first agent or game state
+        profit: displayProfit,
+        profitTier: profit > 50 ? 'GREAT SEASON' : profit > 0 ? 'GOOD SEASON' : 'ROUGH SEASON',
+        agents: agents.map((a) => ({
+          name: a.name,
+          level: a.level || 1,
+          color: a.appearance?.bodyColor,
+          quote: review // Use the season review as agent quote for now
+        })),
+        resources: resources,
+        crisisFaced: crisisLog.length,
+        crisisResolved: crisisLog.filter((c) => c.outcome).length,
+        avgMorale: Math.round(getAverageMorale()),
+        screenshotUrl
+      };
+
+      const card = await cardGenerator.generateCard('season', cardData);
+      setSeasonCard(card);
+      setShowShareModal(true);
+    };
+
+    generateCard();
+  }, [stage, season, displayProfit, agents, review, crisisLog, resources, getAverageMorale, seasonCard]);
 
   // Check for strike on first load (harvest phase)
   useEffect(() => {
@@ -283,6 +320,15 @@ export default function SaleDay() {
           Season {season} Complete • Sale Day
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareModal
+          card={seasonCard}
+          title="📸 Your Season Card"
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }
