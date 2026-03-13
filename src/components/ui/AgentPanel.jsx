@@ -1,4 +1,6 @@
 import { useAgentStore } from '../../store/agentStore';
+import { useLogStore } from '../../store/logStore';
+import { selectReaction } from '../../utils/agentReactions';
 import FieldLog from './FieldLog';
 
 export default function AgentPanel() {
@@ -6,8 +8,44 @@ export default function AgentPanel() {
   const assignAgentToZone = useAgentStore((state) => state.assignAgentToZone);
   const unassignAgent = useAgentStore((state) => state.unassignAgent);
   const updateMorale = useAgentStore((state) => state.updateMorale);
+  const addLogEntry = useLogStore((state) => state.addLogEntry);
 
   const zones = ['forest', 'plains', 'wetlands'];
+
+  // Handle assignment with reaction
+  const handleAssignAgent = (agentId, zone) => {
+    const agent = agents.find((a) => a.id === agentId);
+    if (!agent) return;
+
+    // Determine reaction type (positive, neutral, negative)
+    let reactionType = 'neutral';
+    if (agent.traits.specialization === zone || agent.traits.workEthic > 70) {
+      reactionType = 'positive';
+    } else if (agent.traits.workEthic < 30 || agent.traits.risk < 20) {
+      reactionType = 'negative';
+    }
+
+    // Select appropriate reaction
+    const reaction = selectReaction('assignment', `${zone}_${reactionType}`, null);
+
+    // Log the reaction
+    if (reaction) {
+      addLogEntry({
+        agentId,
+        agentName: agent.name,
+        type: 'assignment',
+        message: reaction.text,
+        emoji: reaction.emoji
+      });
+    }
+
+    // Perform the assignment
+    assignAgentToZone(agentId, zone);
+  };
+
+  const handleUnassignAgent = (agentId) => {
+    unassignAgent(agentId);
+  };
 
   const getMoraleColor = (morale) => {
     if (morale >= 70) return 'bg-green-500';
@@ -58,9 +96,9 @@ export default function AgentPanel() {
                 onChange={(e) => {
                   if (e.target.value) {
                     // For MVP, pass zone name as tileIndex; will be refactored when tile selection is implemented
-                    assignAgentToZone(agent.id, e.target.value);
+                    handleAssignAgent(agent.id, e.target.value);
                   } else {
-                    unassignAgent(agent.id);
+                    handleUnassignAgent(agent.id);
                   }
                 }}
                 className="rounded border border-slate-600 bg-slate-700 px-2 py-1 text-sm text-white"

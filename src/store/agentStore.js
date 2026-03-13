@@ -100,10 +100,15 @@ export const useAgentStore = create(
       // ===== Agents =====
       agents: initialAgents,
 
-      assignAgentToZone: (agentId, tileIndex) => {
+      assignAgentToZone: (agentId, tileIndex, onReaction = null) => {
         set((state) => ({
           agents: state.agents.map((agent) => {
             if (agent.id !== agentId) return agent;
+
+            // Trigger assignment reaction if callback provided
+            if (onReaction) {
+              onReaction(agent.id, agent.name, agent.traits);
+            }
 
             return {
               ...agent,

@@ -12,7 +12,7 @@ export const useLogStore = create(
       // ===== Field Log Entries =====
       entries: [], // [{ id, agentId, agentName, type, message, season, day, timeOfDay }, ...]
 
-      addLogEntry: ({ agentId, agentName, type, message }) => {
+      addLogEntry: ({ agentId, agentName, type, message, emoji = null }) => {
         const gameState = useGameStore.getState();
         const { season, day, timeOfDay } = gameState;
 
@@ -22,9 +22,11 @@ export const useLogStore = create(
           agentName,
           type, // 'status' | 'crisis_reaction' | 'complaint' | 'feedback' | 'riot_warning' | 'outcome'
           message,
+          emoji, // Optional emoji for visual flair
           season,
           day,
-          timeOfDay
+          timeOfDay,
+          timestamp: Date.now()
         };
 
         set((state) => ({

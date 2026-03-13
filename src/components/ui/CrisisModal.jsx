@@ -10,6 +10,7 @@ import {
   getAgentReactionQuote
 } from '../../utils/crisisEngine';
 import { soundManager } from '../../utils/soundManager';
+import { selectReaction, getMoraleState } from '../../utils/agentReactions';
 
 // Module-level singleton — survives component remounts
 const crisisQueue = new CrisisQueue();
@@ -85,15 +86,35 @@ export default function CrisisModal() {
 
     // 4. Add agent reaction quotes (optional, adds personality)
     if (agents.length > 0) {
-      const randomAgent = agents[Math.floor(Math.random() * agents.length)];
-      const quote = getAgentReactionQuote(randomAgent, outcome.choiceText, outcome.moraleDelta);
-      if (quote) {
-        addLogEntry({
-          agentId: randomAgent.id,
-          agentName: randomAgent.name,
-          type: 'crisis_reaction',
-          message: quote
-        });
+      // Pick 1-3 random agents to react
+      const numReactions = Math.min(Math.ceil(agents.length / 2), 3);
+      const shuffled = [...agents].sort(() => Math.random() - 0.5);
+      
+      for (let i = 0; i < numReactions; i++) {
+        const agent = shuffled[i];
+        if (!agent) break;
+        
+        // Determine outcome type based on morale delta
+        let outcomeType = 'mixed';
+        if (outcome.moraleDelta > 5) outcomeType = 'success';
+        else if (outcome.moraleDelta < -5) outcomeType = 'failure';
+        
+        // Select trait-based reaction
+        const primaryTrait = agent.traits.workEthic > 70 ? 'bold' :
+                            agent.traits.workEthic < 30 ? 'lazy' :
+                            agent.traits.risk > 70 ? 'bold' :
+                            agent.traits.risk < 30 ? 'cautious' : 'pragmatic';
+        
+        const reaction = selectReaction('crisis', primaryTrait, outcomeType);
+        if (reaction) {
+          addLogEntry({
+            agentId: agent.id,
+            agentName: agent.name,
+            type: 'crisis_reaction',
+            message: reaction.text,
+            emoji: reaction.emoji
+          });
+        }
       }
     }
 
