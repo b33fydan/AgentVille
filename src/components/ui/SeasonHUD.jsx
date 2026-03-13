@@ -1,4 +1,7 @@
 import { useGameStore } from '../../store/gameStore';
+import { useAgentStore } from '../../store/agentStore';
+import { useLogStore } from '../../store/logStore';
+import { selectReaction } from '../../utils/agentReactions';
 import { soundManager } from '../../utils/soundManager';
 
 export default function SeasonHUD() {
@@ -8,6 +11,9 @@ export default function SeasonHUD() {
   const timeOfDay = useGameStore((state) => state.timeOfDay);
   const advanceTime = useGameStore((state) => state.advanceTime);
   const getProfit = useGameStore((state) => state.getProfit);
+  
+  const agents = useAgentStore((state) => state.agents);
+  const addLogEntry = useLogStore((state) => state.addLogEntry);
 
   const profit = getProfit();
   const marketPrices = { wood: 2, wheat: 5, hay: 3 };
@@ -21,6 +27,33 @@ export default function SeasonHUD() {
 
   const handleAdvanceDay = () => {
     soundManager.playDayAdvance();
+    
+    // Generate ambient day-change reactions (1-2 random agents speak)
+    if (agents.length > 0) {
+      const numReactions = Math.random() > 0.5 ? 1 : 2;
+      const shuffled = [...agents].sort(() => Math.random() - 0.5);
+      
+      const nextTimeOfDay = timeOfDay === 'morning' ? 'evening' : 'morning';
+      const reactionType = nextTimeOfDay === 'morning' ? 'morning' : 'evening';
+      
+      for (let i = 0; i < Math.min(numReactions, shuffled.length); i++) {
+        const agent = shuffled[i];
+        const primaryTrait = agent.traits.workEthic > 70 ? 'bold' :
+                           agent.traits.workEthic < 30 ? 'lazy' : 'pragmatic';
+        
+        const reaction = selectReaction('dayChange', primaryTrait, reactionType);
+        if (reaction && Math.random() > 0.3) { // 70% chance to actually log (not too spammy)
+          addLogEntry({
+            agentId: agent.id,
+            agentName: agent.name,
+            type: 'ambient',
+            message: reaction.text,
+            emoji: reaction.emoji
+          });
+        }
+      }
+    }
+    
     advanceTime();
   };
 

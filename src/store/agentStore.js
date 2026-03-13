@@ -137,12 +137,28 @@ export const useAgentStore = create(
         }));
       },
 
-      updateMorale: (agentId, delta) => {
+      updateMorale: (agentId, delta, onThresholdCross = null) => {
         set((state) => ({
           agents: state.agents.map((agent) => {
             if (agent.id !== agentId) return agent;
 
+            const oldMorale = agent.morale;
             const newMorale = Math.max(0, Math.min(100, agent.morale + delta));
+
+            // Check for threshold crossings
+            if (onThresholdCross) {
+              const thresholds = [80, 60, 40, 20];
+              for (const threshold of thresholds) {
+                if (oldMorale >= threshold && newMorale < threshold) {
+                  // Crossed down
+                  onThresholdCross(agentId, agent.name, agent.traits, 'down', threshold);
+                } else if (oldMorale < threshold && newMorale >= threshold) {
+                  // Crossed up
+                  onThresholdCross(agentId, agent.name, agent.traits, 'up', threshold);
+                }
+              }
+            }
+
             return {
               ...agent,
               morale: newMorale,

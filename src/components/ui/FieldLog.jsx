@@ -44,7 +44,13 @@ export default function FieldLog() {
                     ? 'border-amber-600/50 bg-amber-900/20 text-amber-100'
                     : entry.type === 'crisis_reaction'
                       ? 'border-purple-600/50 bg-purple-900/20 text-purple-100'
-                      : 'border-slate-600/50 bg-slate-800/50 text-slate-200'
+                      : entry.type === 'morale_crisis'
+                        ? 'border-red-600/50 bg-red-900/20 text-red-100'
+                        : entry.type === 'morale_recovery'
+                          ? 'border-green-600/50 bg-green-900/20 text-green-100'
+                          : entry.type === 'assignment'
+                            ? 'border-blue-600/50 bg-blue-900/20 text-blue-100'
+                            : 'border-slate-600/50 bg-slate-800/50 text-slate-200'
                 }`}
               >
                 {/* Header: Agent badge + Time */}

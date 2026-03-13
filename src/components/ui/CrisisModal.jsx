@@ -60,10 +60,43 @@ export default function CrisisModal() {
   const applyOutcome = (outcome) => {
     if (!outcome) return;
 
-    // 1. Apply morale delta to all agents
+    // 1. Apply morale delta to all agents (with threshold reactions)
     if (outcome.moraleDelta !== 0) {
       agents.forEach((agent) => {
-        updateMorale(agent.id, outcome.moraleDelta);
+        updateMorale(agent.id, outcome.moraleDelta, (agentId, agentName, traits, direction, threshold) => {
+          // Log morale threshold crossing
+          const isDropping = direction === 'down';
+          if (isDropping) {
+            const reaction = selectReaction('morale', 
+              traits.workEthic < 30 ? 'lazy' : traits.risk < 30 ? 'nervous' : 'pragmatic',
+              'low'
+            );
+            if (reaction) {
+              addLogEntry({
+                agentId,
+                agentName,
+                type: 'morale_crisis',
+                message: `⚠️ Morale dropped below ${threshold}. ${reaction.text}`,
+                emoji: '😟'
+              });
+            }
+          } else {
+            // Morale recovery
+            const reaction = selectReaction('morale', 
+              traits.workEthic > 70 ? 'bold' : 'cheerful',
+              'good'
+            );
+            if (reaction) {
+              addLogEntry({
+                agentId,
+                agentName,
+                type: 'morale_recovery',
+                message: `✨ Morale recovered above ${threshold}. ${reaction.text}`,
+                emoji: '😊'
+              });
+            }
+          }
+        });
       });
     }
 
