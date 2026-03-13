@@ -22,11 +22,21 @@ export default function ConsequencesHandler() {
   const checkConsequences = () => {
     const queue = new MoraleConsequenceQueue();
     const avgMorale = getAverageMorale();
+    const newDesertions = [];
+    const newDemands = [];
 
-    // Check for desertions
-    const desertions = queue.processDesertions(agents);
-    if (desertions.length > 0) {
-      setActiveDesertions(desertions);
+    // Check for desertions first
+    agents.forEach((agent) => {
+      if (agent.morale < 20) {
+        const result = queue.checkDesertion(agent.id, agent.name, agent.morale);
+        if (result) {
+          newDesertions.push(result);
+        }
+      }
+    });
+
+    if (newDesertions.length > 0) {
+      setActiveDesertions(newDesertions);
     }
 
     // Check for strikes (on Sale Day: day 7)
@@ -35,19 +45,21 @@ export default function ConsequencesHandler() {
       setActiveStrike(strike);
     }
 
-    // Generate demands for low-morale agents
-    const demands = [];
+    // Generate demands for low-morale agents (30-50 morale range)
     agents.forEach((agent) => {
-      if (agent.morale < 50 && agent.morale >= 20) {
+      if (agent.morale >= 30 && agent.morale < 50) {
         const demand = queue.generateDemands(agent.id, agent.name, agent.morale, agent.traits);
         if (demand) {
-          demands.push(demand);
+          newDemands.push(demand);
         }
       }
     });
-    if (demands.length > 0) {
-      setActiveDemands(demands);
+
+    if (newDemands.length > 0) {
+      setActiveDemands(newDemands);
     }
+
+    console.log(`[Consequences] Checked: ${newDesertions.length} desertions, ${newDemands.length} demands, strike=${!!strike}`);
   };
 
   const handleDeserterClose = () => {
