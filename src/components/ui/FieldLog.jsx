@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { useGameStore } from '../../store/gameStore';
 import { useLogStore } from '../../store/logStore';
 import { soundManager } from '../../utils/soundManager';
+import { cardGenerator } from '../../utils/cardGenerator';
+import ShareModal from './ShareModal';
 
 export default function FieldLog() {
   const crisisLog = useGameStore((state) => state.crisisLog);
@@ -10,6 +12,8 @@ export default function FieldLog() {
   const season = useGameStore((state) => state.season);
   const day = useGameStore((state) => state.day);
   const logEntries = useLogStore((state) => state.entries);
+  const [quoteCard, setQuoteCard] = useState(null);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
 
   // Play sound when new log entry appears
   useEffect(() => {
@@ -20,6 +24,25 @@ export default function FieldLog() {
       }
     }
   }, [logEntries]);
+
+  const handleShareQuote = async (entry) => {
+    soundManager.play('shareCapture');
+    const agent = agents.find((a) => a.id === entry.agentId);
+
+    const cardData = {
+      agentName: entry.agentName,
+      agentLevel: agent?.level || 1,
+      agentColor: agent?.appearance?.bodyColor || '#888888',
+      quote: entry.message,
+      season: entry.season,
+      day: entry.day,
+      morale: agent?.morale || 75
+    };
+
+    const card = await cardGenerator.generateCard('quote', cardData);
+    setQuoteCard(card);
+    setShowQuoteModal(true);
+  };
 
   // Get agent color by ID
   const getAgentColor = (agentId) => {
@@ -84,7 +107,18 @@ export default function FieldLog() {
                 </div>
 
                 {/* Message */}
-                <div className="mt-1 text-xs opacity-90 leading-relaxed">{entry.message}</div>
+                <div className="mt-1 text-xs opacity-90 leading-relaxed flex items-start justify-between gap-2">
+                  <span className="flex-1">{entry.message}</span>
+                  {entry.agentId && entry.type !== 'ambient' && (
+                    <button
+                      onClick={() => handleShareQuote(entry)}
+                      className="opacity-60 hover:opacity-100 transition-opacity flex-shrink-0 text-sm"
+                      title="Share quote"
+                    >
+                      📤
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })
@@ -100,6 +134,15 @@ export default function FieldLog() {
         <div>Season {season}, Day {day}/7</div>
         <div>Total log entries: {logEntries.length}</div>
       </div>
+
+      {/* Quote Share Modal */}
+      {showQuoteModal && (
+        <ShareModal
+          card={quoteCard}
+          title="📸 Agent Quote"
+          onClose={() => setShowQuoteModal(false)}
+        />
+      )}
     </div>
   );
 }
