@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { useGameStore } from '../../store/gameStore';
+import { useLogStore } from '../../store/logStore';
 import { soundManager } from '../../utils/soundManager';
 import { generateAgentReview } from '../../utils/claudeService';
+import { MoraleConsequenceQueue } from '../../utils/moraleConsequences';
 
 const MARKET_PRICES = {
   wood: 2,
@@ -24,8 +26,48 @@ export default function SaleDay() {
   const [displayProfit, setDisplayProfit] = useState(0);
   const [review, setReview] = useState('');
   const [reviewSource, setReviewSource] = useState('loading'); // loading | claude | template
+  const [strikeActive, setStrikeActive] = useState(false);
+  const [resourcePenalty, setResourcePenalty] = useState(0); // 0.5 if strike, 1.0 if normal
+
+  const addLogEntry = useLogStore((state) => state.addLogEntry);
+  const addResource = useGameStore((state) => state.addResource);
+  const setResource = useGameStore((state) => state.setResource);
+
   const profit = getProfit();
   const avgMorale = getAverageMorale();
+
+  // Check for strike on first load (harvest phase)
+  useEffect(() => {
+    if (stage !== 'harvest' || resourcePenalty !== 0) return;
+
+    const queue = new MoraleConsequenceQueue();
+    const strike = queue.checkStrike(avgMorale, day);
+
+    if (strike) {
+      setStrikeActive(true);
+      setResourcePenalty(0.5); // 50% harvest
+      
+      // Apply penalty to all resources
+      setTimeout(() => {
+        setResource('wood', Math.floor(resources.wood * 0.5));
+        setResource('wheat', Math.floor(resources.wheat * 0.5));
+        setResource('hay', Math.floor(resources.hay * 0.5));
+
+        // Log the strike
+        addLogEntry({
+          agentId: null,
+          agentName: 'Team',
+          type: 'strike',
+          message: `⛔ The team refused to work! Resources harvested at 50% capacity.`,
+          emoji: '✊'
+        });
+
+        soundManager.playNegative();
+      }, 500);
+    } else {
+      setResourcePenalty(1.0); // Normal harvest
+    }
+  }, [stage, day]);
 
   // Fetch Claude review when entering review stage
   useEffect(() => {
@@ -114,6 +156,18 @@ export default function SaleDay() {
           <div className="animate-pulse text-center">
             <h1 className="text-4xl font-bold text-yellow-400 mb-4">🌾 HARVEST TIME</h1>
             <p className="text-lg text-slate-300">Tallying your crops...</p>
+            
+            {strikeActive && (
+              <div className="mt-6 rounded-lg border-2 border-red-600 bg-red-900/20 p-4">
+                <div className="text-2xl font-bold text-red-400 mb-2">⛔ STRIKE!</div>
+                <div className="text-sm text-red-200">
+                  Your team refused to work due to low morale.
+                </div>
+                <div className="text-xs text-red-300 mt-2">
+                  Resources harvested at 50% capacity instead of 100%.
+                </div>
+              </div>
+            )}
           </div>
         )}
 
