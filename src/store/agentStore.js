@@ -198,6 +198,13 @@ export const useAgentStore = create(
         }));
       },
 
+      desertAgent: (agentId) => {
+        // Same as fire, but triggers a consequence instead
+        set((state) => ({
+          agents: state.agents.filter((agent) => agent.id !== agentId)
+        }));
+      },
+
       hireNewAgent: (agentData) => {
         const newAgent = agentData || createAgent(Math.random());
         set((state) => ({

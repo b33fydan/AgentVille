@@ -169,6 +169,15 @@ export default function CrisisModal() {
       soundManager.playResourceCollect();
     }
 
+    // 7. Check for morale consequences (desertions, strikes, demands)
+    // These will be shown as modals in sequence
+    if (window.gameConsequences && window.gameConsequences.checkConsequences) {
+      // Schedule consequences check for next tick (after modals update)
+      setTimeout(() => {
+        window.gameConsequences.checkConsequences();
+      }, 100);
+    }
+
     // TODO: Handle agent status changes (injured, recovering, etc.)
     // TODO: Handle follow-up crises (nextCrisisHint)
   };

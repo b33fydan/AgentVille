@@ -7,6 +7,7 @@ import SaleDay from './components/ui/SaleDay.jsx';
 import OnboardingFlow from './components/ui/OnboardingFlow.jsx';
 import LandingPage from './components/ui/LandingPage.jsx';
 import RiotModal from './components/ui/RiotModal.jsx';
+import ConsequencesHandler from './components/ConsequencesHandler.jsx';
 
 const GAME_STARTED_KEY = 'agentville-game-started';
 
@@ -56,6 +57,9 @@ export default function App() {
 
       {/* Riot Modal (Viral Feature) */}
       <RiotModal />
+
+      {/* Consequences Handler (Desertions, Strikes, Demands) */}
+      <ConsequencesHandler />
     </main>
   );
 }
