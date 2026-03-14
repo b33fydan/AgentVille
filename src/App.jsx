@@ -1,5 +1,6 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import IslandScene from './components/scene/IslandScene.jsx';
+import { stateVerification } from './utils/stateVerification';
 import AgentPanel from './components/ui/AgentPanel.jsx';
 import SeasonHUD from './components/ui/SeasonHUD.jsx';
 import CrisisModal from './components/ui/CrisisModal.jsx';
@@ -15,6 +16,15 @@ export default function App() {
   const [gameStarted, setGameStarted] = useState(() => {
     return localStorage.getItem(GAME_STARTED_KEY) === 'true';
   });
+
+  // Expose state verification to console for debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.stateVerification = stateVerification;
+      console.log('%c💡 State verification tools loaded!', 'color: #22c55e; font-weight: bold;');
+      console.log('%cRun: window.verifyState()', 'color: #3b82f6;');
+    }
+  }, []);
 
   const handleStartGame = () => {
     localStorage.setItem(GAME_STARTED_KEY, 'true');
