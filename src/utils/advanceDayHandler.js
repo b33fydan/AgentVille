@@ -1,12 +1,13 @@
 // ============= ADVANCE DAY HANDLER =============
 // Complete game loop logic for day advancement
-// Orchestrates: resource generation, morale, crises, consequences
+// Orchestrates: resource generation, morale, crises, consequences, AUTONOMOUS DECISIONS
 
 import { useGameStore } from '../store/gameStore';
 import { useAgentStore } from '../store/agentStore';
 import { useLogStore } from '../store/logStore';
 import { soundManager } from './soundManager';
 import { selectReaction } from './agentReactions';
+import { DecisionMatrix, processAllAgentDecisions } from './agentDecisions';
 
 const RESOURCE_OUTPUTS = {
   forest: { resource: 'wood', baseOutput: 5 },
@@ -56,28 +57,146 @@ export function advanceDayLogic() {
 
   console.log(`[advanceDay] Time: ${currentTime} → ${newTime}, Day: ${currentDay} → ${newDay}`);
 
+  // ===== 1.5. APPLY NEED DRAINS & AUTONOMOUS DECISIONS =====
+  // Agents age by hunger, fatigue, and equipment wear each day
+  agents.forEach((agent) => {
+    agentState.applyNeedsDrain(agent.id);
+  });
+
+  // Process autonomous decisions for all agents
+  const decisions = processAllAgentDecisions(agents);
+  
+  decisions.forEach((decision) => {
+    const agent = agents.find((a) => a.id === decision.agentId);
+    if (!agent) return;
+
+    // Log the decision
+    const decisionEmoji = {
+      'sleep': '😴',
+      'eat': '🍖',
+      'repair': '🔧',
+      'work': '💼',
+      'trade': '🤝',
+      'idle': '🪑'
+    }[decision.decision] || '?';
+
+    logState.addLogEntry({
+      agentId: decision.agentId,
+      agentName: agent.name,
+      type: 'autonomous_decision',
+      message: `${agent.name} decided to ${decision.decision}: ${decision.reason}`,
+      emoji: decisionEmoji,
+      season: gameState.season,
+      day: gameState.day
+    });
+
+    // Execute the decision
+    switch (decision.decision) {
+      case 'sleep':
+        agentState.sleep(decision.agentId);
+        break;
+
+      case 'eat':
+        agentState.eatFood(decision.agentId);
+        break;
+
+      case 'repair':
+        agentState.repairEquipment(decision.agentId);
+        break;
+
+      case 'work':
+        if (decision.selectedZone) {
+          agentState.setAutonomousDecision(decision.agentId, 'working', decision.selectedZone);
+        }
+        break;
+
+      case 'idle':
+      default:
+        agentState.setAutonomousDecision(decision.agentId, 'idle', null);
+        break;
+    }
+
+    console.log(`[advanceDay] ${agent.name} → ${decision.decision} (priority: ${decision.priority})`);
+  });
+
   // ===== 2. GENERATE RESOURCES =====
   agents.forEach((agent) => {
     if (agent.assignedZone && agent.status === 'working') {
       const zoneConfig = RESOURCE_OUTPUTS[agent.assignedZone];
       if (!zoneConfig) return;
 
-      const efficiency = calculateEfficiency(agent, agent.assignedZone);
-      const output = Math.floor(zoneConfig.baseOutput * efficiency);
+      // Calculate efficiency from morale + traits + zone fit
+      const moraleEfficiency = calculateEfficiency(agent, agent.assignedZone);
+      
+      // Apply need-based penalties (hunger/fatigue/equipment)
+      const needsMultiplier = agentState.getAgentEfficiencyMultiplier(agent.id);
+      
+      const totalEfficiency = moraleEfficiency * needsMultiplier;
+      const output = Math.floor(zoneConfig.baseOutput * totalEfficiency);
 
       if (output > 0) {
         gameState.addResource(zoneConfig.resource, output);
         soundManager.play('resourceGain');
-        console.log(`[advanceDay] ${agent.name} produced ${output} ${zoneConfig.resource}`);
+        console.log(`[advanceDay] ${agent.name} produced ${output} ${zoneConfig.resource} (morale*${moraleEfficiency.toFixed(2)} × needs*${needsMultiplier.toFixed(2)})`);
+      } else if (agent.fatigue > 90) {
+        // Log work failure from exhaustion
+        logState.addLogEntry({
+          agentId: agent.id,
+          agentName: agent.name,
+          type: 'work_failure',
+          message: `${agent.name} collapsed from exhaustion - produced nothing!`,
+          emoji: '💔',
+          season: gameState.season,
+          day: gameState.day
+        });
       }
     }
   });
 
-  // ===== 3. PASSIVE MORALE CHANGES =====
+  // ===== 3. PASSIVE MORALE CHANGES & NEED CONSEQUENCES =====
   agents.forEach((agent) => {
     // Unassigned agents lose morale
-    if (!agent.assignedZone) {
+    if (!agent.assignedZone && agent.currentDecision !== 'sleeping' && agent.currentDecision !== 'eating' && agent.currentDecision !== 'repairing') {
       agentState.updateMorale(agent.id, -2);
+    }
+
+    // Critical need consequences
+    if (agent.hunger > 80) {
+      logState.addLogEntry({
+        agentId: agent.id,
+        agentName: agent.name,
+        type: 'need_crisis',
+        message: `${agent.name} is STARVING (${agent.hunger}% hunger) - working at reduced capacity!`,
+        emoji: '🍖',
+        season: gameState.season,
+        day: gameState.day
+      });
+      agentState.updateMorale(agent.id, -5); // Morale hit from starvation
+    }
+
+    if (agent.fatigue > 90) {
+      logState.addLogEntry({
+        agentId: agent.id,
+        agentName: agent.name,
+        type: 'need_crisis',
+        message: `${agent.name} is EXHAUSTED (${agent.fatigue}% fatigue) - about to collapse!`,
+        emoji: '😴',
+        season: gameState.season,
+        day: gameState.day
+      });
+      agentState.updateMorale(agent.id, -10); // Severe morale hit from exhaustion
+    }
+
+    if (agent.equipmentWear > 90) {
+      logState.addLogEntry({
+        agentId: agent.id,
+        agentName: agent.name,
+        type: 'need_crisis',
+        message: `${agent.name}'s equipment is BROKEN (${agent.equipmentWear}% wear) - needs immediate repair!`,
+        emoji: '🔧',
+        season: gameState.season,
+        day: gameState.day
+      });
     }
 
     // Very low morale agents complain
@@ -149,9 +268,10 @@ export function advanceDayLogic() {
     }
   }
 
-  // ===== 7. CHECK SALE DAY (day > 7) =====
+  // ===== 7. CHECK SALE DAY (day > 7) - Reset needs for next season =====
   if (newDay > 7) {
     console.log('[advanceDay] SALE DAY triggered!');
+    agentState.resetNeedsForNewSeason();
     useGameStore.getState().setGamePhase('saleDay');
     soundManager.play('profitReveal');
     return true;

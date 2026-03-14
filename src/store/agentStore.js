@@ -60,7 +60,13 @@ function createAgent(index) {
     assignedZone: null, // null | tileIndex
     status: 'idle', // 'idle' | 'working' | 'crisis' | 'riot'
     appearance: generateAgentAppearance(),
-    efficiency: 1.0
+    efficiency: 1.0,
+    // ===== AUTONOMOUS NEEDS SYSTEM =====
+    hunger: 30, // 0-100: 0=not hungry, 100=starving
+    fatigue: 25, // 0-100: 0=well-rested, 100=exhausted
+    equipmentWear: 20, // 0-100: 0=perfect, 100=broken
+    currentDecision: 'idle', // Current autonomous decision
+    decidedZone: null // Zone agent decided to work in
   };
 }
 
@@ -251,11 +257,171 @@ export const useAgentStore = create(
         }));
       },
 
+      // ===== AUTONOMOUS NEEDS SYSTEM =====
+
+      /**
+       * Update agent's hunger, fatigue, equipment wear (drain per day)
+       * Called during day advancement
+       */
+      applyNeedsDrain: (agentId, drainRates = {}) => {
+        const rates = {
+          hunger: drainRates.hunger ?? 1,      // +1/day
+          fatigue: drainRates.fatigue ?? 1.5,  // +1.5/day
+          wear: drainRates.wear ?? 0.5         // +0.5/day
+        };
+
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            return {
+              ...agent,
+              hunger: Math.min(100, agent.hunger + rates.hunger),
+              fatigue: Math.min(100, agent.fatigue + rates.fatigue),
+              equipmentWear: Math.min(100, agent.equipmentWear + rates.wear)
+            };
+          })
+        }));
+      },
+
+      /**
+       * Agent eats food - reduces hunger
+       */
+      eatFood: (agentId, hungerReduction = 30) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            return {
+              ...agent,
+              hunger: Math.max(0, agent.hunger - hungerReduction),
+              currentDecision: 'eating'
+            };
+          })
+        }));
+      },
+
+      /**
+       * Agent sleeps - reduces fatigue
+       */
+      sleep: (agentId, fatigueReduction = 40) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            return {
+              ...agent,
+              fatigue: Math.max(0, agent.fatigue - fatigueReduction),
+              currentDecision: 'sleeping'
+            };
+          })
+        }));
+      },
+
+      /**
+       * Agent repairs equipment - reduces wear
+       */
+      repairEquipment: (agentId, wearReduction = 50) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            return {
+              ...agent,
+              equipmentWear: Math.max(0, agent.equipmentWear - wearReduction),
+              currentDecision: 'repairing'
+            };
+          })
+        }));
+      },
+
+      /**
+       * Set agent's autonomous decision and optionally assigned zone
+       */
+      setAutonomousDecision: (agentId, decision, zone = null) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            return {
+              ...agent,
+              currentDecision: decision,
+              decidedZone: zone,
+              assignedZone: zone, // Auto-assign to decided zone for work
+              status: decision === 'working' ? 'working' : 'idle'
+            };
+          })
+        }));
+      },
+
+      /**
+       * Apply efficiency penalty based on hunger/fatigue
+       * Returns: efficiency multiplier (0.1 - 1.0)
+       */
+      getAgentEfficiencyMultiplier: (agentId) => {
+        const { agents } = get();
+        const agent = agents.find((a) => a.id === agentId);
+        if (!agent) return 1.0;
+
+        let multiplier = 1.0;
+
+        // Hunger penalty: >80 = -50% efficiency
+        if (agent.hunger > 80) {
+          multiplier *= 0.5;
+        }
+
+        // Fatigue penalty: >90 = random failures, >70 = -30% efficiency
+        if (agent.fatigue > 90) {
+          multiplier *= Math.random() > 0.5 ? 0.2 : 1.0; // 50% chance of failure
+        } else if (agent.fatigue > 70) {
+          multiplier *= 0.7;
+        }
+
+        // Equipment penalty: >70 = -20% efficiency
+        if (agent.equipmentWear > 70) {
+          multiplier *= 0.8;
+        }
+
+        return Math.max(0.1, multiplier);
+      },
+
+      /**
+       * Reset needs for new season
+       */
+      resetNeedsForNewSeason: () => {
+        set((state) => ({
+          agents: state.agents.map((agent) => ({
+            ...agent,
+            hunger: 30,
+            fatigue: 25,
+            equipmentWear: 20,
+            currentDecision: 'idle',
+            decidedZone: null,
+            assignedZone: null,
+            status: 'idle'
+          }))
+        }));
+      },
+
       // ===== Utilities =====
       getAverageMorale: () => {
         const { agents } = get();
         if (agents.length === 0) return 50;
         const sum = agents.reduce((acc, agent) => acc + agent.morale, 0);
+        return Math.round(sum / agents.length);
+      },
+
+      getAverageHunger: () => {
+        const { agents } = get();
+        if (agents.length === 0) return 30;
+        const sum = agents.reduce((acc, agent) => acc + (agent.hunger ?? 30), 0);
+        return Math.round(sum / agents.length);
+      },
+
+      getAverageFatigue: () => {
+        const { agents } = get();
+        if (agents.length === 0) return 25;
+        const sum = agents.reduce((acc, agent) => acc + (agent.fatigue ?? 25), 0);
         return Math.round(sum / agents.length);
       }
     }),
