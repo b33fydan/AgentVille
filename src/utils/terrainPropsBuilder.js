@@ -10,6 +10,24 @@ function seededRandom(seed) {
 }
 
 /**
+ * Seeded Random Number Generator class
+ */
+class SeededRandom {
+  constructor(seed) {
+    this.seed = seed;
+  }
+
+  next() {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
+
+  nextInt(max) {
+    return Math.floor(this.next() * max);
+  }
+}
+
+/**
  * Populate terrain with ambient props for 16×16 grid
  * Forest: trees + bushes + logs
  * Plains: wheat field + farmhouse
@@ -344,6 +362,139 @@ function createDeadTree(scene, x, z) {
   trunk.rotation.z = 0.2; // Slight lean
   trunk.castShadow = true;
   scene.add(trunk);
+}
+
+// ============= RESOURCE PILES (Dynamic, update with harvest) =============
+
+/**
+ * Create wood pile (stacked brown cubes, pyramid-like)
+ * Scaled by quantity: 1-5 units → 2-3 cubes, 6-15 → 5-6 cubes, 16+ → 8-10 cubes
+ */
+export function createWoodPile(scene, x, z, quantity) {
+  const group = new THREE.Group();
+
+  // Determine pile size
+  let cubeCount;
+  if (quantity <= 5) {
+    cubeCount = 2 + Math.floor(quantity / 3);
+  } else if (quantity <= 15) {
+    cubeCount = 5 + Math.floor((quantity - 5) / 5);
+  } else {
+    cubeCount = 8 + Math.floor((quantity - 15) / 5);
+  }
+  cubeCount = Math.min(cubeCount, 10);
+
+  // Stack cubes in rough pyramid
+  const cubeSize = 0.12;
+  let y = 0;
+  let row = 0;
+  let cubesInRow = 3;
+
+  for (let i = 0; i < cubeCount; i++) {
+    if (i >= row * cubesInRow + cubesInRow) {
+      row++;
+      cubesInRow = Math.max(1, cubesInRow - 1);
+    }
+
+    const col = i - row * (3 - row);
+    const xOffset = (col - (cubesInRow - 1) / 2) * cubeSize;
+    const yOffset = y + row * (cubeSize / 2);
+
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize),
+      new THREE.MeshStandardMaterial({ color: '#8b6f47', roughness: 0.9 })
+    );
+    cube.position.set(xOffset, yOffset, 0);
+    cube.castShadow = true;
+    group.add(cube);
+  }
+
+  group.position.set(x, 0, z);
+  scene.add(group);
+  return group;
+}
+
+/**
+ * Create wheat pile (golden cube clusters in neat rows)
+ * Scaled by quantity
+ */
+export function createWheatPile(scene, x, z, quantity) {
+  const group = new THREE.Group();
+
+  // Number of wheat bundles: 1-3, 4-8, 9+
+  let bundleCount;
+  if (quantity <= 3) {
+    bundleCount = 1 + Math.floor(quantity / 2);
+  } else if (quantity <= 8) {
+    bundleCount = 3 + Math.floor((quantity - 3) / 2);
+  } else {
+    bundleCount = 5 + Math.floor((quantity - 8) / 3);
+  }
+  bundleCount = Math.min(bundleCount, 8);
+
+  // Arrange in neat rows
+  for (let i = 0; i < bundleCount; i++) {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const xOffset = (col - 1) * 0.15;
+    const zOffset = row * 0.15;
+
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.12, 0.12),
+      new THREE.MeshStandardMaterial({
+        color: ['#eab308', '#ca8a04', '#fbbf24'][Math.floor(Math.random() * 3)],
+        roughness: 0.8
+      })
+    );
+    cube.position.set(xOffset, 0.06, zOffset);
+    cube.castShadow = true;
+    group.add(cube);
+  }
+
+  group.position.set(x, 0, z);
+  scene.add(group);
+  return group;
+}
+
+/**
+ * Create hay pile (tan clusters, scattered)
+ * Scaled by quantity
+ */
+export function createHayPile(scene, x, z, quantity) {
+  const group = new THREE.Group();
+
+  // Number of hay bales: 1-3, 4-8, 9+
+  let baleCount;
+  if (quantity <= 3) {
+    baleCount = 1 + Math.floor(quantity / 2);
+  } else if (quantity <= 8) {
+    baleCount = 3 + Math.floor((quantity - 3) / 2);
+  } else {
+    baleCount = 5 + Math.floor((quantity - 8) / 3);
+  }
+  baleCount = Math.min(baleCount, 8);
+
+  // Scatter around area
+  const rng = new SeededRandom(12345 + quantity);
+  for (let i = 0; i < baleCount; i++) {
+    const offsetX = (rng.next() - 0.5) * 0.3;
+    const offsetZ = (rng.next() - 0.5) * 0.3;
+
+    const bale = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.1, 0.1),
+      new THREE.MeshStandardMaterial({
+        color: '#d4a017',
+        roughness: 0.85
+      })
+    );
+    bale.position.set(offsetX, 0.05, offsetZ);
+    bale.castShadow = true;
+    group.add(bale);
+  }
+
+  group.position.set(x, 0, z);
+  scene.add(group);
+  return group;
 }
 
 // ============= FARMHOUSE (Central Anchor) =============
