@@ -1,284 +1,400 @@
 import * as THREE from 'three';
-import { VOXEL_SIZE } from './voxelBuilder';
-
-// ============= Agent Color Palette =============
-const AGENT_SPECIALIZATIONS = {
-  forest: {
-    primary: 0x2d7d2f,   // Dark green
-    secondary: 0x52aa57, // Light green
-    accent: 0x1f6aa5     // Blue trim
-  },
-  plains: {
-    primary: 0xd4af37,   // Gold
-    secondary: 0xe6c65c, // Light gold
-    accent: 0xf4d370     // Yellow trim
-  },
-  wetlands: {
-    primary: 0x2f87c6,   // Blue
-    secondary: 0x57a8db, // Light blue
-    accent: 0x4ea85a     // Green trim
-  }
-};
-
-// ============= Work Ethic → Size/Posture =============
-// 0-33: Lazy (slouched, smaller) → 33-66: Normal (upright) → 66-100: Overachiever (tall, muscular)
-
-function getAgentScale(workEthic) {
-  // Map work ethic (0-100) to size (0.6 - 1.2x)
-  return 0.6 + (workEthic / 100) * 0.6;
-}
-
-// ============= Risk → Color Shade Variation =============
-// 0-33: Cautious (muted) → 33-66: Balanced (normal) → 66-100: Gambler (vibrant)
-
-function getRiskColor(primary, risk) {
-  const color = new THREE.Color(primary);
-
-  if (risk < 33) {
-    // Cautious: desaturate
-    color.lerp(new THREE.Color(0x666666), 0.3);
-  } else if (risk > 66) {
-    // Gambler: saturate & brighten
-    color.multiplyScalar(1.2);
-  }
-
-  return color.getHex();
-}
-
-// ============= Loyalty → Outfit Style =============
-// 0-33: Independent (minimal outfit) → 33-66: Neutral (standard) → 66-100: Obedient (armored)
-
-function hasArmor(loyalty) {
-  return loyalty > 50; // Simple binary: armor if loyal enough
-}
-
-// ============= Agent Voxel Builder =============
 
 /**
- * Creates a complete agent voxel model with trait-driven appearance
- * @param {object} agent - Agent data (name, traits, morale)
- * @returns {THREE.Group} Agent group with body, head, armor, accessories
+ * Creates a complete 8-cube agent character model
+ * Structure: legs + body + arms + head + eyes + hat + tool
+ * Heights ~1.2 units (taller than wheat, shorter than trees)
+ * 
+ * @param {object} agent - Agent data (id, name, specialization, traits, morale)
+ * @returns {THREE.Group} Complete character with animations ready
  */
 export function createAgentModel(agent) {
-  const agentGroup = new THREE.Group();
+  const group = new THREE.Group();
 
-  const { traits } = agent;
-  const specialization = traits?.specialization || 'plains';
-  const workEthic = traits?.workEthic || 50;
-  const risk = traits?.risk || 50;
-  const loyalty = traits?.loyalty || 50;
+  const {
+    specialization = 'plains',
+    traits = {},
+    morale = 50,
+    appearance = {}
+  } = agent;
 
-  const colors = AGENT_SPECIALIZATIONS[specialization];
-  const scale = getAgentScale(workEthic);
-  const bodyColor = getRiskColor(colors.primary, risk);
-  const shouldHaveArmor = hasArmor(loyalty);
+  const bodyColor = appearance.bodyColor || getBodyColor(specialization);
+  const isDarkMorale = morale < 20;
+  const isLowMorale = morale < 40;
 
-  // ===== Body (main voxel) =====
-  const bodyHeight = 0.4 * scale;
-  const bodyWidth = 0.25 * scale;
-  const bodyGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyWidth);
-  const bodyMaterial = new THREE.MeshStandardMaterial({
+  // ===== BODY (center cube, 0.3×0.35×0.2) =====
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.35, 0.2),
+    new THREE.MeshStandardMaterial({
+      color: bodyColor,
+      roughness: 0.7,
+      metalness: 0.1
+    })
+  );
+  body.position.y = 0.175;
+  body.castShadow = true;
+  group.add(body);
+
+  // ===== LEGS (2 cubes, 0.12×0.25×0.12, with gap) =====
+  const legGeometry = new THREE.BoxGeometry(0.12, 0.25, 0.12);
+  const legMaterial = new THREE.MeshStandardMaterial({
+    color: darkenColor(bodyColor, 0.6),
+    roughness: 0.8
+  });
+
+  const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+  leftLeg.position.set(-0.1, 0.125, 0);
+  leftLeg.castShadow = true;
+  group.add(leftLeg);
+
+  const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+  rightLeg.position.set(0.1, 0.125, 0);
+  rightLeg.castShadow = true;
+  group.add(rightLeg);
+
+  // ===== ARMS (2 cubes, 0.08×0.25×0.08, sides of body) =====
+  const armGeometry = new THREE.BoxGeometry(0.08, 0.25, 0.08);
+  const armMaterial = new THREE.MeshStandardMaterial({
     color: bodyColor,
-    metalness: 0.2,
     roughness: 0.7
   });
-  const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-  body.position.y = bodyHeight / 2 + 0.05;
-  body.castShadow = true;
-  body.receiveShadow = true;
-  agentGroup.add(body);
 
-  // ===== Armor (if loyal) =====
-  if (shouldHaveArmor) {
-    const armorGeometry = new THREE.BoxGeometry(
-      bodyWidth * 1.15,
-      bodyHeight * 0.8,
-      bodyWidth * 1.15
-    );
-    const armorMaterial = new THREE.MeshStandardMaterial({
-      color: colors.accent,
-      metalness: 0.6,
-      roughness: 0.3,
-      emissive: colors.accent,
-      emissiveIntensity: 0.1
-    });
-    const armor = new THREE.Mesh(armorGeometry, armorMaterial);
-    armor.position.y = bodyHeight / 2 + 0.05;
-    armor.position.z = -0.02;
-    armor.castShadow = true;
-    armor.receiveShadow = true;
-    agentGroup.add(armor);
+  const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+  leftArm.position.set(-0.2, 0.175, 0);
+  leftArm.castShadow = true;
+  group.add(leftArm);
+
+  const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+  rightArm.position.set(0.2, 0.175, 0);
+  rightArm.castShadow = true;
+  rightArm.userData.workingArm = true; // Mark for work animation
+  group.add(rightArm);
+
+  // ===== HEAD (0.25×0.25×0.25, skin tone) =====
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.25, 0.25, 0.25),
+    new THREE.MeshStandardMaterial({
+      color: '#fcd34d', // Warm skin tone
+      roughness: 0.6
+    })
+  );
+  head.position.y = 0.475;
+  head.castShadow = true;
+  group.add(head);
+  group.userData.headRef = head; // For morale bar positioning
+
+  // ===== EYES (2 tiny cubes, 0.06×0.06×0.06) =====
+  const eyeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+  const eyeMaterial = new THREE.MeshStandardMaterial({ color: '#1e293b' });
+
+  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  leftEye.position.set(-0.08, 0.53, 0.125);
+  leftEye.castShadow = true;
+  group.add(leftEye);
+
+  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  rightEye.position.set(0.08, 0.53, 0.125);
+  rightEye.castShadow = true;
+  group.add(rightEye);
+
+  // ===== HAT (zone-specific) =====
+  const hat = createHat(specialization);
+  if (hat) {
+    hat.position.y = 0.65;
+    hat.castShadow = true;
+    group.add(hat);
   }
 
-  // ===== Head =====
-  const headSize = bodyWidth * 0.8 * scale;
-  const headGeometry = new THREE.BoxGeometry(headSize, headSize, headSize);
-  const headMaterial = new THREE.MeshStandardMaterial({
-    color: bodyColor,
-    metalness: 0.2,
-    roughness: 0.7
+  // ===== TOOL (zone-specific, held in right hand) =====
+  const tool = createTool(specialization);
+  if (tool) {
+    tool.position.set(0.28, 0.2, 0);
+    tool.castShadow = true;
+    group.add(tool);
+  }
+
+  // ===== MORALE BAR (floating above head) =====
+  const moraleBar = createMoraleBar(morale);
+  moraleBar.position.y = 0.95;
+  moraleBar.userData.moraleProp = true; // Mark for visibility control
+  group.add(moraleBar);
+
+  // ===== ANIMATION DATA =====
+  group.userData.rightArm = rightArm;
+  group.userData.isWorking = false;
+  group.userData.morale = morale;
+  group.userData.moraleBar = moraleBar;
+  group.userData.isDarkMorale = isDarkMorale;
+
+  return group;
+}
+
+// ===== HAT BY SPECIALIZATION =====
+
+function createHat(specialization) {
+  let hat;
+
+  switch (specialization) {
+    case 'forest': {
+      // Yellow hard hat: wide flat cube
+      hat = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.08, 0.22),
+        new THREE.MeshStandardMaterial({ color: '#facc15' })
+      );
+      break;
+    }
+    case 'plains': {
+      // Tan straw hat: slightly tapered
+      hat = new THREE.Mesh(
+        new THREE.ConeGeometry(0.15, 0.1, 6),
+        new THREE.MeshStandardMaterial({ color: '#d4a017' })
+      );
+      break;
+    }
+    case 'wetlands': {
+      // Blue bandana: flat square on head
+      hat = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.05, 0.25),
+        new THREE.MeshStandardMaterial({ color: '#3b82f6' })
+      );
+      break;
+    }
+    default:
+      return null; // No hat for generalist
+  }
+
+  return hat;
+}
+
+// ===== TOOL BY SPECIALIZATION =====
+
+function createTool(specialization) {
+  const toolGroup = new THREE.Group();
+  const toolMaterial = new THREE.MeshStandardMaterial({
+    color: '#8b7355',
+    roughness: 0.9
   });
-  const head = new THREE.Mesh(headGeometry, headMaterial);
-  head.position.y = bodyHeight + headSize / 2 + 0.1;
-  head.castShadow = true;
-  head.receiveShadow = true;
-  agentGroup.add(head);
 
-  // ===== Eyes (small accent voxels) =====
-  const eyeSize = headSize * 0.2;
-  const eyeColor = new THREE.Color(0xffffff);
-  const leftEyeGeometry = new THREE.BoxGeometry(eyeSize, eyeSize, eyeSize * 0.5);
-  const eyeMaterial = new THREE.MeshStandardMaterial({ color: eyeColor });
+  switch (specialization) {
+    case 'forest': {
+      // Axe: L-shape (3 cubes)
+      // Handle: vertical
+      const handle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.03, 0.2, 0.03),
+        toolMaterial
+      );
+      handle.position.set(0, 0, 0);
+      toolGroup.add(handle);
 
-  const leftEye = new THREE.Mesh(leftEyeGeometry, eyeMaterial);
-  leftEye.position.set(-headSize * 0.15, bodyHeight + headSize * 0.7, headSize * 0.4);
-  leftEye.castShadow = false;
-  agentGroup.add(leftEye);
+      // Head: horizontal cube at top
+      const head = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, 0.06, 0.04),
+        new THREE.MeshStandardMaterial({ color: '#c0c0c0' }) // Silver head
+      );
+      head.position.set(0.04, 0.12, 0);
+      toolGroup.add(head);
+      break;
+    }
+    case 'plains': {
+      // Scythe: curved (simulated with 3 cubes)
+      // Handle
+      const handle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.03, 0.25, 0.03),
+        toolMaterial
+      );
+      handle.rotation.z = 0.2;
+      handle.position.set(0, 0.05, 0);
+      toolGroup.add(handle);
 
-  const rightEye = new THREE.Mesh(
-    new THREE.BoxGeometry(eyeSize, eyeSize, eyeSize * 0.5),
-    eyeMaterial
+      // Blade (L-shape)
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.04, 0.03),
+        new THREE.MeshStandardMaterial({ color: '#c0c0c0' })
+      );
+      blade.position.set(0.08, 0.15, 0);
+      toolGroup.add(blade);
+      break;
+    }
+    case 'wetlands': {
+      // Pitchfork: 3 prongs (using small cubes)
+      // Handle
+      const handle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.22, 0.02),
+        toolMaterial
+      );
+      handle.position.set(0, 0, 0);
+      toolGroup.add(handle);
+
+      // Three prongs
+      const prongs = [
+        { x: -0.06, z: 0 },
+        { x: 0, z: 0 },
+        { x: 0.06, z: 0 }
+      ];
+
+      prongs.forEach(({ x, z }) => {
+        const prong = new THREE.Mesh(
+          new THREE.BoxGeometry(0.03, 0.08, 0.03),
+          new THREE.MeshStandardMaterial({ color: '#c0c0c0' })
+        );
+        prong.position.set(x, 0.18, z);
+        toolGroup.add(prong);
+      });
+      break;
+    }
+    default:
+      return null; // No tool for generalist
+  }
+
+  return toolGroup;
+}
+
+// ===== MORALE BAR (floating above agent) =====
+
+function createMoraleBar(morale) {
+  const barGroup = new THREE.Group();
+
+  // Determine color: green >60%, yellow 30-60%, red <30%
+  let barColor = '#22c55e'; // Green
+  if (morale < 30) {
+    barColor = '#ef4444'; // Red
+  } else if (morale < 60) {
+    barColor = '#eab308'; // Yellow
+  }
+
+  // Bar background (gray)
+  const bg = new THREE.Mesh(
+    new THREE.BoxGeometry(0.4, 0.05, 0.02),
+    new THREE.MeshStandardMaterial({ color: '#4b5563' })
   );
-  rightEye.position.set(headSize * 0.15, bodyHeight + headSize * 0.7, headSize * 0.4);
-  rightEye.castShadow = false;
-  agentGroup.add(rightEye);
+  bg.position.z = 0.01;
+  barGroup.add(bg);
 
-  // ===== Specialty Accent (small shoulder gem) =====
-  const accentGeometry = new THREE.OctahedronGeometry(headSize * 0.15, 2);
-  const accentMaterial = new THREE.MeshStandardMaterial({
-    color: colors.secondary,
-    metalness: 0.7,
-    roughness: 0.2,
-    emissive: colors.secondary,
-    emissiveIntensity: 0.3
-  });
-  const accent = new THREE.Mesh(accentGeometry, accentMaterial);
-  accent.position.set(bodyWidth * 0.6, bodyHeight * 0.6, 0);
-  accent.castShadow = true;
-  agentGroup.add(accent);
+  // Bar fill (width based on morale %)
+  const fillWidth = 0.38 * (morale / 100);
+  const fill = new THREE.Mesh(
+    new THREE.BoxGeometry(fillWidth, 0.05, 0.02),
+    new THREE.MeshStandardMaterial({ color: barColor })
+  );
+  fill.position.set(-0.19 + fillWidth / 2, 0, 0);
+  fill.castShadow = true;
+  barGroup.add(fill);
 
-  // ===== Metadata =====
-  agentGroup.userData.agentId = agent.id;
-  agentGroup.userData.morale = agent.morale;
-  agentGroup.userData.specialization = specialization;
-  agentGroup.userData.workEthic = workEthic;
-  agentGroup.userData.risk = risk;
-  agentGroup.userData.loyalty = loyalty;
+  // Billboard behavior setup (will be handled in IslandSceneManager)
+  barGroup.userData.isMoraleBar = true;
+  barGroup.userData.morale = morale;
 
-  // Scale entire group
-  agentGroup.scale.multiplyScalar(scale);
+  return barGroup;
+}
 
-  return agentGroup;
+// ===== HELPER FUNCTIONS =====
+
+function getBodyColor(specialization) {
+  const colors = {
+    forest: '#2d7d2f',  // Dark green
+    plains: '#d4af37',  // Gold
+    wetlands: '#2f87c6' // Blue
+  };
+  return colors[specialization] || '#999999';
+}
+
+function darkenColor(hexColor, factor) {
+  const color = new THREE.Color(hexColor);
+  color.multiplyScalar(factor);
+  return color;
 }
 
 /**
- * Creates a name + morale label for the agent
- * Uses Canvas texture for text rendering
+ * Create a label/name tag above agent (optional, for later)
+ * @deprecated – use Field Log for agent identification
  */
 export function createAgentLabel(agent) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 128;
-
+  canvas.width = 256;
+  canvas.height = 64;
   const ctx = canvas.getContext('2d');
 
-  // Background (semi-transparent)
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = agent.appearance?.bodyColor || '#999999';
+  ctx.fillRect(0, 0, 256, 64);
 
-  // Name (top)
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px Arial';
+  ctx.font = 'bold 32px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText(agent.name, canvas.width / 2, 50);
+  ctx.fillText(agent.name, 128, 40);
 
-  // Morale bar (bottom)
-  const moralePct = agent.morale / 100;
-  const barWidth = 300;
-  const barHeight = 20;
-  const barX = (canvas.width - barWidth) / 2;
-  const barY = 75;
-
-  // Background bar
-  ctx.fillStyle = '#333333';
-  ctx.fillRect(barX, barY, barWidth, barHeight);
-
-  // Morale color (green=high, yellow=mid, red=low)
-  let moraleColor = '#00ff00'; // Green
-  if (moralePct < 0.33) moraleColor = '#ff3333'; // Red
-  else if (moralePct < 0.66) moraleColor = '#ffff00'; // Yellow
-
-  // Morale fill
-  ctx.fillStyle = moraleColor;
-  ctx.fillRect(barX, barY, barWidth * moralePct, barHeight);
-
-  // Border
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(barX, barY, barWidth, barHeight);
-
-  // Morale text
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '14px Arial';
-  ctx.textAlign = 'right';
-  ctx.fillText(`${Math.round(agent.morale)}%`, barX + barWidth + 20, barY + 18);
-
-  // Create texture
   const texture = new THREE.CanvasTexture(canvas);
-  const geometry = new THREE.PlaneGeometry(3, 0.75);
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    side: THREE.DoubleSide
-  });
-  const label = new THREE.Mesh(geometry, material);
+  const material = new THREE.MeshBasicMaterial({ map: texture });
+  const geometry = new THREE.PlaneGeometry(0.5, 0.15);
+  const mesh = new THREE.Mesh(geometry, material);
 
-  // Position above agent
-  label.position.y = 1.2;
-
-  return label;
+  return mesh;
 }
 
 /**
- * Updates agent appearance (e.g., morale color shift)
+ * Animation: work arm rotation (30° swing on 1.5s loop)
+ * Call from IslandSceneManager animation loop
  */
-export function updateAgentMorale(agentMesh, newMorale) {
-  if (!agentMesh || !agentMesh.userData) return;
+export function animateAgentWorking(agent, time) {
+  const rightArm = agent.userData.rightArm;
+  if (!rightArm) return;
 
-  agentMesh.userData.morale = newMorale;
-
-  // Could add visual feedback here:
-  // - Color shift on body based on morale
-  // - Posture change (slouch vs. stand)
-  // - Glow effect
-  // For MVP, just update metadata. Visual update in Phase 2.
+  // 1.5s period = 2π / 1.5 ≈ 4.19 rad/s
+  const angle = Math.sin(time * 4.19) * 0.52; // 30° = ~0.52 rad
+  rightArm.rotation.z = angle;
 }
 
 /**
- * Helper: Get all agent colors for a specialization
+ * Animation: idle bob (gentle up/down, 2s period)
+ * Call from IslandSceneManager animation loop
  */
-export function getSpecializationColors(specialization) {
-  return AGENT_SPECIALIZATIONS[specialization] || AGENT_SPECIALIZATIONS.plains;
+export function animateAgentIdle(agent, time) {
+  const amplitude = 0.05;
+  const period = 2.0;
+  agent.position.y = (agent.userData.baseY || 0) + Math.sin(time * (2 * Math.PI / period)) * amplitude;
 }
 
 /**
- * Helper: Describe agent appearance in text
+ * Update morale bar color and fill based on current morale
+ * Call when morale changes
  */
-export function describeAgent(agent) {
-  const { traits, morale } = agent;
-  const workEthic = traits?.workEthic || 50;
-  const risk = traits?.risk || 50;
-  const loyalty = traits?.loyalty || 50;
-  const spec = traits?.specialization || 'plains';
+export function updateAgentMoraleBar(agent, morale) {
+  const bar = agent.userData.moraleBar;
+  if (!bar || !bar.children[1]) return;
 
-  const workDesc =
-    workEthic > 66 ? 'Very hardworking' : workEthic > 33 ? 'Balanced' : 'Lazy';
-  const riskDesc =
-    risk > 66 ? 'Adventurous, vibrant colors' : risk > 33 ? 'Cautious, muted colors' : 'Very cautious';
-  const loyalDesc =
-    loyalty > 66 ? 'Armored, loyal' : loyalty > 33 ? 'Neutral stance' : 'Independent, minimal outfit';
-  const moraleDesc =
-    morale > 70 ? 'Very happy' : morale > 40 ? 'Content' : 'Unhappy';
+  // Update color
+  let barColor = '#22c55e';
+  if (morale < 30) {
+    barColor = '#ef4444';
+  } else if (morale < 60) {
+    barColor = '#eab308';
+  }
+  bar.children[1].material.color.setStyle(barColor);
 
-  return `${agent.name} (${spec}): ${workDesc}, ${riskDesc}, ${loyalDesc}. Morale: ${moraleDesc}`;
+  // Update fill width
+  const fillWidth = 0.38 * (morale / 100);
+  bar.children[1].scale.x = fillWidth / (0.38 * 0.5); // Normalize scale
+  bar.children[1].position.x = -0.19 + fillWidth / 2;
+
+  agent.userData.morale = morale;
+}
+
+/**
+ * Apply morale state to agent posture
+ */
+export function applyMoralePosture(agent, morale) {
+  if (morale < 20) {
+    // Very low morale: slouch (tilt body)
+    agent.children.forEach((child) => {
+      if (child.userData?.workingArm) return; // Skip arms
+      if (child.userData?.isMoraleBar) return; // Skip bar
+      child.rotation.z = 0.1; // Slight tilt
+    });
+  } else if (morale < 40) {
+    // Low morale: slight slouch
+    agent.children.forEach((child) => {
+      if (child.userData?.workingArm) return;
+      if (child.userData?.isMoraleBar) return;
+      child.rotation.z = 0.05;
+    });
+  }
 }
