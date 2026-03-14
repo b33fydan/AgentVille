@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
+import { useGameStore } from '../../store/gameStore';
 
 const STORAGE_KEY = 'agentville-onboarding-complete';
 
@@ -10,16 +11,23 @@ export default function OnboardingFlow() {
   const islandName = useAgentStore((state) => state.islandName);
   const setIslandName = useAgentStore((state) => state.setIslandName);
   const agents = useAgentStore((state) => state.agents);
+  const setGamePhase = useGameStore((state) => state.setGamePhase);
 
   useEffect(() => {
     const completed = localStorage.getItem(STORAGE_KEY) === 'true';
     if (!completed) {
       setIsOpen(true);
+    } else {
+      // If onboarding was completed before, make sure game phase is set
+      if (useGameStore.getState().gamePhase === 'onboarding') {
+        setGamePhase('playing');
+      }
     }
-  }, []);
+  }, [setGamePhase]);
 
   const completeOnboarding = () => {
     localStorage.setItem(STORAGE_KEY, 'true');
+    setGamePhase('playing');
     setIsOpen(false);
   };
 

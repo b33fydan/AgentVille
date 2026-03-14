@@ -1,19 +1,18 @@
 import { useGameStore } from '../../store/gameStore';
 import { useAgentStore } from '../../store/agentStore';
 import { useLogStore } from '../../store/logStore';
-import { selectReaction } from '../../utils/agentReactions';
 import { soundManager } from '../../utils/soundManager';
+import { advanceDayLogic, canAdvanceDay, getAdvanceButtonLabel, getAdvanceButtonColor } from '../../utils/advanceDayHandler';
 
 export default function SeasonHUD() {
   const resources = useGameStore((state) => state.resources);
   const season = useGameStore((state) => state.season);
   const day = useGameStore((state) => state.day);
   const timeOfDay = useGameStore((state) => state.timeOfDay);
-  const advanceTime = useGameStore((state) => state.advanceTime);
+  const gamePhase = useGameStore((state) => state.gamePhase);
   const getProfit = useGameStore((state) => state.getProfit);
   
   const agents = useAgentStore((state) => state.agents);
-  const addLogEntry = useLogStore((state) => state.addLogEntry);
 
   const profit = getProfit();
   const marketPrices = { wood: 2, wheat: 5, hay: 3 };
@@ -26,35 +25,11 @@ export default function SeasonHUD() {
   };
 
   const handleAdvanceDay = () => {
-    soundManager.play('dayAdvance');
-    
-    // Generate ambient day-change reactions (1-2 random agents speak)
-    if (agents.length > 0) {
-      const numReactions = Math.random() > 0.5 ? 1 : 2;
-      const shuffled = [...agents].sort(() => Math.random() - 0.5);
-      
-      const nextTimeOfDay = timeOfDay === 'morning' ? 'evening' : 'morning';
-      const reactionType = nextTimeOfDay === 'morning' ? 'morning' : 'evening';
-      
-      for (let i = 0; i < Math.min(numReactions, shuffled.length); i++) {
-        const agent = shuffled[i];
-        const primaryTrait = agent.traits.workEthic > 70 ? 'bold' :
-                           agent.traits.workEthic < 30 ? 'lazy' : 'pragmatic';
-        
-        const reaction = selectReaction('dayChange', primaryTrait, reactionType);
-        if (reaction && Math.random() > 0.3) { // 70% chance to actually log (not too spammy)
-          addLogEntry({
-            agentId: agent.id,
-            agentName: agent.name,
-            type: 'ambient',
-            message: reaction.text,
-            emoji: reaction.emoji
-          });
-        }
-      }
+    // Run the full game loop
+    const success = advanceDayLogic();
+    if (!success) {
+      console.warn('[SeasonHUD] Could not advance day');
     }
-    
-    advanceTime();
   };
 
   const handleShare = async () => {
@@ -135,33 +110,58 @@ export default function SeasonHUD() {
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* ADVANCE DAY Button (MAIN CTA) */}
+      <button
+        onClick={handleAdvanceDay}
+        disabled={!canAdvanceDay() || gamePhase !== 'playing'}
+        style={{
+          backgroundColor: canAdvanceDay() && gamePhase === 'playing' 
+            ? getAdvanceButtonColor(day, timeOfDay) 
+            : '#4b5563'
+        }}
+        className="w-full rounded-lg px-4 py-4 font-bold text-lg uppercase tracking-wider text-white transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 hover:enabled:scale-105"
+      >
+        {getAdvanceButtonLabel(day, timeOfDay)}
+      </button>
+
+      {/* Info: Day Progress */}
+      <div className="rounded-lg bg-slate-800 p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs uppercase tracking-widest text-slate-400">Day Progress</div>
+          <div className="text-xs text-slate-300 font-semibold">{day}/7</div>
+        </div>
+        <div className="h-2 rounded-full bg-slate-700">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all"
+            style={{ width: `${(day / 7) * 100}%` }}
+          />
+        </div>
+        <div className="mt-2 text-xs text-slate-400 text-center">{getDayPhase()}</div>
+      </div>
+
+      {/* Action Buttons (Secondary) */}
       <div className="flex gap-2">
         <button
-          onClick={handleAdvanceDay}
-          disabled={day >= 7}
-          className={`flex-1 rounded-lg px-4 py-3 font-bold uppercase tracking-wider transition-all ${
-            day >= 7
-              ? 'cursor-not-allowed bg-slate-700 text-slate-500'
-              : 'bg-blue-600 hover:bg-blue-500 text-white active:scale-95'
-          }`}
-        >
-          {day >= 7 ? '📊 Sale Day Complete' : '⏭️ Next Day'}
-        </button>
-        <button
           onClick={handleShare}
-          className="rounded-lg px-3 py-3 font-bold bg-green-600 hover:bg-green-500 text-white transition-all active:scale-95"
+          className="flex-1 rounded-lg px-3 py-2 text-sm font-bold bg-green-600 hover:bg-green-500 text-white transition-all active:scale-95"
           title="Share your progress"
         >
           📤 Share
         </button>
       </div>
 
-      {/* Sale Day Message */}
-      {day >= 7 && (
-        <div className="rounded-lg border border-yellow-600 bg-yellow-900/20 p-3 text-center text-yellow-300">
-          <div className="font-bold">🎪 Sale Day!</div>
-          <div className="text-xs">Agents review your management...</div>
+      {/* Game Phase Status */}
+      {gamePhase === 'saleDay' && (
+        <div className="rounded-lg border border-yellow-600 bg-yellow-900/20 p-3 text-center text-yellow-300 animate-pulse">
+          <div className="font-bold">📦 SALE DAY</div>
+          <div className="text-xs">Season complete. Review time...</div>
+        </div>
+      )}
+
+      {gamePhase === 'crisis' && (
+        <div className="rounded-lg border border-red-600 bg-red-900/20 p-3 text-center text-red-300 animate-pulse">
+          <div className="font-bold">⚠️ CRISIS ALERT</div>
+          <div className="text-xs">Resolve the crisis first</div>
         </div>
       )}
     </div>
