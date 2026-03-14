@@ -95,13 +95,12 @@ export function advanceDayLogic() {
   });
 
   // ===== 4. TRIGGER CRISIS (50% chance, max 1 active) =====
-  const shouldTriggerCrisis = Math.random() < 0.5 && !gameState.activeCrisis;
+  const shouldTriggerCrisis = Math.random() < 0.5;
   if (shouldTriggerCrisis) {
-    // For now, just mark that a crisis should trigger
-    // The actual CrisisModal will handle this on next render
-    console.log('[advanceDay] Crisis should trigger (CrisisModal will handle)');
+    console.log('[advanceDay] Crisis triggered! Setting gamePhase to "crisis"');
+    // This will cause CrisisModal to render and handle the crisis
+    gameState.setGamePhase('crisis');
     soundManager.play('crisisAlert');
-    // CrisisModal component watches for gamePhase changes
   }
 
   // ===== 5. CHECK MORALE CONSEQUENCES (desertions) =====

@@ -25,6 +25,8 @@ export default function CrisisModal() {
   const updateMorale = useAgentStore((state) => state.updateMorale);
   const addResource = useGameStore((state) => state.addResource);
   const addCrisisToLog = useGameStore((state) => state.addCrisisToLog);
+  const setGamePhase = useGameStore((state) => state.setGamePhase);
+  const gamePhase = useGameStore((state) => state.gamePhase);
   const season = useGameStore((state) => state.season);
   const day = useGameStore((state) => state.day);
   const timeOfDay = useGameStore((state) => state.timeOfDay);
@@ -194,15 +196,20 @@ export default function CrisisModal() {
         applyOutcome(outcome);
       }
 
-      // Close modal
+      // Close modal and return to playing state
       setCurrentCrisis(null);
       setSelectedChoice(null);
       setEnrichedDescription('');
       setIsResolving(false);
+      
+      // Reset game phase back to 'playing'
+      console.log('[CrisisModal] Crisis resolved. Returning to playing state.');
+      setGamePhase('playing');
     }, 800);
   };
 
-  if (!currentCrisis) {
+  // Only render if we have a crisis AND game phase is 'crisis'
+  if (!currentCrisis || gamePhase !== 'crisis') {
     return null;
   }
 
