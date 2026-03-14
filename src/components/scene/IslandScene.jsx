@@ -38,13 +38,14 @@ export default function IslandScene() {
     sceneRef.current = scene;
 
     // Camera (isometric-ish view)
+    // Grid is now 16×16 at 0.5 units = 8×8 units, so camera positioned further out
     const camera = new THREE.PerspectiveCamera(
       45, // Tighter FOV for "miniature" feel
       SCENE_WIDTH / SCENE_HEIGHT,
       0.1,
       1000
     );
-    camera.position.set(10, 10, 10);
+    camera.position.set(12, 12, 12);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
@@ -63,7 +64,7 @@ export default function IslandScene() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 5;
-    controls.maxDistance = 22;
+    controls.maxDistance = 35; // Increased for larger 16×16 grid
     controls.minPolarAngle = Math.PI * 0.3; // Prevent nearly top-down
     controls.maxPolarAngle = Math.PI / 2.2; // Prevent going under island
     controls.enablePan = false; // Disable panning
