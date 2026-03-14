@@ -89,18 +89,21 @@ export default function IslandScene() {
     const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x4a7c4f, 0.25);
     scene.add(hemisphereLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(10, 20, 10);
+    // Directional light (main sun)
+    // Adjusted for 16×16 grid and shadow coverage
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    directionalLight.position.set(12, 22, 12);
     directionalLight.target.position.set(0, 0, 0);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 100;
-    directionalLight.shadow.camera.left = -20;
-    directionalLight.shadow.camera.right = 20;
-    directionalLight.shadow.camera.top = 20;
-    directionalLight.shadow.camera.bottom = -20;
+    directionalLight.shadow.camera.left = -25;
+    directionalLight.shadow.camera.right = 25;
+    directionalLight.shadow.camera.top = 25;
+    directionalLight.shadow.camera.bottom = -25;
+    directionalLight.shadow.bias = -0.001;
     scene.add(directionalLight);
     scene.add(directionalLight.target);
 
