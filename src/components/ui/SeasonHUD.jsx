@@ -51,6 +51,11 @@ export default function SeasonHUD() {
     }
   };
 
+  // Hide during SaleDay (full-screen modal takes over)
+  if (gamePhase === 'saleDay') {
+    return null;
+  }
+
   return (
     <div className="fixed bottom-4 left-4 right-4 flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-900/95 p-4 backdrop-blur md:bottom-auto md:right-4 md:w-80 md:left-auto">
       {/* Season Info */}

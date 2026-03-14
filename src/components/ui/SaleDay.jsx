@@ -18,10 +18,12 @@ export default function SaleDay() {
   const season = useGameStore((state) => state.season);
   const day = useGameStore((state) => state.day);
   const timeOfDay = useGameStore((state) => state.timeOfDay);
+  const gamePhase = useGameStore((state) => state.gamePhase);
   const resources = useGameStore((state) => state.resources);
   const crisisLog = useGameStore((state) => state.crisisLog);
+  const setGamePhase = useGameStore((state) => state.setGamePhase);
+  const resetSeason = useGameStore((state) => state.resetSeason);
   const agents = useAgentStore((state) => state.agents);
-  const endSeason = useGameStore((state) => state.endSeason);
   const getProfit = useGameStore((state) => state.getProfit);
   const getAverageMorale = useAgentStore((state) => state.getAverageMorale);
 
@@ -195,8 +197,8 @@ export default function SaleDay() {
     return () => clearTimeout(timer);
   }, [day, timeOfDay, stage, profit]);
 
-  // Only show on Day 7 evening (player gets full Day 7 morning first)
-  if (day !== 7 || timeOfDay !== 'evening') {
+  // Only show when gamePhase is 'saleDay'
+  if (gamePhase !== 'saleDay') {
     return null;
   }
 
@@ -307,7 +309,16 @@ export default function SaleDay() {
             {/* Complete Button */}
             {stage === 'complete' && (
               <button
-                onClick={() => endSeason({ profit, finalMorale: avgMorale, events: [] })}
+                onClick={() => {
+                  console.log('[SaleDay] Season complete. Resetting...');
+                  // Add to season history
+                  useGameStore.getState().endSeason({ profit, finalMorale: avgMorale, events: [] });
+                  // Reset season state
+                  resetSeason();
+                  // Return to playing
+                  setGamePhase('playing');
+                  console.log('[SaleDay] New season started!');
+                }}
                 className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 transition-all active:scale-95"
               >
                 🔄 Start Next Season
