@@ -119,14 +119,152 @@ export function createAgentModel(agent) {
   moraleBar.userData.moraleProp = true; // Mark for visibility control
   group.add(moraleBar);
 
-  // ===== ANIMATION DATA =====
+  // ===== ANIMATION DATA & STATE MACHINE =====
   group.userData.rightArm = rightArm;
+  group.userData.leftArm = leftArm;
+  group.userData.legs = [leftLeg, rightLeg];
+  group.userData.body = body;
+  group.userData.head = head;
   group.userData.isWorking = false;
   group.userData.morale = morale;
   group.userData.moraleBar = moraleBar;
   group.userData.isDarkMorale = isDarkMorale;
 
+  // Animation state machine
+  group.animState = 'idle'; // 'idle' | 'walking' | 'working'
+  group.animClock = 0; // elapsed time accumulator
+  group.animSpeed = 1.0; // morale multiplier
+  group.zoneType = null; // 'forest' | 'plains' | 'wetlands' | null
+  group.baseY = 0; // for position-relative animations
+
+  // Animation updater (called every frame)
+  group.updateAnimation = function (deltaTime) {
+    this.animClock += deltaTime * this.animSpeed;
+
+    switch (this.animState) {
+      case 'idle':
+        updateIdleAnimation(this, deltaTime);
+        break;
+      case 'walking':
+        updateWalkAnimation(this, deltaTime);
+        break;
+      case 'working':
+        updateWorkAnimation(this, deltaTime);
+        break;
+      default:
+        break;
+    }
+  };
+
   return group;
+}
+
+// ===== ANIMATION STATE UPDATERS =====
+
+/**
+ * Idle animation: gentle Y bob + slow rotation
+ */
+function updateIdleAnimation(group, deltaTime) {
+  const amplitude = 0.05;
+  const bobFreq = 2.0; // Hz
+
+  // Gentle Y bob
+  group.position.y = group.baseY + Math.sin(group.animClock * 2 * Math.PI * bobFreq) * amplitude;
+
+  // Slow rotation (looking around)
+  group.rotation.y += 0.3 * deltaTime;
+}
+
+/**
+ * Walking animation: leg swing + arm swing + body bob + face direction
+ */
+function updateWalkAnimation(group, deltaTime) {
+  const legSwingFreq = 4.0; // Hz
+  const legSwingAmp = 0.4; // radians
+  const armSwingAmp = 0.3;
+  const bodyBobAmp = 0.03;
+
+  const legPhase = group.animClock * 2 * Math.PI * legSwingFreq;
+
+  // Leg swing (alternating)
+  if (group.userData.legs && group.userData.legs.length >= 2) {
+    const leftLeg = group.userData.legs[0];
+    const rightLeg = group.userData.legs[1];
+
+    leftLeg.rotation.x = Math.sin(legPhase) * legSwingAmp;
+    rightLeg.rotation.x = Math.sin(legPhase + Math.PI) * legSwingAmp;
+  }
+
+  // Arm swing (opposite to legs)
+  if (group.userData.rightArm && group.userData.leftArm) {
+    group.userData.leftArm.rotation.x = Math.sin(legPhase + Math.PI) * armSwingAmp;
+    group.userData.rightArm.rotation.x = Math.sin(legPhase) * armSwingAmp;
+  }
+
+  // Body bob (subtle)
+  group.position.y = group.baseY + Math.abs(Math.sin(legPhase)) * bodyBobAmp;
+}
+
+/**
+ * Working animation: zone-specific (forest=chop, plains=harvest, wetlands=scoop)
+ */
+function updateWorkAnimation(group, deltaTime) {
+  const zoneType = group.zoneType;
+
+  if (zoneType === 'forest') {
+    updateChopAnimation(group, deltaTime);
+  } else if (zoneType === 'plains') {
+    updateHarvestAnimation(group, deltaTime);
+  } else if (zoneType === 'wetlands') {
+    updateScoopAnimation(group, deltaTime);
+  }
+}
+
+/**
+ * Forest work: right arm chop (overhead swing)
+ */
+function updateChopAnimation(group, deltaTime) {
+  const chopFreq = 1.0 / 1.5; // 1.5s period
+  const chopPhase = group.animClock * 2 * Math.PI * chopFreq;
+
+  if (group.userData.rightArm) {
+    // Swing from -0.8 to 0.2 radians
+    group.userData.rightArm.rotation.x = -0.8 + Math.sin(chopPhase + Math.PI / 2) * 0.5;
+  }
+}
+
+/**
+ * Plains work: bend forward + arms pull
+ */
+function updateHarvestAnimation(group, deltaTime) {
+  const harvestFreq = 1.0 / 2.0; // 2.0s period
+  const harvestPhase = group.animClock * 2 * Math.PI * harvestFreq;
+
+  // Body bends forward
+  if (group.userData.body) {
+    group.userData.body.rotation.x = 0.3 * Math.abs(Math.sin(harvestPhase));
+  }
+
+  // Arms alternate reach and pull
+  if (group.userData.rightArm && group.userData.leftArm) {
+    group.userData.rightArm.rotation.x = Math.sin(harvestPhase) * 0.6;
+    group.userData.leftArm.rotation.x = Math.sin(harvestPhase + Math.PI) * 0.6;
+  }
+}
+
+/**
+ * Wetlands work: both arms swing forward and down
+ */
+function updateScoopAnimation(group, deltaTime) {
+  const scoopFreq = 1.0 / 1.8; // 1.8s period
+  const scoopPhase = group.animClock * 2 * Math.PI * scoopFreq;
+
+  if (group.userData.rightArm && group.userData.leftArm) {
+    // Swing from -0.5 to 0.3
+    const scoopAmount = -0.5 + Math.sin(scoopPhase + Math.PI / 2) * 0.4;
+    group.userData.rightArm.rotation.x = scoopAmount;
+    group.userData.leftArm.rotation.x = scoopAmount;
+  }
 }
 
 // ===== HAT BY SPECIALIZATION =====
@@ -376,6 +514,58 @@ export function updateAgentMoraleBar(agent, morale) {
   bar.children[1].position.x = -0.19 + fillWidth / 2;
 
   agent.userData.morale = morale;
+}
+
+/**
+ * Get animation speed multiplier from morale
+ * Affects animation frequency + visual feedback
+ */
+export function getMoraleAnimSpeed(morale) {
+  if (morale >= 80) return 1.2; // Happy: energetic, faster
+  if (morale >= 50) return 1.0; // Neutral: normal
+  if (morale >= 20) return 0.6; // Unhappy: sluggish
+  return 0.0; // Mutinous: stopped
+}
+
+/**
+ * Update agent visual tint based on morale
+ * High morale: normal colors
+ * Low morale: desaturated
+ * Very low: red tint
+ */
+export function updateMoraleTint(agent, morale) {
+  const bodyMesh = agent.userData?.body;
+  if (!bodyMesh || !bodyMesh.material) return;
+
+  const originalColor = new THREE.Color(agent.userData.bodyColor || 0x999999);
+
+  if (morale >= 50) {
+    // Normal colors
+    bodyMesh.material.color.copy(originalColor);
+    bodyMesh.material.emissive.setHex(0x000000);
+  } else if (morale >= 20) {
+    // Low morale: desaturate by 30% (lerp toward gray)
+    const grayColor = new THREE.Color(0x888888);
+    bodyMesh.material.color.copy(originalColor).lerp(grayColor, 0.3);
+    bodyMesh.material.emissive.setHex(0x000000);
+  } else {
+    // Very low morale: red tint + slight glow
+    bodyMesh.material.color.setHex(0xcc3333);
+    bodyMesh.material.emissive.setHex(0x660000);
+  }
+}
+
+/**
+ * Add head-shake animation for mutinous agents (morale < 20)
+ * Applied during animation update
+ */
+export function updateMutinousHeadShake(agent, deltaTime) {
+  const headMesh = agent.children.find((child) => child.geometry?.type === 'BoxGeometry' && child.position.y > 0.4);
+  if (!headMesh) return;
+
+  const shakeFreq = 2.0; // Hz
+  const shakeAmp = 0.1; // radians
+  headMesh.rotation.y = Math.sin(agent.animClock * 2 * Math.PI * shakeFreq) * shakeAmp;
 }
 
 /**

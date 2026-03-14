@@ -4,10 +4,11 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useAgentStore } from '../../store/agentStore.js';
 import { useGameStore } from '../../store/gameStore.js';
 import { generateTerrainGrid, buildTerrainScene } from '../../utils/terrainBuilder.js';
-import { createAgentModel, createAgentLabel } from '../../utils/agentBuilder.js';
+import { createAgentModel, createAgentLabel, getMoraleAnimSpeed, updateMoraleTint, updateMutinousHeadShake } from '../../utils/agentBuilder.js';
 import { VOXEL_SIZE, VOXEL_HALF, COLORS } from '../../utils/voxelBuilder.js';
 import { IslandSceneManager } from '../../utils/islandSceneManager.js';
 import { populateTerrainProps } from '../../utils/terrainPropsBuilder.js';
+import { initAgentPosition, setAgentTarget, recallAgentToCenter, getZoneWorldPosition, updateAgentPositions } from '../../utils/agentMovement.js';
 
 const SCENE_WIDTH = window.innerWidth;
 const SCENE_HEIGHT = window.innerHeight;
@@ -21,6 +22,7 @@ export default function IslandScene() {
   const terrainGroupRef = useRef(null);
   const animationFrameRef = useRef(null);
   const sceneManagerRef = useRef(null);
+  const agentMeshesRef = useRef(new Map()); // Map<agentId, THREE.Group>
 
   const agents = useAgentStore((state) => state.agents);
   const resources = useGameStore((state) => state.resources);
@@ -172,8 +174,15 @@ export default function IslandScene() {
     // ============= Animation Loop =============
 
     let animationId;
+    let lastFrameTime = performance.now();
+
     const animate = () => {
       animationId = window.requestAnimationFrame(animate);
+
+      // Calculate delta time
+      const now = performance.now();
+      const deltaTime = Math.min((now - lastFrameTime) / 1000, 0.033); // Cap at 33ms (30 FPS min)
+      lastFrameTime = now;
 
       // Water animation (gentle wave)
       waterAnimationRef.time += 0.01;
@@ -181,10 +190,62 @@ export default function IslandScene() {
       water1.position.y = -0.15 + Math.sin(waterAnimationRef.time) * waveAmount;
       water2.position.y = -0.3 + Math.sin(waterAnimationRef.time + 1) * (waveAmount * 0.6);
 
+      // ===== AGENT MOVEMENT & ANIMATION =====
+      const agentMeshes = agentMeshesRef.current;
+
+      // 1. Update all agent positions (movement toward targets)
+      const positions = updateAgentPositions(deltaTime);
+
+      // 2. Apply positions to meshes and handle state transitions
+      positions.forEach((pos, agentId) => {
+        const mesh = agentMeshes.get(agentId);
+        if (!mesh) return;
+
+        // Update position
+        mesh.position.x = pos.x;
+        mesh.position.z = pos.z;
+
+        // Transition to working state when arrived at zone
+        if (pos.arrived && mesh.animState === 'walking') {
+          const agent = useAgentStore.getState().agents.find((a) => a.id === agentId);
+          if (agent?.assignedZone !== null && agent?.assignedZone !== undefined) {
+            mesh.animState = 'working';
+            // Map zone index to zone type
+            const zoneType = getZoneTypeFromAgent(agent);
+            mesh.zoneType = zoneType;
+          } else {
+            mesh.animState = 'idle';
+            mesh.zoneType = null;
+          }
+        }
+
+        // Update facing direction while walking
+        if (pos.direction) {
+          mesh.rotation.y = Math.atan2(pos.direction.x, pos.direction.z);
+        }
+      });
+
+      // 3. Update all agent animations
+      agentMeshes.forEach((mesh) => {
+        mesh.updateAnimation(deltaTime);
+      });
+
       controls.update();
 
       renderer.render(scene, camera);
     };
+
+    // Helper: Get zone type from agent
+    function getZoneTypeFromAgent(agent) {
+      if (!agent.assignedZone) return null;
+      const pos = getZoneWorldPosition(agent.assignedZone);
+      // Determine zone type from position or store
+      // For now, use a simple mapping
+      if (agent.assignedZone === 'forest') return 'forest';
+      if (agent.assignedZone === 'plains') return 'plains';
+      if (agent.assignedZone === 'wetlands') return 'wetlands';
+      return null;
+    }
 
     animate();
     animationFrameRef.current = animationId;
@@ -229,6 +290,61 @@ export default function IslandScene() {
     // Sync agents and resources whenever they change
     sceneManagerRef.current.syncScene(agents, resources, terrain);
   }, [agents, resources, terrain]);
+
+  // ============= AGENT MOVEMENT SUBSCRIPTION =============
+  
+  useEffect(() => {
+    // Subscribe to agent changes (assignments, morale)
+    const unsubscribe = useAgentStore.subscribe(
+      (state) => state.agents.map((a) => ({ id: a.id, morale: a.morale, assignedZone: a.assignedZone })),
+      (agentStates) => {
+        const agentMeshes = agentMeshesRef.current;
+        const scene = sceneRef.current;
+        
+        if (!scene) return;
+
+        agentStates.forEach((agent) => {
+          let mesh = agentMeshes.get(agent.id);
+
+          // Create mesh if it doesn't exist
+          if (!mesh) {
+            const fullAgent = useAgentStore.getState().agents.find((a) => a.id === agent.id);
+            if (!fullAgent) return;
+
+            mesh = createAgentModel(fullAgent);
+            mesh.position.set(0, 0.5, -1.5); // Default center position
+            mesh.baseY = 0.5;
+            scene.add(mesh);
+            agentMeshes.set(agent.id, mesh);
+
+            // Initialize position tracking
+            initAgentPosition(agent.id, 0, -1.5);
+          }
+
+          // Update animation speed from morale
+          mesh.animSpeed = getMoraleAnimSpeed(agent.morale);
+
+          // Update visual tint from morale
+          const fullAgent = useAgentStore.getState().agents.find((a) => a.id === agent.id);
+          if (fullAgent) {
+            updateMoraleTint(mesh, agent.morale);
+          }
+
+          // Update target position from zone assignment
+          if (agent.assignedZone) {
+            const targetPos = getZoneWorldPosition(agent.assignedZone);
+            setAgentTarget(agent.id, targetPos.x, targetPos.z);
+            mesh.animState = 'walking';
+          } else {
+            recallAgentToCenter(agent.id);
+            mesh.animState = 'walking';
+          }
+        });
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   return <div ref={mountRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }} />;
 }
