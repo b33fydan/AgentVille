@@ -1,5 +1,5 @@
-import { Suspense, useState, useEffect } from 'react';
-import IslandScene from './components/scene/IslandScene.jsx';
+import { Suspense, lazy, useState, useEffect } from 'react';
+const IslandScene = lazy(() => import('./components/scene/IslandScene.jsx'));
 import { stateVerification } from './utils/stateVerification';
 import AgentPanel from './components/ui/AgentPanel.jsx';
 import SeasonHUD from './components/ui/SeasonHUD.jsx';

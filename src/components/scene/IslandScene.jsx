@@ -1,6 +1,4 @@
 import { useEffect, useRef } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useAgentStore } from '../../store/agentStore.js';
 import { useGameStore } from '../../store/gameStore.js';
 import { generateTerrainGrid, buildTerrainScene } from '../../utils/terrainBuilder.js';
@@ -32,6 +30,12 @@ export default function IslandScene() {
 
   useEffect(() => {
     if (!mountRef.current) return;
+
+    // Dynamically import THREE.js and OrbitControls on mount
+    // This prevents the ~500KB THREE bundle from loading until the scene actually renders
+    (async () => {
+      const THREE = await import('three');
+      const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
 
     // Scene
     const scene = new THREE.Scene();
@@ -280,6 +284,7 @@ export default function IslandScene() {
 
       renderer.dispose();
     };
+    })(); // End async IIFE for dynamic THREE import
   }, []);
 
   // ============= Sync Scene Manager =============

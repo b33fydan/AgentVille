@@ -47,17 +47,6 @@ export const COLORS = {
   shieldMetal: '#90a0ad'
 };
 
-export const BILL_CATEGORY_COLORS = {
-  housing: COLORS.monsterHousing,
-  utilities: COLORS.monsterUtilities,
-  phone: COLORS.monsterPhone,
-  transport: COLORS.monsterTransport,
-  food: COLORS.monsterFood,
-  health: COLORS.monsterHealth,
-  entertainment: COLORS.monsterEntertainment,
-  other: COLORS.monsterTransport
-};
-
 // ============= AGENTVILLE TERRAIN TYPES =============
 export const TERRAIN_TYPES = {
   forest: 'forest',
