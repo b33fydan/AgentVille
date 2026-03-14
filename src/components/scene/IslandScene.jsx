@@ -37,14 +37,14 @@ export default function IslandScene() {
     scene.fog = new THREE.Fog(0x87ceeb, 50, 100);
     sceneRef.current = scene;
 
-    // Camera
+    // Camera (isometric-ish view)
     const camera = new THREE.PerspectiveCamera(
-      75,
+      45, // Tighter FOV for "miniature" feel
       SCENE_WIDTH / SCENE_HEIGHT,
       0.1,
       1000
     );
-    camera.position.set(8, 12, 12);
+    camera.position.set(10, 10, 10);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
@@ -58,19 +58,35 @@ export default function IslandScene() {
 
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.autoRotate = false;
+    controls.autoRotate = true; // Auto-rotate by default
+    controls.autoRotateSpeed = 0.3; // Gentle rotation
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.autoRotateSpeed = 0.5;
+    controls.dampingFactor = 0.08;
     controls.minDistance = 5;
-    controls.maxDistance = 30;
-    controls.maxPolarAngle = Math.PI * 0.9;
-    controls.minPolarAngle = Math.PI * 0.1;
+    controls.maxDistance = 22;
+    controls.minPolarAngle = Math.PI * 0.3; // Prevent nearly top-down
+    controls.maxPolarAngle = Math.PI / 2.2; // Prevent going under island
+    controls.enablePan = false; // Disable panning
+    
+    // Resume auto-rotate after 5s of no interaction
+    let rotateTimeout;
+    controls.addEventListener('change', () => {
+      controls.autoRotate = false;
+      clearTimeout(rotateTimeout);
+      rotateTimeout = setTimeout(() => {
+        controls.autoRotate = true;
+      }, 5000);
+    });
+    
     controlsRef.current = controls;
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
+
+    // Hemisphere light (sky + ground bounce)
+    const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x4a7c4f, 0.25);
+    scene.add(hemisphereLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(10, 20, 10);
@@ -87,21 +103,40 @@ export default function IslandScene() {
     scene.add(directionalLight);
     scene.add(directionalLight.target);
 
-    // Water plane (background)
-    const waterGeometry = new THREE.PlaneGeometry(50, 50);
-    const waterMaterial = new THREE.MeshStandardMaterial({
-      color: 0x1f6aa5,
+    // Water planes (animated dual layer for depth effect)
+    const waterGeometry1 = new THREE.PlaneGeometry(60, 60);
+    const waterMaterial1 = new THREE.MeshStandardMaterial({
+      color: 0x3b82f6,
       transparent: true,
-      opacity: 0.4,
-      roughness: 0.3,
+      opacity: 0.6,
+      roughness: 0.2,
+      metalness: 0.2,
+      side: THREE.DoubleSide
+    });
+    const water1 = new THREE.Mesh(waterGeometry1, waterMaterial1);
+    water1.rotation.x = -Math.PI / 2;
+    water1.position.y = -0.15;
+    water1.receiveShadow = true;
+    scene.add(water1);
+
+    // Deeper water layer
+    const waterGeometry2 = new THREE.PlaneGeometry(60, 60);
+    const waterMaterial2 = new THREE.MeshStandardMaterial({
+      color: 0x1d4ed8,
+      transparent: true,
+      opacity: 0.3,
+      roughness: 0.4,
       metalness: 0.1,
       side: THREE.DoubleSide
     });
-    const water = new THREE.Mesh(waterGeometry, waterMaterial);
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = -0.1;
-    water.receiveShadow = true;
-    scene.add(water);
+    const water2 = new THREE.Mesh(waterGeometry2, waterMaterial2);
+    water2.rotation.x = -Math.PI / 2;
+    water2.position.y = -0.3;
+    water2.receiveShadow = true;
+    scene.add(water2);
+
+    // Store water refs for animation
+    const waterAnimationRef = { water1, water2, time: 0 };
 
     // Terrain group
     const terrainGroup = new THREE.Group();
@@ -135,6 +170,12 @@ export default function IslandScene() {
     let animationId;
     const animate = () => {
       animationId = window.requestAnimationFrame(animate);
+
+      // Water animation (gentle wave)
+      waterAnimationRef.time += 0.01;
+      const waveAmount = 0.03;
+      water1.position.y = -0.15 + Math.sin(waterAnimationRef.time) * waveAmount;
+      water2.position.y = -0.3 + Math.sin(waterAnimationRef.time + 1) * (waveAmount * 0.6);
 
       controls.update();
 
