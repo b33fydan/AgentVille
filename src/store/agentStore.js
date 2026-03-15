@@ -66,7 +66,35 @@ function createAgent(index) {
     fatigue: 25, // 0-100: 0=well-rested, 100=exhausted
     equipmentWear: 20, // 0-100: 0=perfect, 100=broken
     currentDecision: 'idle', // Current autonomous decision
-    decidedZone: null // Zone agent decided to work in
+    decidedZone: null, // Zone agent decided to work in
+    // ===== INVENTORY SYSTEM (NEW) =====
+    inventory: {
+      wood: Math.floor(Math.random() * 10) + 5, // Starting: 5-15 wood
+      wheat: Math.floor(Math.random() * 5) + 2, // Starting: 2-7 wheat
+      hay: Math.floor(Math.random() * 5) + 2,   // Starting: 2-7 hay
+      coins: 10 // Starting coins for trading
+    },
+    inventoryMax: {
+      wood: 100,
+      wheat: 100,
+      hay: 100,
+      coins: 1000
+    },
+    // ===== TRADING SYSTEM (NEW) =====
+    tradingStats: {
+      totalTrades: 0,
+      successfulTrades: 0,
+      failedTrades: 0,
+      resourcesTraded: { wood: 0, wheat: 0, hay: 0 },
+      coinsEarned: 0,
+      coinsSpent: 0
+    },
+    // ===== CONFLICT SYSTEM (NEW) =====
+    relationships: {}, // { agentId: { trust: -100..100, lastInteraction: day } }
+    alliance: null, // agentId of faction leader, or null
+    boycottList: [], // List of agentIds this agent won't trade with
+    reputation: 50, // 0-100: affects willingness to trade
+    lastThiefAttempt: null // agentId who tried to steal
   };
 }
 
@@ -285,20 +313,47 @@ export const useAgentStore = create(
       },
 
       /**
-       * Agent eats food - reduces hunger
+       * Agent eats food - reduces hunger and consumes wheat
        */
       eatFood: (agentId, hungerReduction = 30) => {
-        set((state) => ({
-          agents: state.agents.map((agent) => {
-            if (agent.id !== agentId) return agent;
+        const { agents } = get();
+        const agent = agents.find((a) => a.id === agentId);
+        if (!agent) return false;
 
-            return {
-              ...agent,
-              hunger: Math.max(0, agent.hunger - hungerReduction),
-              currentDecision: 'eating'
-            };
-          })
-        }));
+        // Try to consume wheat from agent's inventory first
+        const wheatNeeded = 2; // 2 wheat units per meal
+
+        if ((agent.inventory?.wheat || 0) >= wheatNeeded) {
+          // Consume from agent inventory
+          set((state) => ({
+            agents: state.agents.map((a) => {
+              if (a.id !== agentId) return a;
+              return {
+                ...a,
+                inventory: {
+                  ...a.inventory,
+                  wheat: a.inventory.wheat - wheatNeeded
+                },
+                hunger: Math.max(0, a.hunger - hungerReduction),
+                currentDecision: 'eating'
+              };
+            })
+          }));
+          return true;
+        } else {
+          // Just reduce hunger even if food not available (agents are resilient)
+          set((state) => ({
+            agents: state.agents.map((a) => {
+              if (a.id !== agentId) return a;
+              return {
+                ...a,
+                hunger: Math.max(0, a.hunger - hungerReduction),
+                currentDecision: 'eating'
+              };
+            })
+          }));
+          return true;
+        }
       },
 
       /**
@@ -400,6 +455,179 @@ export const useAgentStore = create(
             assignedZone: null,
             status: 'idle'
           }))
+        }));
+      },
+
+      // ===== INVENTORY SYSTEM (NEW) =====
+
+      /**
+       * Add resource to agent's inventory
+       */
+      addResourceToInventory: (agentId, resourceType, amount) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            const currentAmount = agent.inventory[resourceType] || 0;
+            const max = agent.inventoryMax[resourceType] || 100;
+            const newAmount = Math.min(max, currentAmount + amount);
+            const overflow = Math.max(0, currentAmount + amount - max); // Lost due to inventory limit
+
+            return {
+              ...agent,
+              inventory: {
+                ...agent.inventory,
+                [resourceType]: newAmount
+              }
+            };
+          })
+        }));
+      },
+
+      /**
+       * Remove resource from agent's inventory (returns success)
+       */
+      removeResourceFromInventory: (agentId, resourceType, amount) => {
+        let success = false;
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            const current = agent.inventory[resourceType] || 0;
+            if (current >= amount) {
+              success = true;
+              return {
+                ...agent,
+                inventory: {
+                  ...agent.inventory,
+                  [resourceType]: current - amount
+                }
+              };
+            }
+            return agent;
+          })
+        }));
+        return success;
+      },
+
+      /**
+       * Get agent's current inventory
+       */
+      getAgentInventory: (agentId) => {
+        const { agents } = get();
+        const agent = agents.find((a) => a.id === agentId);
+        return agent?.inventory || { wood: 0, wheat: 0, hay: 0, coins: 0 };
+      },
+
+      /**
+       * Get total value of agent's inventory (at current prices)
+       */
+      getAgentWealth: (agentId) => {
+        const { agents } = get();
+        const agent = agents.find((a) => a.id === agentId);
+        if (!agent) return 0;
+
+        // Default market prices (will be overridden by economicEngine)
+        const prices = {
+          wood: 2,
+          wheat: 5,
+          hay: 3,
+          coins: 1
+        };
+
+        return (
+          (agent.inventory.wood || 0) * prices.wood +
+          (agent.inventory.wheat || 0) * prices.wheat +
+          (agent.inventory.hay || 0) * prices.hay +
+          (agent.inventory.coins || 0) * prices.coins
+        );
+      },
+
+      /**
+       * Update agent's relationship with another agent
+       */
+      updateAgentRelationship: (agentId, otherAgentId, trustDelta) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            const currentTrust = agent.relationships[otherAgentId]?.trust || 0;
+            const newTrust = Math.max(-100, Math.min(100, currentTrust + trustDelta));
+
+            return {
+              ...agent,
+              relationships: {
+                ...agent.relationships,
+                [otherAgentId]: {
+                  trust: newTrust,
+                  lastInteraction: new Date().getTime()
+                }
+              }
+            };
+          })
+        }));
+      },
+
+      /**
+       * Add agent to boycott list
+       */
+      boycottAgent: (agentId, targetAgentId) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+            
+            if (!agent.boycottList.includes(targetAgentId)) {
+              return {
+                ...agent,
+                boycottList: [...agent.boycottList, targetAgentId]
+              };
+            }
+            return agent;
+          })
+        }));
+      },
+
+      /**
+       * Remove agent from boycott list
+       */
+      removeFromBoycott: (agentId, targetAgentId) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            return {
+              ...agent,
+              boycottList: agent.boycottList.filter((id) => id !== targetAgentId)
+            };
+          })
+        }));
+      },
+
+      /**
+       * Record trade attempt
+       */
+      recordTrade: (agentId, success, resourceType, amount, coinsAmount) => {
+        set((state) => ({
+          agents: state.agents.map((agent) => {
+            if (agent.id !== agentId) return agent;
+
+            const stats = agent.tradingStats;
+            return {
+              ...agent,
+              tradingStats: {
+                ...stats,
+                totalTrades: stats.totalTrades + 1,
+                successfulTrades: success ? stats.successfulTrades + 1 : stats.successfulTrades,
+                failedTrades: success ? stats.failedTrades : stats.failedTrades + 1,
+                resourcesTraded: {
+                  ...stats.resourcesTraded,
+                  [resourceType]: (stats.resourcesTraded[resourceType] || 0) + amount
+                },
+                coinsEarned: stats.coinsEarned + Math.max(0, coinsAmount),
+                coinsSpent: stats.coinsSpent + Math.max(0, -coinsAmount)
+              }
+            };
+          })
         }));
       },
 

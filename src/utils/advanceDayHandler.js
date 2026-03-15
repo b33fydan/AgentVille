@@ -8,6 +8,9 @@ import { useLogStore } from '../store/logStore';
 import { soundManager } from './soundManager';
 import { selectReaction } from './agentReactions';
 import { DecisionMatrix, processAllAgentDecisions } from './agentDecisions';
+import { economicEngine } from './economicEngine';
+import { conflictEngine } from './agentConflict';
+import { tradeMarket } from './agentTrading';
 
 const RESOURCE_OUTPUTS = {
   forest: { resource: 'wood', baseOutput: 5 },
@@ -119,7 +122,7 @@ export function advanceDayLogic() {
     console.log(`[advanceDay] ${agent.name} → ${decision.decision} (priority: ${decision.priority})`);
   });
 
-  // ===== 2. GENERATE RESOURCES =====
+  // ===== 2. GENERATE RESOURCES (TO AGENT INVENTORY, NOT GLOBAL) =====
   agents.forEach((agent) => {
     if (agent.assignedZone && agent.status === 'working') {
       const zoneConfig = RESOURCE_OUTPUTS[agent.assignedZone];
@@ -132,12 +135,40 @@ export function advanceDayLogic() {
       const needsMultiplier = agentState.getAgentEfficiencyMultiplier(agent.id);
       
       const totalEfficiency = moraleEfficiency * needsMultiplier;
-      const output = Math.floor(zoneConfig.baseOutput * totalEfficiency);
+      let output = Math.floor(zoneConfig.baseOutput * totalEfficiency);
+
+      // Apply random events: crop failure (-50%) or bountiful harvest (+100%)
+      if (Math.random() < 0.15) {
+        if (Math.random() > 0.5) {
+          output = Math.floor(output * 0.5); // Crop failure
+        } else {
+          output = Math.floor(output * 2.0); // Bountiful harvest
+        }
+      }
 
       if (output > 0) {
-        gameState.addResource(zoneConfig.resource, output);
+        // Split output: 60% to agent inventory, 40% to global pool
+        const agentShare = Math.floor(output * 0.6);
+        const globalShare = Math.floor(output * 0.4);
+        
+        // Add to agent inventory
+        agentState.addResourceToInventory(agent.id, zoneConfig.resource, agentShare);
+        
+        // Add to global gameStore for Sale Day calculation
+        gameState.addResource(zoneConfig.resource, globalShare);
+        
         soundManager.play('resourceGain');
-        console.log(`[advanceDay] ${agent.name} produced ${output} ${zoneConfig.resource} (morale*${moraleEfficiency.toFixed(2)} × needs*${needsMultiplier.toFixed(2)})`);
+        console.log(`[advanceDay] ${agent.name} produced ${output} ${zoneConfig.resource} (${agentShare} personal, ${globalShare} pool) (morale*${moraleEfficiency.toFixed(2)} × needs*${needsMultiplier.toFixed(2)})`);
+        
+        logState.addLogEntry({
+          agentId: agent.id,
+          agentName: agent.name,
+          type: 'resource_production',
+          message: `${agent.name} produced ${output} ${zoneConfig.resource}`,
+          emoji: zoneConfig.resource === 'wood' ? '🌲' : zoneConfig.resource === 'wheat' ? '🌾' : '🌊',
+          season: gameState.season,
+          day: gameState.day
+        });
       } else if (agent.fatigue > 90) {
         // Log work failure from exhaustion
         logState.addLogEntry({
@@ -152,6 +183,41 @@ export function advanceDayLogic() {
       }
     }
   });
+
+  // ===== 2.5. ECONOMIC SIMULATION & TRADING =====
+  // Update market prices based on supply/demand
+  const economicUpdate = economicEngine.updateEconomy(agents, gameState);
+  const currentPrices = economicUpdate.prices;
+
+  // Log price changes
+  const priceChanges = [];
+  ['wood', 'wheat', 'hay'].forEach((resource) => {
+    const currentPrice = currentPrices[resource];
+    const prevPrice = tradeMarket.priceHistory[resource][tradeMarket.priceHistory[resource].length - 2];
+    
+    if (prevPrice && Math.abs(currentPrice - prevPrice) > 0.2) {
+      const trend = currentPrice > prevPrice ? '📈' : '📉';
+      const change = ((currentPrice - prevPrice) / prevPrice * 100).toFixed(1);
+      logState.addLogEntry({
+        agentId: null,
+        agentName: 'Market',
+        type: 'price_change',
+        message: `${resource} price: $${currentPrice.toFixed(2)} (${change > 0 ? '+' : ''}${change}%)`,
+        emoji: trend,
+        season: gameState.season,
+        day: gameState.day
+      });
+    }
+  });
+
+  // Simulate agent-to-agent conflicts (theft, alliances)
+  conflictEngine.simulateConflict(agents, gameState);
+
+  // Decay old boycotts
+  conflictEngine.decayBoycotts(agents, gameState.day);
+
+  // Apply random economic events
+  const economicEvent = economicEngine.applyRandomEvent(agents, gameState, logState);
 
   // ===== 3. PASSIVE MORALE CHANGES & NEED CONSEQUENCES =====
   agents.forEach((agent) => {

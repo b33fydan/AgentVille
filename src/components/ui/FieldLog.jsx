@@ -91,7 +91,21 @@ export default function FieldLog() {
                                 ? 'border-red-600/50 bg-red-900/30 text-red-200'
                                 : entry.type === 'work_failure'
                                   ? 'border-orange-600/50 bg-orange-900/20 text-orange-100'
-                                  : 'border-slate-600/50 bg-slate-800/50 text-slate-200'
+                                  : entry.type === 'price_change'
+                                    ? 'border-yellow-600/50 bg-yellow-900/20 text-yellow-200'
+                                    : entry.type === 'resource_production'
+                                      ? 'border-emerald-600/50 bg-emerald-900/20 text-emerald-100'
+                                      : entry.type === 'market_trade' || entry.type === 'market_sale' || entry.type === 'trade'
+                                        ? 'border-teal-600/50 bg-teal-900/20 text-teal-100'
+                                        : entry.type === 'economy_alert' || entry.type === 'economy_collapse'
+                                          ? 'border-red-600/50 bg-red-900/40 text-red-200'
+                                          : entry.type === 'economic_event'
+                                            ? 'border-indigo-600/50 bg-indigo-900/20 text-indigo-100'
+                                            : entry.type === 'alliance_formed'
+                                              ? 'border-green-600/50 bg-green-900/30 text-green-100'
+                                              : entry.type?.includes('conflict')
+                                                ? 'border-red-600/50 bg-red-900/25 text-red-150'
+                                                : 'border-slate-600/50 bg-slate-800/50 text-slate-200'
                 }`}
               >
                 {/* Header: Agent badge + Time */}

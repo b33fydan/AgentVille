@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useAgentStore } from '../../store/agentStore';
 import { useLogStore } from '../../store/logStore';
 import { soundManager } from '../../utils/soundManager';
 import { advanceDayLogic, canAdvanceDay, getAdvanceButtonLabel, getAdvanceButtonColor } from '../../utils/advanceDayHandler';
+import { tradeMarket } from '../../utils/agentTrading';
 
 export default function SeasonHUD() {
   const resources = useGameStore((state) => state.resources);
@@ -13,9 +15,21 @@ export default function SeasonHUD() {
   const getProfit = useGameStore((state) => state.getProfit);
   
   const agents = useAgentStore((state) => state.agents);
+  const [marketPrices, setMarketPrices] = useState({ wood: 2, wheat: 5, hay: 3 });
+
+  // Update market prices from tradeMarket
+  useEffect(() => {
+    const prices = tradeMarket.getPrices();
+    if (prices.wood && prices.wheat && prices.hay) {
+      setMarketPrices({
+        wood: prices.wood,
+        wheat: prices.wheat,
+        hay: prices.hay
+      });
+    }
+  }, [day, season]);
 
   const profit = getProfit();
-  const marketPrices = { wood: 2, wheat: 5, hay: 3 };
 
   const getDayPhase = () => {
     if (day <= 2) return 'Setup';

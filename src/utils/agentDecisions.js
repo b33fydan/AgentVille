@@ -197,6 +197,39 @@ export class DecisionMatrix {
   }
 
   /**
+   * Evaluate trading decision based on prices and inventory
+   * Returns: { shouldTrade, resource, action }
+   */
+  evaluateTrading(prices) {
+    const { wood, wheat, hay, coins } = this.agent.inventory || {};
+    const workEthic = this.traits.workEthic || 50;
+
+    // Don't trade if risk-averse and prices haven't changed much
+    if (workEthic < 30) return null;
+
+    // High wood supply: sell wood, buy wheat
+    if (prices.wheat > prices.wood * 1.5 && (wood || 0) > 20) {
+      return { shouldTrade: true, sell: 'wood', buy: 'wheat', reason: 'Selling cheap wood, buying expensive wheat' };
+    }
+
+    // High wheat supply: sell wheat, buy wood
+    if (prices.wood > prices.wheat * 1.5 && (wheat || 0) > 20) {
+      return { shouldTrade: true, sell: 'wheat', buy: 'wood', reason: 'Selling cheap wheat, buying expensive wood' };
+    }
+
+    // Low coins: sell excess resources
+    if ((coins || 0) < 10 && (wood || 0) > 30) {
+      return { shouldTrade: true, sell: 'wood', buy: null, reason: 'Need coins, selling wood' };
+    }
+
+    if ((coins || 0) < 10 && (wheat || 0) > 20) {
+      return { shouldTrade: true, sell: 'wheat', buy: null, reason: 'Need coins, selling wheat' };
+    }
+
+    return null;
+  }
+
+  /**
    * Check if agent will rebel or refuse orders
    * Returns true if agent should refuse player commands
    */
