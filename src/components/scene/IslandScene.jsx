@@ -7,6 +7,7 @@ import { VOXEL_SIZE, VOXEL_HALF, COLORS } from '../../utils/voxelBuilder.js';
 import { IslandSceneManager } from '../../utils/islandSceneManager.js';
 import { populateTerrainProps } from '../../utils/terrainPropsBuilder.js';
 import { initAgentPosition, setAgentTarget, recallAgentToCenter, getZoneWorldPosition, updateAgentPositions } from '../../utils/agentMovement.js';
+import { applyDayNightLighting } from '../../engine/DayNightCycle.js';
 
 // Initial dimensions — will be updated by resize handler to match container
 let SCENE_WIDTH = window.innerWidth;
@@ -152,6 +153,9 @@ export default function IslandScene() {
     // Store water refs for animation
     const waterAnimationRef = { water1, water2, time: 0 };
 
+    // Store light refs for day/night cycle
+    const lightsRef = { directionalLight, ambientLight, hemisphereLight };
+
     // Terrain group
     const terrainGroup = new THREE.Group();
     scene.add(terrainGroup);
@@ -197,6 +201,10 @@ export default function IslandScene() {
       const waveAmount = 0.03;
       water1.position.y = -0.15 + Math.sin(waterAnimationRef.time) * waveAmount;
       water2.position.y = -0.3 + Math.sin(waterAnimationRef.time + 1) * (waveAmount * 0.6);
+
+      // ===== DAY/NIGHT LIGHTING CYCLE =====
+      const currentGameHour = useGameStore.getState().gameHour || 0;
+      applyDayNightLighting(currentGameHour, lightsRef, scene);
 
       // ===== AGENT MOVEMENT & ANIMATION =====
       const agentMeshes = agentMeshesRef.current;
