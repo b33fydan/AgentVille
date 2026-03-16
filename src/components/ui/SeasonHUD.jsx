@@ -5,6 +5,8 @@ import { useLogStore } from '../../store/logStore';
 import { soundManager } from '../../utils/soundManager';
 import { advanceDayLogic, canAdvanceDay, getAdvanceButtonLabel, getAdvanceButtonColor } from '../../utils/advanceDayHandler';
 import { tradeMarket } from '../../utils/agentTrading';
+import { cardGenerator } from '../../utils/cardGenerator';
+import ShareModal from './ShareModal';
 
 export default function SeasonHUD() {
   const resources = useGameStore((state) => state.resources);
@@ -16,6 +18,9 @@ export default function SeasonHUD() {
   
   const agents = useAgentStore((state) => state.agents);
   const [marketPrices, setMarketPrices] = useState({ wood: 2, wheat: 5, hay: 3 });
+  const [isMuted, setIsMuted] = useState(() => soundManager.getMuted());
+  const [islandCard, setIslandCard] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Update market prices from tradeMarket
   useEffect(() => {
@@ -44,6 +49,33 @@ export default function SeasonHUD() {
     if (!success) {
       console.warn('[SeasonHUD] Could not advance day');
     }
+  };
+
+  const toggleMute = () => {
+    const newMuted = !isMuted;
+    soundManager.setMuted(newMuted);
+    setIsMuted(newMuted);
+  };
+
+  const handleCapture = async () => {
+    soundManager.play('shareCapture');
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+    const screenshotUrl = canvas.toDataURL('image/png');
+    const islandName = useGameStore.getState().islandName || 'AgentVille Island';
+    const avgMorale = agents.length > 0
+      ? Math.round(agents.reduce((sum, a) => sum + a.morale, 0) / agents.length)
+      : 50;
+    const card = await cardGenerator.generateCard('island', {
+      screenshotUrl,
+      islandName,
+      season,
+      day,
+      agentCount: agents.length,
+      morale: avgMorale
+    });
+    setIslandCard(card);
+    setShowShareModal(true);
   };
 
   const handleShare = async () => {
@@ -161,11 +193,25 @@ export default function SeasonHUD() {
       {/* Action Buttons (Secondary) */}
       <div className="flex gap-2">
         <button
+          onClick={handleCapture}
+          className="flex-1 rounded-lg px-3 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all active:scale-95"
+          title="Capture island screenshot"
+        >
+          📸 Capture
+        </button>
+        <button
           onClick={handleShare}
           className="flex-1 rounded-lg px-3 py-2 text-sm font-bold bg-green-600 hover:bg-green-500 text-white transition-all active:scale-95"
           title="Share your progress"
         >
           📤 Share
+        </button>
+        <button
+          onClick={toggleMute}
+          className="rounded-lg px-3 py-2 text-sm font-bold bg-slate-700 hover:bg-slate-600 text-white transition-all active:scale-95"
+          title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+        >
+          {isMuted ? '🔇' : '🔊'}
         </button>
       </div>
 
@@ -182,6 +228,14 @@ export default function SeasonHUD() {
           <div className="font-bold">⚠️ CRISIS ALERT</div>
           <div className="text-xs">Resolve the crisis first</div>
         </div>
+      )}
+
+      {showShareModal && (
+        <ShareModal
+          card={islandCard}
+          title="📸 Island Screenshot"
+          onClose={() => setShowShareModal(false)}
+        />
       )}
     </div>
   );

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAgentStore } from '../../store/agentStore';
 import { useGameStore } from '../../store/gameStore';
+import { cardGenerator } from '../../utils/cardGenerator';
+import { soundManager } from '../../utils/soundManager';
+import ShareModal from './ShareModal';
 
 export default function RiotModal() {
   const season = useGameStore((state) => state.season);
@@ -13,6 +16,8 @@ export default function RiotModal() {
   const addRiotToHistory = useGameStore((state) => state.addRiotToHistory);
 
   const [showRiot, setShowRiot] = useState(false);
+  const [riotCard, setRiotCard] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Check for riot on Sale Day
   useEffect(() => {
@@ -71,6 +76,19 @@ export default function RiotModal() {
 
   const roast = roasts[Math.floor(Math.random() * roasts.length)];
 
+  const handleShareRiot = async () => {
+    soundManager.play('shareCapture');
+    const islandName = useGameStore.getState().islandName || 'Unknown Island';
+    const card = await cardGenerator.generateCard('riot', {
+      islandName,
+      season,
+      charges: violations,
+      roast
+    });
+    setRiotCard(card);
+    setShowShareModal(true);
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/90 backdrop-blur-sm z-50">
       <div className="w-full max-w-2xl rounded-lg border-4 border-red-600 bg-slate-900 p-8 shadow-2xl">
@@ -110,11 +128,22 @@ export default function RiotModal() {
           🔄 Start Season {season + 1} (Learn & Retry)
         </button>
 
-        {/* Share Hint */}
-        <p className="text-center text-xs text-slate-500 mt-4">
-          💡 Pro tip: Screenshot this for TikTok clout
-        </p>
+        {/* Share Violation Report */}
+        <button
+          onClick={handleShareRiot}
+          className="w-full rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 mt-2 transition-all active:scale-95"
+        >
+          📤 SHARE THIS SHAME
+        </button>
       </div>
+
+      {showShareModal && (
+        <ShareModal
+          card={riotCard}
+          title="🔥 ACA Violation Report"
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }
