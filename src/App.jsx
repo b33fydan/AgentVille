@@ -37,7 +37,7 @@ export default function App() {
   return (
     <main className="flex min-h-screen w-full min-w-0 flex-col overflow-x-hidden bg-slate-900 text-white md:flex-row">
       {/* Island Scene (Main) */}
-      <section className="relative w-full min-w-0 md:order-2 md:h-screen md:w-[65vw]">
+      <section className="relative h-[60vh] w-full min-w-0 md:order-2 md:h-screen md:w-[65vw]">
         <Suspense fallback={<div className="p-4 text-white">Loading island...</div>}>
           <IslandScene />
         </Suspense>

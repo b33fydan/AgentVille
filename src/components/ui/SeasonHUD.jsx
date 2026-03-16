@@ -71,7 +71,7 @@ export default function SeasonHUD() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-900/95 p-4 backdrop-blur md:bottom-auto md:right-4 md:w-80 md:left-auto">
+    <div className="fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-900/95 p-4 backdrop-blur md:absolute md:top-4 md:bottom-auto md:right-4 md:w-80 md:left-auto">
       {/* Season Info */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded bg-slate-800 p-2 text-center">

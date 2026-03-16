@@ -8,8 +8,9 @@ import { IslandSceneManager } from '../../utils/islandSceneManager.js';
 import { populateTerrainProps } from '../../utils/terrainPropsBuilder.js';
 import { initAgentPosition, setAgentTarget, recallAgentToCenter, getZoneWorldPosition, updateAgentPositions } from '../../utils/agentMovement.js';
 
-const SCENE_WIDTH = window.innerWidth;
-const SCENE_HEIGHT = window.innerHeight;
+// Initial dimensions — will be updated by resize handler to match container
+let SCENE_WIDTH = window.innerWidth;
+let SCENE_HEIGHT = window.innerHeight;
 
 export default function IslandScene() {
   const mountRef = useRef(null);
@@ -45,9 +46,12 @@ export default function IslandScene() {
 
     // Camera (isometric-ish view)
     // Grid is now 16×16 at 0.5 units = 8×8 units, so camera positioned further out
+    const containerWidth = mountRef.current.clientWidth || window.innerWidth;
+    const containerHeight = mountRef.current.clientHeight || window.innerHeight;
+
     const camera = new THREE.PerspectiveCamera(
       45, // Tighter FOV for "miniature" feel
-      SCENE_WIDTH / SCENE_HEIGHT,
+      containerWidth / containerHeight,
       0.1,
       1000
     );
@@ -57,7 +61,7 @@ export default function IslandScene() {
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(SCENE_WIDTH, SCENE_HEIGHT);
+    renderer.setSize(containerWidth, containerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     mountRef.current.appendChild(renderer.domElement);
@@ -257,8 +261,10 @@ export default function IslandScene() {
     // ============= Handle Resize =============
 
     const handleResize = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+      const container = mountRef.current;
+      if (!container) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
 
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
@@ -351,5 +357,5 @@ export default function IslandScene() {
     return () => unsubscribe();
   }, []);
 
-  return <div ref={mountRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }} />;
+  return <div ref={mountRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }} />;
 }
