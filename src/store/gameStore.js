@@ -76,6 +76,13 @@ export const useGameStore = create(
       day: 1,
       timeOfDay: 'morning', // 'morning' | 'evening'
       daysInSeason: 7,
+      gameHour: 0, // 0-24 continuous game hour (driven by GameTicker)
+      dayPhase: 'morning', // 'morning' | 'afternoon' | 'evening' | 'night' (4-phase display)
+      gameSpeed: 1, // 0=pause, 1=1x, 2=2x, 3=3x
+
+      setGameHour: (hour) => set({ gameHour: hour }),
+      setDayPhase: (phase) => set({ dayPhase: phase }),
+      setGameSpeed: (speed) => set({ gameSpeed: speed }),
 
       advanceTime: () => {
         set((state) => {

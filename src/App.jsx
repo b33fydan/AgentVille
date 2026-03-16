@@ -1,6 +1,8 @@
 import { Suspense, lazy, useState, useEffect } from 'react';
 const IslandScene = lazy(() => import('./components/scene/IslandScene.jsx'));
 import { stateVerification } from './utils/stateVerification';
+import { gameTicker } from './engine/GameTicker';
+import { useGameStore } from './store/gameStore';
 import AgentPanel from './components/ui/AgentPanel.jsx';
 import SeasonHUD from './components/ui/SeasonHUD.jsx';
 import CrisisModal from './components/ui/CrisisModal.jsx';
@@ -21,10 +23,34 @@ export default function App() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.stateVerification = stateVerification;
+      window.gameTicker = gameTicker;
       console.log('%c💡 State verification tools loaded!', 'color: #22c55e; font-weight: bold;');
       console.log('%cRun: window.verifyState()', 'color: #3b82f6;');
     }
   }, []);
+
+  // Start GameTicker when game is in playing phase
+  useEffect(() => {
+    const gamePhase = useGameStore.getState().gamePhase;
+    if (gameStarted && gamePhase === 'playing') {
+      gameTicker.start();
+    }
+
+    // Subscribe to gamePhase changes to auto-start ticker
+    const unsubscribe = useGameStore.subscribe(
+      (state) => state.gamePhase,
+      (phase) => {
+        if (phase === 'playing' && !gameTicker.running) {
+          gameTicker.start();
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+      gameTicker.stop();
+    };
+  }, [gameStarted]);
 
   const handleStartGame = () => {
     localStorage.setItem(GAME_STARTED_KEY, 'true');
