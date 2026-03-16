@@ -8,6 +8,7 @@ import { IslandSceneManager } from '../../utils/islandSceneManager.js';
 import { populateTerrainProps } from '../../utils/terrainPropsBuilder.js';
 import { initAgentPosition, setAgentTarget, recallAgentToCenter, getZoneWorldPosition, updateAgentPositions } from '../../utils/agentMovement.js';
 import { applyDayNightLighting } from '../../engine/DayNightCycle.js';
+import { initAnimals, updateAnimals, disposeAnimals } from '../../engine/AnimalAI.js';
 
 // Initial dimensions — will be updated by resize handler to match container
 let SCENE_WIDTH = window.innerWidth;
@@ -183,6 +184,9 @@ export default function IslandScene() {
     sceneManager.initStaticProps(); // Add farmhouse
     sceneManagerRef.current = sceneManager;
 
+    // ============= Spawn Farm Animals =============
+    initAnimals(scene);
+
     // ============= Animation Loop =============
 
     let animationId;
@@ -246,6 +250,9 @@ export default function IslandScene() {
         mesh.updateAnimation(deltaTime);
       });
 
+      // 4. Update farm animals
+      updateAnimals(deltaTime);
+
       controls.update();
 
       renderer.render(scene, camera);
@@ -287,10 +294,11 @@ export default function IslandScene() {
       window.removeEventListener('resize', handleResize);
       window.cancelAnimationFrame(animationId);
 
-      // Cleanup scene manager
+      // Cleanup scene manager and animals
       if (sceneManagerRef.current) {
         sceneManagerRef.current.dispose();
       }
+      disposeAnimals(scene);
 
       if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
         mountRef.current.removeChild(renderer.domElement);
