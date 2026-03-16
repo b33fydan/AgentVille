@@ -123,66 +123,72 @@ export function advanceDayLogic() {
   });
 
   // ===== 2. GENERATE RESOURCES (TO AGENT INVENTORY, NOT GLOBAL) =====
-  agents.forEach((agent) => {
-    if (agent.assignedZone && agent.status === 'working') {
-      const zoneConfig = RESOURCE_OUTPUTS[agent.assignedZone];
-      if (!zoneConfig) return;
+  // When AgentAI is active (gameSpeed > 0), resources trickle in via work cycles.
+  // Batch generation only runs as fallback when ticker is paused/not running.
+  const isTickerActive = gameState.gameSpeed > 0;
 
-      // Calculate efficiency from morale + traits + zone fit
-      const moraleEfficiency = calculateEfficiency(agent, agent.assignedZone);
-      
-      // Apply need-based penalties (hunger/fatigue/equipment)
-      const needsMultiplier = agentState.getAgentEfficiencyMultiplier(agent.id);
-      
-      const totalEfficiency = moraleEfficiency * needsMultiplier;
-      let output = Math.floor(zoneConfig.baseOutput * totalEfficiency);
+  if (!isTickerActive) {
+    agents.forEach((agent) => {
+      if (agent.assignedZone && agent.status === 'working') {
+        const zoneConfig = RESOURCE_OUTPUTS[agent.assignedZone];
+        if (!zoneConfig) return;
 
-      // Apply random events: crop failure (-50%) or bountiful harvest (+100%)
-      if (Math.random() < 0.15) {
-        if (Math.random() > 0.5) {
-          output = Math.floor(output * 0.5); // Crop failure
-        } else {
-          output = Math.floor(output * 2.0); // Bountiful harvest
+        // Calculate efficiency from morale + traits + zone fit
+        const moraleEfficiency = calculateEfficiency(agent, agent.assignedZone);
+
+        // Apply need-based penalties (hunger/fatigue/equipment)
+        const needsMultiplier = agentState.getAgentEfficiencyMultiplier(agent.id);
+
+        const totalEfficiency = moraleEfficiency * needsMultiplier;
+        let output = Math.floor(zoneConfig.baseOutput * totalEfficiency);
+
+        // Apply random events: crop failure (-50%) or bountiful harvest (+100%)
+        if (Math.random() < 0.15) {
+          if (Math.random() > 0.5) {
+            output = Math.floor(output * 0.5); // Crop failure
+          } else {
+            output = Math.floor(output * 2.0); // Bountiful harvest
+          }
+        }
+
+        if (output > 0) {
+          // Split output: 60% to agent inventory, 40% to global pool
+          const agentShare = Math.floor(output * 0.6);
+          const globalShare = Math.floor(output * 0.4);
+
+          // Add to agent inventory
+          agentState.addResourceToInventory(agent.id, zoneConfig.resource, agentShare);
+
+          // Add to global gameStore for Sale Day calculation
+          gameState.addResource(zoneConfig.resource, globalShare);
+
+          soundManager.play('resourceGain');
+          console.log(`[advanceDay] ${agent.name} produced ${output} ${zoneConfig.resource} (${agentShare} personal, ${globalShare} pool) (morale*${moraleEfficiency.toFixed(2)} × needs*${needsMultiplier.toFixed(2)})`);
+
+          logState.addLogEntry({
+            agentId: agent.id,
+            agentName: agent.name,
+            type: 'resource_production',
+            message: `${agent.name} produced ${output} ${zoneConfig.resource}`,
+            emoji: zoneConfig.resource === 'wood' ? '🌲' : zoneConfig.resource === 'wheat' ? '🌾' : '🌊',
+            season: gameState.season,
+            day: gameState.day
+          });
+        } else if (agent.fatigue > 90) {
+          // Log work failure from exhaustion
+          logState.addLogEntry({
+            agentId: agent.id,
+            agentName: agent.name,
+            type: 'work_failure',
+            message: `${agent.name} collapsed from exhaustion - produced nothing!`,
+            emoji: '💔',
+            season: gameState.season,
+            day: gameState.day
+          });
         }
       }
-
-      if (output > 0) {
-        // Split output: 60% to agent inventory, 40% to global pool
-        const agentShare = Math.floor(output * 0.6);
-        const globalShare = Math.floor(output * 0.4);
-        
-        // Add to agent inventory
-        agentState.addResourceToInventory(agent.id, zoneConfig.resource, agentShare);
-        
-        // Add to global gameStore for Sale Day calculation
-        gameState.addResource(zoneConfig.resource, globalShare);
-        
-        soundManager.play('resourceGain');
-        console.log(`[advanceDay] ${agent.name} produced ${output} ${zoneConfig.resource} (${agentShare} personal, ${globalShare} pool) (morale*${moraleEfficiency.toFixed(2)} × needs*${needsMultiplier.toFixed(2)})`);
-        
-        logState.addLogEntry({
-          agentId: agent.id,
-          agentName: agent.name,
-          type: 'resource_production',
-          message: `${agent.name} produced ${output} ${zoneConfig.resource}`,
-          emoji: zoneConfig.resource === 'wood' ? '🌲' : zoneConfig.resource === 'wheat' ? '🌾' : '🌊',
-          season: gameState.season,
-          day: gameState.day
-        });
-      } else if (agent.fatigue > 90) {
-        // Log work failure from exhaustion
-        logState.addLogEntry({
-          agentId: agent.id,
-          agentName: agent.name,
-          type: 'work_failure',
-          message: `${agent.name} collapsed from exhaustion - produced nothing!`,
-          emoji: '💔',
-          season: gameState.season,
-          day: gameState.day
-        });
-      }
-    }
-  });
+    });
+  }
 
   // ===== 2.5. ECONOMIC SIMULATION & TRADING =====
   // Update market prices based on supply/demand

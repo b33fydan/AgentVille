@@ -5,6 +5,7 @@
 
 import { useGameStore } from '../store/gameStore';
 import { advanceDayLogic } from '../utils/advanceDayHandler';
+import { tickAgentAI, initAgentAI } from './AgentAI';
 
 // ─── Constants ───
 const SECONDS_PER_GAME_DAY = 180; // 3 real minutes = 1 game day at 1x
@@ -75,6 +76,9 @@ class GameTicker {
     }
     this.currentDayPhase = getDayPhaseFromHour(this.gameHour);
     this._syncBoundaryFlags();
+
+    // Initialize agent AI task states
+    initAgentAI();
 
     this._loop();
   }
@@ -192,6 +196,9 @@ class GameTicker {
     if (Math.floor(prevHour * 2) !== Math.floor(this.gameHour * 2)) {
       useGameStore.getState().setGameHour(this.gameHour);
     }
+
+    // Tick agent AI with delta game-hours
+    tickAgentAI(hourAdvance, this.gameHour);
 
     this._emit('tick', deltaSeconds, this.gameHour);
   }
