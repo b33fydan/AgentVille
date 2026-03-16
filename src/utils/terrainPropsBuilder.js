@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { COLORS, TERRAIN_TYPES } from './voxelBuilder';
+import { TERRAIN_TYPES } from './voxelBuilder';
+import { VoxelBatcher } from './voxelBatcher';
 
 /**
  * Seeded random for consistent prop placement
@@ -10,43 +10,21 @@ function seededRandom(seed) {
 }
 
 /**
- * Seeded Random Number Generator class
- */
-class SeededRandom {
-  constructor(seed) {
-    this.seed = seed;
-  }
-
-  next() {
-    this.seed = (this.seed * 9301 + 49297) % 233280;
-    return this.seed / 233280;
-  }
-
-  nextInt(max) {
-    return Math.floor(this.next() * max);
-  }
-}
-
-/**
- * Populate terrain with ambient props for 16×16 grid
- * Forest: trees + bushes + logs
- * Plains: wheat field + farmhouse
- * Wetlands: reeds + water patches
- * Barren: rocks + dead trees
- * Run ONCE on island creation
+ * Populate terrain with ambient props for 16x16 grid.
+ * Uses VoxelBatcher for InstancedMesh rendering (~20-30 draw calls
+ * instead of ~4,000+ individual meshes).
+ * Run ONCE on island creation.
  */
 export function populateTerrainProps(scene, terrainGrid, islandSeed = 12345) {
   if (!terrainGrid || terrainGrid.length === 0) return;
 
-  const rows = terrainGrid.length; // 16
-  const cols = terrainGrid[0].length; // 16
+  const batcher = new VoxelBatcher();
+  const rows = terrainGrid.length;
+  const cols = terrainGrid[0].length;
   const cellSize = 0.5;
-  const gridWidth = cols * cellSize;
-  const gridHeight = rows * cellSize;
-  const offsetX = gridWidth / 2;
-  const offsetZ = gridHeight / 2;
+  const offsetX = (cols * cellSize) / 2;
+  const offsetZ = (rows * cellSize) / 2;
 
-  // Add props per terrain tile
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const terrainType = terrainGrid[row][col];
@@ -56,17 +34,17 @@ export function populateTerrainProps(scene, terrainGrid, islandSeed = 12345) {
       const seed = islandSeed + tileIndex;
 
       switch (terrainType) {
-        case TERRAIN_TYPES.FOREST:
-          addForestProps(scene, x, z, seed);
+        case TERRAIN_TYPES.forest:
+          addForestProps(batcher, x, z, seed);
           break;
-        case TERRAIN_TYPES.PLAINS:
-          addPlainsProps(scene, x, z, seed);
+        case TERRAIN_TYPES.plains:
+          addPlainsProps(batcher, x, z, seed);
           break;
-        case TERRAIN_TYPES.WETLANDS:
-          addWetlandsProps(scene, x, z, seed);
+        case TERRAIN_TYPES.wetlands:
+          addWetlandsProps(batcher, x, z, seed);
           break;
-        case TERRAIN_TYPES.BARREN:
-          addBarrenProps(scene, x, z, seed);
+        case TERRAIN_TYPES.barren:
+          addBarrenProps(batcher, x, z, seed);
           break;
         default:
           break;
@@ -74,500 +52,167 @@ export function populateTerrainProps(scene, terrainGrid, islandSeed = 12345) {
     }
   }
 
-  // Add central farmhouse
-  addFarmhouse(scene);
+  // Farmhouse (central)
+  addFarmhouse(batcher);
+
+  // Flush all batched instances into InstancedMeshes
+  batcher.flush(scene);
 }
 
 // ============= FOREST PROPS =============
 
-function addForestProps(scene, x, z, seed) {
+function addForestProps(batcher, x, z, seed) {
   const rng1 = seededRandom(seed);
   const rng2 = seededRandom(seed + 1);
   const rng3 = seededRandom(seed + 2);
 
-  // 2-3 trees per tile (mix of pine and oak)
+  // Trees (2-3 per tile)
   const treeCount = 2 + (rng1 > 0.6 ? 1 : 0);
   for (let i = 0; i < treeCount; i++) {
-    const offsetX = (seededRandom(seed + i * 10) - 0.5) * 0.35;
-    const offsetZ = (seededRandom(seed + i * 10 + 1) - 0.5) * 0.35;
-    const treeType = seededRandom(seed + i * 10 + 2) > 0.5 ? 'pine' : 'oak';
-    const tree = createTree(x + offsetX, 0, z + offsetZ, treeType);
-    scene.add(tree);
+    const ox = (seededRandom(seed + i * 10) - 0.5) * 0.35;
+    const oz = (seededRandom(seed + i * 10 + 1) - 0.5) * 0.35;
+    const type = seededRandom(seed + i * 10 + 2) > 0.5 ? 'pine' : 'oak';
+    addTree(batcher, x + ox, z + oz, type, seed + i * 10);
   }
 
-  // Ground cover bushes (2-4 per tile)
+  // Bushes (2-4 per tile)
   const bushCount = 2 + Math.floor(rng2 * 2);
   for (let i = 0; i < bushCount; i++) {
-    const bushX = x + (seededRandom(seed + 100 + i) - 0.5) * 0.35;
-    const bushZ = z + (seededRandom(seed + 200 + i) - 0.5) * 0.35;
-    createBush(scene, bushX, bushZ);
+    const bx = x + (seededRandom(seed + 100 + i) - 0.5) * 0.35;
+    const bz = z + (seededRandom(seed + 200 + i) - 0.5) * 0.35;
+    batcher.addSphere(bx, 0.08, bz, '#3a7d3a', 0.15, 4, 4, { scaleY: 0.6 });
   }
 
-  // Rock clusters (1-2 per tile)
+  // Rocks (50% chance)
   if (rng3 > 0.5) {
-    const rockX = x + (rng3 - 0.5) * 0.3;
-    const rockZ = z + (seededRandom(seed + 3) - 0.5) * 0.3;
-    createRockCluster(scene, rockX, rockZ, seededRandom(seed + 4));
+    addRockCluster(batcher, x + (rng3 - 0.5) * 0.3, z + (seededRandom(seed + 3) - 0.5) * 0.3, seed + 4);
   }
 }
 
-function createTree(x, y, z, type) {
-  const group = new THREE.Group();
-
+function addTree(batcher, x, z, type, seed) {
   if (type === 'pine') {
-    // Pine: narrow trunk + cone-shaped canopy
-    const trunk = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.5, 0.08),
-      new THREE.MeshStandardMaterial({ color: '#654321', roughness: 0.9 })
-    );
-    trunk.position.set(x, y + 0.25, z);
-    trunk.castShadow = true;
-    group.add(trunk);
-
-    // Three-tier cone leaves
-    for (let tier = 0; tier < 3; tier++) {
-      const tierRadius = 0.25 - tier * 0.08;
-      const tierHeight = 0.5 + tier * 0.1;
-      const leaves = new THREE.Mesh(
-        new THREE.ConeGeometry(tierRadius, 0.2, 6),
-        new THREE.MeshStandardMaterial({
-          color: ['#1a5f3d', '#2d7a4a', '#3a9d5d'][tier],
-          roughness: 0.8
-        })
-      );
-      leaves.position.set(x, y + tierHeight, z);
-      leaves.castShadow = true;
-      group.add(leaves);
-    }
-  } else if (type === 'oak') {
-    // Oak: thick trunk + round canopy
-    const trunk = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.4, 0.12),
-      new THREE.MeshStandardMaterial({ color: '#5d4e37', roughness: 0.95 })
-    );
-    trunk.position.set(x, y + 0.2, z);
-    trunk.castShadow = true;
-    group.add(trunk);
-
-    // Round canopy (8-cube cluster simulation)
-    const canopyPositions = [
-      [0, 0.35, 0],
-      [0.1, 0.35, 0.1],
-      [-0.1, 0.35, 0.1],
-      [0.1, 0.35, -0.1],
-      [-0.1, 0.35, -0.1],
-      [0, 0.45, 0],
-      [0.08, 0.45, 0.08],
-      [-0.08, 0.45, -0.08]
+    // Trunk
+    batcher.addBox(x, 0.25, z, '#654321', 0.08, 0.5, 0.08);
+    // Three tier cone leaves
+    const tiers = [
+      { y: 0.5, r: 0.25, h: 0.2, c: '#1a5f3d' },
+      { y: 0.6, r: 0.17, h: 0.2, c: '#2d7a4a' },
+      { y: 0.7, r: 0.09, h: 0.2, c: '#3a9d5d' }
     ];
-
-    canopyPositions.forEach(([ox, oy, oz]) => {
-      const canopyLeaf = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15, 4, 4),
-        new THREE.MeshStandardMaterial({
-          color: '#2d5a3d',
-          roughness: 0.75
-        })
-      );
-      canopyLeaf.position.set(x + ox, y + oy, z + oz);
-      canopyLeaf.castShadow = true;
-      canopyLeaf.scale.set(1, 0.9, 1);
-      group.add(canopyLeaf);
+    tiers.forEach((t) => {
+      batcher.addCone(x, t.y, z, t.c, t.r, t.h, 6);
+    });
+  } else {
+    // Oak trunk
+    batcher.addBox(x, 0.2, z, '#5d4e37', 0.12, 0.4, 0.12);
+    // Oak canopy (sphere cluster)
+    const canopy = [
+      [0, 0.35, 0], [0.1, 0.35, 0.1], [-0.1, 0.35, 0.1],
+      [0.1, 0.35, -0.1], [-0.1, 0.35, -0.1],
+      [0, 0.45, 0], [0.08, 0.45, 0.08], [-0.08, 0.45, -0.08]
+    ];
+    canopy.forEach(([ox, oy, oz]) => {
+      batcher.addSphere(x + ox, oy, z + oz, '#2d5a3d', 0.15, 4, 4, { scaleY: 0.9 });
     });
   }
-
-  return group;
 }
 
-function createBush(scene, x, z) {
-  const bush = new THREE.Mesh(
-    new THREE.SphereGeometry(0.15, 4, 4),
-    new THREE.MeshStandardMaterial({
-      color: '#3a7d3a',
-      roughness: 0.8
-    })
-  );
-  bush.position.set(x, 0.08, z);
-  bush.castShadow = true;
-  bush.scale.set(1, 0.6, 1);
-  scene.add(bush);
-}
-
-function createRockCluster(scene, x, z, rng) {
-  // 3-5 irregular rock cubes
-  const rockCount = 3 + Math.floor(rng * 2);
-  const group = new THREE.Group();
-
-  for (let i = 0; i < rockCount; i++) {
-    const offsetX = (seededRandom(rng + i * 10) - 0.5) * 0.2;
-    const offsetZ = (seededRandom(rng + i * 10 + 1) - 0.5) * 0.2;
-    const offsetY = (seededRandom(rng + i * 10 + 2) - 0.5) * 0.1;
-
-    const rock = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        0.12 + seededRandom(rng + i * 10 + 3) * 0.08,
-        0.08 + seededRandom(rng + i * 10 + 4) * 0.06,
-        0.12 + seededRandom(rng + i * 10 + 5) * 0.08
-      ),
-      new THREE.MeshStandardMaterial({
-        color: '#888888',
-        roughness: 1.0
-      })
-    );
-    rock.position.set(offsetX, 0.05 + offsetY, offsetZ);
-    rock.castShadow = true;
-    group.add(rock);
+function addRockCluster(batcher, x, z, seed) {
+  const count = 3 + Math.floor(seededRandom(seed) * 2);
+  for (let i = 0; i < count; i++) {
+    const ox = (seededRandom(seed + i * 10) - 0.5) * 0.2;
+    const oz = (seededRandom(seed + i * 10 + 1) - 0.5) * 0.2;
+    const w = 0.12 + seededRandom(seed + i * 10 + 3) * 0.08;
+    const h = 0.08 + seededRandom(seed + i * 10 + 4) * 0.06;
+    const d = 0.12 + seededRandom(seed + i * 10 + 5) * 0.08;
+    batcher.addBox(x + ox, 0.05, z + oz, '#888888', w, h, d);
   }
-
-  group.position.set(x, 0, z);
-  scene.add(group);
 }
 
 // ============= PLAINS PROPS =============
 
-function addPlainsProps(scene, x, z, seed) {
+function addPlainsProps(batcher, x, z, seed) {
   const rng = seededRandom(seed);
 
-  // Wheat field rows (8-12 stalks per tile)
+  // Wheat stalks (8-12 per tile)
   const wheatCount = 8 + Math.floor(rng * 4);
+  const wheatColors = ['#eab308', '#ca8a04', '#fbbf24'];
   for (let i = 0; i < wheatCount; i++) {
-    const wheatX = x - 0.2 + (i % 4) * 0.1;
-    const wheatZ = z - 0.2 + Math.floor(i / 4) * 0.1;
-    createWheatStalk(scene, wheatX, wheatZ, seededRandom(seed + i * 5));
+    const wx = x - 0.2 + (i % 4) * 0.1;
+    const wz = z - 0.2 + Math.floor(i / 4) * 0.1;
+    const c = wheatColors[Math.floor(seededRandom(seed + i * 5) * 3)];
+    batcher.addBox(wx, 0.125, wz, c, 0.03, 0.25, 0.03);
   }
 
-  // Hay bales (1-3 per zone)
+  // Hay bales
   if (rng > 0.3) {
     const hayCount = 1 + (rng > 0.7 ? 1 : 0) + (rng > 0.85 ? 1 : 0);
     for (let i = 0; i < hayCount; i++) {
-      const hayX = x + (seededRandom(seed + 1000 + i) - 0.5) * 0.3;
-      const hayZ = z + (seededRandom(seed + 1001 + i) - 0.5) * 0.3;
-      createHayBale(scene, hayX, hayZ);
+      const hx = x + (seededRandom(seed + 1000 + i) - 0.5) * 0.3;
+      const hz = z + (seededRandom(seed + 1001 + i) - 0.5) * 0.3;
+      batcher.addBox(hx, 0.08, hz, '#d4a017', 0.2, 0.1, 0.1);
     }
   }
 }
 
-function createWheatStalk(scene, x, z, rng) {
-  // Thin yellow rectangle
-  const stalk = new THREE.Mesh(
-    new THREE.BoxGeometry(0.03, 0.25, 0.03),
-    new THREE.MeshStandardMaterial({
-      color: ['#eab308', '#ca8a04', '#fbbf24'][Math.floor(rng * 3)],
-      roughness: 0.6
-    })
-  );
-  stalk.position.set(x, 0.125, z);
-  stalk.castShadow = true;
-  scene.add(stalk);
-}
-
-function createHayBale(scene, x, z) {
-  // 2×1×1 cluster of tan cubes
-  const bale = new THREE.Mesh(
-    new THREE.BoxGeometry(0.2, 0.1, 0.1),
-    new THREE.MeshStandardMaterial({
-      color: '#d4a017',
-      roughness: 0.85
-    })
-  );
-  bale.position.set(x, 0.08, z);
-  bale.castShadow = true;
-  scene.add(bale);
-}
-
 // ============= WETLANDS PROPS =============
 
-function addWetlandsProps(scene, x, z, seed) {
+function addWetlandsProps(batcher, x, z, seed) {
   const rng1 = seededRandom(seed);
   const rng2 = seededRandom(seed + 1);
 
   // Reeds (6-10 per tile)
   const reedCount = 6 + Math.floor(rng1 * 4);
+  const reedColors = ['#22d3ee', '#0891b2', '#15803d'];
   for (let i = 0; i < reedCount; i++) {
-    const reedX = x + (seededRandom(seed + i * 5) - 0.5) * 0.35;
-    const reedZ = z + (seededRandom(seed + i * 5 + 1) - 0.5) * 0.35;
-    createReed(scene, reedX, reedZ, seededRandom(seed + i * 5 + 2));
+    const rx = x + (seededRandom(seed + i * 5) - 0.5) * 0.35;
+    const rz = z + (seededRandom(seed + i * 5 + 1) - 0.5) * 0.35;
+    const lean = (seededRandom(seed + i * 5 + 2) - 0.5) * 0.1;
+    const c = reedColors[Math.floor(seededRandom(seed + i * 5 + 2) * 3)];
+    batcher.addBox(rx + lean * 0.1, 0.15, rz, c, 0.02, 0.3, 0.02, { rotZ: lean * 0.3 });
   }
 
-  // Shallow water patches (2-3 per tile, 60% chance)
+  // Shallow water patches
   if (rng2 > 0.4) {
     const waterCount = 2 + (rng2 > 0.7 ? 1 : 0);
     for (let i = 0; i < waterCount; i++) {
-      const waterX = x + (seededRandom(seed + 500 + i) - 0.5) * 0.3;
-      const waterZ = z + (seededRandom(seed + 501 + i) - 0.5) * 0.3;
-      createShallowWater(scene, waterX, waterZ);
+      const wx = x + (seededRandom(seed + 500 + i) - 0.5) * 0.3;
+      const wz = z + (seededRandom(seed + 501 + i) - 0.5) * 0.3;
+      batcher.addBox(wx, 0.02, wz, '#0891b2', 0.15, 0.05, 0.15, { transparent: true, opacity: 0.6 });
     }
   }
-}
-
-function createReed(scene, x, z, rng) {
-  // Thin green rectangle with slight lean
-  const lean = (rng - 0.5) * 0.1;
-  const reed = new THREE.Mesh(
-    new THREE.BoxGeometry(0.02, 0.3, 0.02),
-    new THREE.MeshStandardMaterial({
-      color: ['#22d3ee', '#0891b2', '#15803d'][Math.floor(rng * 3)],
-      roughness: 0.6
-    })
-  );
-  reed.position.set(x + lean * 0.1, 0.15, z);
-  reed.rotation.z = lean * 0.3;
-  reed.castShadow = true;
-  scene.add(reed);
-}
-
-function createShallowWater(scene, x, z) {
-  // Flat blue cube, semi-transparent
-  const water = new THREE.Mesh(
-    new THREE.BoxGeometry(0.15, 0.05, 0.15),
-    new THREE.MeshStandardMaterial({
-      color: '#0891b2',
-      transparent: true,
-      opacity: 0.6,
-      roughness: 0.3,
-      metalness: 0.2
-    })
-  );
-  water.position.set(x, 0.02, z);
-  water.receiveShadow = true;
-  scene.add(water);
 }
 
 // ============= BARREN PROPS =============
 
-function addBarrenProps(scene, x, z, seed) {
+function addBarrenProps(batcher, x, z, seed) {
   const rng = seededRandom(seed);
 
-  // Rock clusters (1-2 per tile)
+  // Rock clusters
   if (rng > 0.3) {
-    createRockCluster(scene, x, z, rng);
+    addRockCluster(batcher, x, z, seed + 100);
   }
 
-  // Dead trees (1 per 2-3 tiles, ~33% chance)
+  // Dead trees (33% chance)
   if (rng > 0.67) {
-    createDeadTree(scene, x, z);
+    batcher.addBox(x + 0.08, 0.18, z, '#4a4a4a', 0.06, 0.35, 0.06, { rotZ: 0.2 });
   }
 }
 
-function createDeadTree(scene, x, z) {
-  // Dead trunk only, no leaves, slight lean
-  const trunk = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.35, 0.06),
-    new THREE.MeshStandardMaterial({
-      color: '#4a4a4a',
-      roughness: 1.0
-    })
-  );
-  trunk.position.set(x + 0.08, 0.18, z);
-  trunk.rotation.z = 0.2; // Slight lean
-  trunk.castShadow = true;
-  scene.add(trunk);
-}
+// ============= FARMHOUSE (Central) =============
 
-// ============= RESOURCE PILES (Dynamic, update with harvest) =============
-
-/**
- * Create wood pile (stacked brown cubes, pyramid-like)
- * Scaled by quantity: 1-5 units → 2-3 cubes, 6-15 → 5-6 cubes, 16+ → 8-10 cubes
- */
-export function createWoodPile(scene, x, z, quantity) {
-  const group = new THREE.Group();
-
-  // Determine pile size
-  let cubeCount;
-  if (quantity <= 5) {
-    cubeCount = 2 + Math.floor(quantity / 3);
-  } else if (quantity <= 15) {
-    cubeCount = 5 + Math.floor((quantity - 5) / 5);
-  } else {
-    cubeCount = 8 + Math.floor((quantity - 15) / 5);
-  }
-  cubeCount = Math.min(cubeCount, 10);
-
-  // Stack cubes in rough pyramid
-  const cubeSize = 0.12;
-  let y = 0;
-  let row = 0;
-  let cubesInRow = 3;
-
-  for (let i = 0; i < cubeCount; i++) {
-    if (i >= row * cubesInRow + cubesInRow) {
-      row++;
-      cubesInRow = Math.max(1, cubesInRow - 1);
-    }
-
-    const col = i - row * (3 - row);
-    const xOffset = (col - (cubesInRow - 1) / 2) * cubeSize;
-    const yOffset = y + row * (cubeSize / 2);
-
-    const cube = new THREE.Mesh(
-      new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize),
-      new THREE.MeshStandardMaterial({ color: '#8b6f47', roughness: 0.9 })
-    );
-    cube.position.set(xOffset, yOffset, 0);
-    cube.castShadow = true;
-    group.add(cube);
-  }
-
-  group.position.set(x, 0, z);
-  scene.add(group);
-  return group;
-}
-
-/**
- * Create wheat pile (golden cube clusters in neat rows)
- * Scaled by quantity
- */
-export function createWheatPile(scene, x, z, quantity) {
-  const group = new THREE.Group();
-
-  // Number of wheat bundles: 1-3, 4-8, 9+
-  let bundleCount;
-  if (quantity <= 3) {
-    bundleCount = 1 + Math.floor(quantity / 2);
-  } else if (quantity <= 8) {
-    bundleCount = 3 + Math.floor((quantity - 3) / 2);
-  } else {
-    bundleCount = 5 + Math.floor((quantity - 8) / 3);
-  }
-  bundleCount = Math.min(bundleCount, 8);
-
-  // Arrange in neat rows
-  for (let i = 0; i < bundleCount; i++) {
-    const col = i % 3;
-    const row = Math.floor(i / 3);
-    const xOffset = (col - 1) * 0.15;
-    const zOffset = row * 0.15;
-
-    const cube = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.12, 0.12),
-      new THREE.MeshStandardMaterial({
-        color: ['#eab308', '#ca8a04', '#fbbf24'][Math.floor(Math.random() * 3)],
-        roughness: 0.8
-      })
-    );
-    cube.position.set(xOffset, 0.06, zOffset);
-    cube.castShadow = true;
-    group.add(cube);
-  }
-
-  group.position.set(x, 0, z);
-  scene.add(group);
-  return group;
-}
-
-/**
- * Create hay pile (tan clusters, scattered)
- * Scaled by quantity
- */
-export function createHayPile(scene, x, z, quantity) {
-  const group = new THREE.Group();
-
-  // Number of hay bales: 1-3, 4-8, 9+
-  let baleCount;
-  if (quantity <= 3) {
-    baleCount = 1 + Math.floor(quantity / 2);
-  } else if (quantity <= 8) {
-    baleCount = 3 + Math.floor((quantity - 3) / 2);
-  } else {
-    baleCount = 5 + Math.floor((quantity - 8) / 3);
-  }
-  baleCount = Math.min(baleCount, 8);
-
-  // Scatter around area
-  const rng = new SeededRandom(12345 + quantity);
-  for (let i = 0; i < baleCount; i++) {
-    const offsetX = (rng.next() - 0.5) * 0.3;
-    const offsetZ = (rng.next() - 0.5) * 0.3;
-
-    const bale = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, 0.1, 0.1),
-      new THREE.MeshStandardMaterial({
-        color: '#d4a017',
-        roughness: 0.85
-      })
-    );
-    bale.position.set(offsetX, 0.05, offsetZ);
-    bale.castShadow = true;
-    group.add(bale);
-  }
-
-  group.position.set(x, 0, z);
-  scene.add(group);
-  return group;
-}
-
-// ============= FARMHOUSE (Central Anchor) =============
-
-function addFarmhouse(scene) {
-  // Centered at (0, 0, 0)
-  // 6w × 4d × 3h in 0.25-unit cubes
-
-  // Main structure: warm brown
-  const mainBody = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.18, 0.2),
-    new THREE.MeshStandardMaterial({
-      color: '#a0826d',
-      roughness: 0.8
-    })
-  );
-  mainBody.position.set(0, 0.09, 0);
-  mainBody.castShadow = true;
-  scene.add(mainBody);
-
-  // Pitched roof: triangle (cone)
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(0.18, 0.12, 4),
-    new THREE.MeshStandardMaterial({
-      color: '#6b5344',
-      roughness: 0.9
-    })
-  );
-  roof.position.set(0, 0.25, 0);
-  roof.castShadow = true;
-  scene.add(roof);
-
-  // Door: darker brown rectangle
-  const door = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.12, 0.02),
-    new THREE.MeshStandardMaterial({ color: '#3a3a3a' })
-  );
-  door.position.set(0, 0.06, 0.11);
-  door.castShadow = true;
-  scene.add(door);
-
-  // Window: tiny blue square
-  const window1 = new THREE.Mesh(
-    new THREE.BoxGeometry(0.03, 0.03, 0.02),
-    new THREE.MeshStandardMaterial({ color: '#87ceeb' })
-  );
-  window1.position.set(-0.08, 0.12, 0.11);
-  window1.castShadow = true;
-  scene.add(window1);
-
-  const window2 = new THREE.Mesh(
-    new THREE.BoxGeometry(0.03, 0.03, 0.02),
-    new THREE.MeshStandardMaterial({ color: '#87ceeb' })
-  );
-  window2.position.set(0.08, 0.12, 0.11);
-  window2.castShadow = true;
-  scene.add(window2);
-
-  // Fence boundary around farmhouse (4 posts)
-  const fencePositions = [
-    [-0.25, -0.2],
-    [0.25, -0.2],
-    [-0.25, 0.2],
-    [0.25, 0.2]
-  ];
-
-  fencePositions.forEach(([fx, fz]) => {
-    const post = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.15, 0.04),
-      new THREE.MeshStandardMaterial({ color: '#5d4e37' })
-    );
-    post.position.set(fx, 0.08, fz);
-    post.castShadow = true;
-    scene.add(post);
+function addFarmhouse(batcher) {
+  // Main body
+  batcher.addBox(0, 0.09, 0, '#a0826d', 0.3, 0.18, 0.2);
+  // Roof
+  batcher.addCone(0, 0.25, 0, '#6b5344', 0.18, 0.12, 4);
+  // Door
+  batcher.addBox(0, 0.06, 0.11, '#3a3a3a', 0.06, 0.12, 0.02);
+  // Windows
+  batcher.addBox(-0.08, 0.12, 0.11, '#87ceeb', 0.03, 0.03, 0.02);
+  batcher.addBox(0.08, 0.12, 0.11, '#87ceeb', 0.03, 0.03, 0.02);
+  // Fence posts
+  [[-0.25, -0.2], [0.25, -0.2], [-0.25, 0.2], [0.25, 0.2]].forEach(([fx, fz]) => {
+    batcher.addBox(fx, 0.08, fz, '#5d4e37', 0.04, 0.15, 0.04);
   });
 }
