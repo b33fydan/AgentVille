@@ -32,9 +32,10 @@ export default function CrisisModal() {
   const timeOfDay = useGameStore((state) => state.timeOfDay);
   const addLogEntry = useLogStore((state) => state.addLogEntry);
 
-  // Check for crisis trigger on day/time change
+  // Check for crisis trigger on day/time change OR when gamePhase becomes 'crisis'
   useEffect(() => {
     if (isResolving || currentCrisis) return; // Already has a crisis
+    if (gamePhase !== 'crisis') return; // Only generate when phase is crisis
 
     const newCrisis = crisisQueue.checkTrigger(season, day, timeOfDay);
 
@@ -43,8 +44,21 @@ export default function CrisisModal() {
       setSelectedChoice(null);
       setEnrichedDescription(''); // Will be enriched
       soundManager.play('crisisAlert');
+    } else {
+      // Phase is 'crisis' but no crisis generated — force one
+      const forcedCrisis = generateCrisis(season, day);
+      if (forcedCrisis) {
+        setCurrentCrisis(forcedCrisis);
+        setSelectedChoice(null);
+        setEnrichedDescription('');
+        soundManager.play('crisisAlert');
+      } else {
+        // No crisis available — return to playing
+        console.warn('[CrisisModal] Phase is crisis but no crisis generated, returning to playing');
+        setGamePhase('playing');
+      }
     }
-  }, [season, day, timeOfDay, isResolving, currentCrisis]);
+  }, [season, day, timeOfDay, gamePhase, isResolving, currentCrisis]);
 
   // Enrich crisis description with Claude when crisis appears
   useEffect(() => {
