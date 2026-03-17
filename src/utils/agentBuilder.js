@@ -22,101 +22,151 @@ export function createAgentModel(agent) {
   const isDarkMorale = morale < 20;
   const isLowMorale = morale < 40;
 
-  // ===== BODY (center cube, 0.3×0.35×0.2) =====
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.35, 0.2),
-    new THREE.MeshStandardMaterial({
-      color: bodyColor,
-      roughness: 0.7,
-      metalness: 0.1
-    })
-  );
-  body.position.y = 0.175;
-  body.castShadow = true;
+  // Shared geometries (reused across all sub-cubes for memory efficiency)
+  const v = 0.06; // Voxel unit size (~0.06 units = high density)
+  const skinColor = '#fcd34d';
+  const pantsColor = darkenColor(bodyColor, 0.6);
+  const shoeColor = darkenColor(bodyColor, 0.4);
+
+  // Shared geometry — one BoxGeometry reused for all voxels
+  const sharedGeo = new THREE.BoxGeometry(v, v, v);
+  // Material cache to avoid duplicate materials per color
+  const matCache = {};
+  function getMat(color) {
+    if (!matCache[color]) {
+      matCache[color] = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.1 });
+    }
+    return matCache[color];
+  }
+
+  function vox(parent, x, y, z, color, sx = 1, sy = 1, sz = 1) {
+    const geo = (sx === 1 && sy === 1 && sz === 1) ? sharedGeo : new THREE.BoxGeometry(v * sx, v * sy, v * sz);
+    const mesh = new THREE.Mesh(geo, getMat(color));
+    mesh.position.set(x * v, y * v, z * v);
+    mesh.castShadow = true;
+    parent.add(mesh);
+    return mesh;
+  }
+
+  // ===== BODY (torso: 5w × 6h × 3d voxels) =====
+  const body = new THREE.Group();
+  body.position.y = v * 5; // Torso center Y
+  for (let bx = -2; bx <= 2; bx++) {
+    for (let by = -2; by <= 3; by++) {
+      for (let bz = -1; bz <= 1; bz++) {
+        // Skip some interior voxels to save draw calls
+        if (Math.abs(bx) < 2 && Math.abs(by) < 2 && Math.abs(bz) < 1) continue;
+        const c = by >= 2 ? bodyColor : (by >= 0 ? bodyColor : pantsColor);
+        vox(body, bx, by, bz, c);
+      }
+    }
+  }
+  // Belt detail
+  vox(body, -1, 0, 1.1, '#8b7355', 1, 1, 0.3);
+  vox(body, 0, 0, 1.1, '#d4af37', 1, 1, 0.3); // Belt buckle (gold)
+  vox(body, 1, 0, 1.1, '#8b7355', 1, 1, 0.3);
   group.add(body);
 
-  // ===== LEGS (2 cubes, 0.12×0.25×0.12, with gap) =====
-  const legGeometry = new THREE.BoxGeometry(0.12, 0.25, 0.12);
-  const legMaterial = new THREE.MeshStandardMaterial({
-    color: darkenColor(bodyColor, 0.6),
-    roughness: 0.8
-  });
-
-  const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-  leftLeg.position.set(-0.1, 0.125, 0);
-  leftLeg.castShadow = true;
+  // ===== LEGS (each: 2w × 5h × 2d voxels) =====
+  const leftLeg = new THREE.Group();
+  leftLeg.position.set(-v * 1.2, v * 1.5, 0);
+  for (let ly = 0; ly < 5; ly++) {
+    for (let lx = 0; lx < 2; lx++) {
+      for (let lz = 0; lz < 2; lz++) {
+        const c = ly < 1 ? shoeColor : pantsColor;
+        vox(leftLeg, lx - 0.5, ly - 2.5, lz - 0.5, c);
+      }
+    }
+  }
   group.add(leftLeg);
 
-  const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-  rightLeg.position.set(0.1, 0.125, 0);
-  rightLeg.castShadow = true;
+  const rightLeg = new THREE.Group();
+  rightLeg.position.set(v * 1.2, v * 1.5, 0);
+  for (let ly = 0; ly < 5; ly++) {
+    for (let lx = 0; lx < 2; lx++) {
+      for (let lz = 0; lz < 2; lz++) {
+        const c = ly < 1 ? shoeColor : pantsColor;
+        vox(rightLeg, lx - 0.5, ly - 2.5, lz - 0.5, c);
+      }
+    }
+  }
   group.add(rightLeg);
 
-  // ===== ARMS (2 cubes, 0.08×0.25×0.08, sides of body) =====
-  const armGeometry = new THREE.BoxGeometry(0.08, 0.25, 0.08);
-  const armMaterial = new THREE.MeshStandardMaterial({
-    color: bodyColor,
-    roughness: 0.7
-  });
-
-  const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-  leftArm.position.set(-0.2, 0.175, 0);
-  leftArm.castShadow = true;
+  // ===== ARMS (each: 2w × 5h × 2d voxels) =====
+  const leftArm = new THREE.Group();
+  leftArm.position.set(-v * 3.5, v * 6, 0);
+  for (let ay = 0; ay < 5; ay++) {
+    for (let ax = 0; ax < 2; ax++) {
+      for (let az = 0; az < 2; az++) {
+        const c = ay >= 3 ? bodyColor : skinColor;
+        vox(leftArm, ax - 0.5, -ay, az - 0.5, c);
+      }
+    }
+  }
   group.add(leftArm);
 
-  const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-  rightArm.position.set(0.2, 0.175, 0);
-  rightArm.castShadow = true;
-  rightArm.userData.workingArm = true; // Mark for work animation
+  const rightArm = new THREE.Group();
+  rightArm.position.set(v * 3.5, v * 6, 0);
+  rightArm.userData.workingArm = true;
+  for (let ay = 0; ay < 5; ay++) {
+    for (let ax = 0; ax < 2; ax++) {
+      for (let az = 0; az < 2; az++) {
+        const c = ay >= 3 ? bodyColor : skinColor;
+        vox(rightArm, ax - 0.5, -ay, az - 0.5, c);
+      }
+    }
+  }
   group.add(rightArm);
 
-  // ===== HEAD (0.25×0.25×0.25, skin tone) =====
-  const head = new THREE.Mesh(
-    new THREE.BoxGeometry(0.25, 0.25, 0.25),
-    new THREE.MeshStandardMaterial({
-      color: '#fcd34d', // Warm skin tone
-      roughness: 0.6
-    })
-  );
-  head.position.y = 0.475;
-  head.castShadow = true;
+  // ===== HEAD (4w × 4h × 4d voxels, skin tone) =====
+  const head = new THREE.Group();
+  head.position.y = v * 10;
+  for (let hx = -1.5; hx <= 1.5; hx++) {
+    for (let hy = -1.5; hy <= 1.5; hy++) {
+      for (let hz = -1.5; hz <= 1.5; hz++) {
+        vox(head, hx, hy, hz, skinColor);
+      }
+    }
+  }
+  // Hair (top + back of head, darker color)
+  const hairColor = darkenColor(bodyColor, 0.5);
+  for (let hx = -1.5; hx <= 1.5; hx++) {
+    for (let hz = -1.5; hz <= 1.5; hz++) {
+      vox(head, hx, 2.2, hz, hairColor); // Top
+    }
+    vox(head, hx, 1.5, -1.8, hairColor); // Back row
+    vox(head, hx, 0.5, -1.8, hairColor);
+  }
   group.add(head);
-  group.userData.headRef = head; // For morale bar positioning
+  group.userData.headRef = head;
 
-  // ===== EYES (2 tiny cubes, 0.06×0.06×0.06) =====
-  const eyeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
-  const eyeMaterial = new THREE.MeshStandardMaterial({ color: '#1e293b' });
-
-  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  leftEye.position.set(-0.08, 0.53, 0.125);
-  leftEye.castShadow = true;
-  group.add(leftEye);
-
-  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  rightEye.position.set(0.08, 0.53, 0.125);
-  rightEye.castShadow = true;
-  group.add(rightEye);
+  // ===== EYES (2 dark cubes on face) =====
+  vox(head, -0.8, 0.3, 1.8, '#1e293b');
+  vox(head, 0.8, 0.3, 1.8, '#1e293b');
+  // Mouth
+  vox(head, -0.5, -0.7, 1.8, '#c2410c', 1, 0.5, 0.5);
+  vox(head, 0.5, -0.7, 1.8, '#c2410c', 1, 0.5, 0.5);
 
   // ===== HAT (zone-specific) =====
   const hat = createHat(specialization);
   if (hat) {
-    hat.position.y = 0.65;
+    hat.position.y = v * 12.5;
     hat.castShadow = true;
     group.add(hat);
   }
 
-  // ===== TOOL (zone-specific, held in right hand) =====
+  // ===== TOOL (zone-specific, attached to right arm) =====
   const tool = createTool(specialization);
   if (tool) {
-    tool.position.set(0.28, 0.2, 0);
+    tool.position.set(v * 4.5, v * 3, 0);
     tool.castShadow = true;
     group.add(tool);
   }
 
   // ===== MORALE BAR (floating above head) =====
   const moraleBar = createMoraleBar(morale);
-  moraleBar.position.y = 0.95;
-  moraleBar.userData.moraleProp = true; // Mark for visibility control
+  moraleBar.position.y = v * 15;
+  moraleBar.userData.moraleProp = true;
   group.add(moraleBar);
 
   // ===== ANIMATION DATA & STATE MACHINE =====
@@ -129,13 +179,14 @@ export function createAgentModel(agent) {
   group.userData.morale = morale;
   group.userData.moraleBar = moraleBar;
   group.userData.isDarkMorale = isDarkMorale;
+  group.userData.bodyColor = bodyColor;
 
   // Animation state machine
-  group.animState = 'idle'; // 'idle' | 'walking' | 'working'
-  group.animClock = 0; // elapsed time accumulator
-  group.animSpeed = 1.0; // morale multiplier
-  group.zoneType = null; // 'forest' | 'plains' | 'wetlands' | null
-  group.baseY = 0; // for position-relative animations
+  group.animState = 'idle';
+  group.animClock = 0;
+  group.animSpeed = 1.0;
+  group.zoneType = null;
+  group.baseY = 0;
 
   // Animation updater (called every frame)
   group.updateAnimation = function (deltaTime) {
@@ -534,25 +585,29 @@ export function getMoraleAnimSpeed(morale) {
  * Very low: red tint
  */
 export function updateMoraleTint(agent, morale) {
-  const bodyMesh = agent.userData?.body;
-  if (!bodyMesh || !bodyMesh.material) return;
+  const bodyGroup = agent.userData?.body;
+  if (!bodyGroup) return;
 
   const originalColor = new THREE.Color(agent.userData.bodyColor || 0x999999);
 
-  if (morale >= 50) {
-    // Normal colors
-    bodyMesh.material.color.copy(originalColor);
-    bodyMesh.material.emissive.setHex(0x000000);
-  } else if (morale >= 20) {
-    // Low morale: desaturate by 30% (lerp toward gray)
-    const grayColor = new THREE.Color(0x888888);
-    bodyMesh.material.color.copy(originalColor).lerp(grayColor, 0.3);
-    bodyMesh.material.emissive.setHex(0x000000);
-  } else {
-    // Very low morale: red tint + slight glow
-    bodyMesh.material.color.setHex(0xcc3333);
-    bodyMesh.material.emissive.setHex(0x660000);
-  }
+  // Apply tint to all meshes in the body group (and agent group for arms/legs)
+  const applyTint = (mesh) => {
+    if (!mesh.material) return;
+    if (morale >= 50) {
+      mesh.material.emissive?.setHex(0x000000);
+    } else if (morale >= 20) {
+      mesh.material.emissive?.setHex(0x000000);
+      const gray = new THREE.Color(0x888888);
+      mesh.material.color.lerp(gray, 0.15);
+    } else {
+      mesh.material.color.setHex(0xcc3333);
+      if (mesh.material.emissive) mesh.material.emissive.setHex(0x660000);
+    }
+  };
+
+  bodyGroup.traverse((child) => {
+    if (child.isMesh) applyTint(child);
+  });
 }
 
 /**
