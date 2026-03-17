@@ -581,6 +581,129 @@ class SoundManager {
     click2Osc.start(now + 0.07);
     click2Osc.stop(now + 0.09);
   }
+  // ===== AMBIENT SOUNDSCAPE (tied to day/night) =====
+
+  _ambientNode = null;
+  _ambientGain = null;
+  _ambientPhase = null;
+
+  /**
+   * Start or crossfade ambient loop for a day phase.
+   * @param {'morning'|'afternoon'|'evening'|'night'} phase
+   */
+  setAmbientPhase(phase) {
+    if (this.muted || !this.ctx || phase === this._ambientPhase) return;
+    this.ensureContext();
+    this._ambientPhase = phase;
+
+    // Fade out old
+    if (this._ambientGain) {
+      const oldGain = this._ambientGain;
+      oldGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1.0);
+      setTimeout(() => {
+        try { oldGain.disconnect(); } catch {}
+      }, 1500);
+    }
+    if (this._ambientNode) {
+      const oldNode = this._ambientNode;
+      setTimeout(() => {
+        try { oldNode.stop(); } catch {}
+      }, 1500);
+    }
+
+    // Create new ambient based on phase
+    const now = this.ctx.currentTime;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.04, now + 1.5); // Very quiet
+    gain.connect(this.ctx.destination);
+    this._ambientGain = gain;
+
+    if (phase === 'morning' || phase === 'afternoon') {
+      // Bird chirps: filtered noise bursts
+      this._ambientNode = this._createBirdLoop(gain);
+    } else if (phase === 'evening') {
+      // Crickets: high-frequency oscillation
+      this._ambientNode = this._createCricketLoop(gain);
+    } else if (phase === 'night') {
+      // Deep quiet hum + occasional cricket
+      this._ambientNode = this._createNightLoop(gain);
+    }
+  }
+
+  _createBirdLoop(destination) {
+    const bufferSize = this.ctx.sampleRate * 4; // 4 second loop
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    // Generate chirp-like pattern
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / this.ctx.sampleRate;
+      // Sparse chirps
+      const chirpPhase = (t * 3) % 1;
+      if (chirpPhase < 0.05) {
+        const freq = 2000 + Math.sin(t * 50) * 500;
+        data[i] = Math.sin(t * freq * Math.PI * 2) * 0.3 * (0.05 - chirpPhase) * 20;
+      } else {
+        data[i] = 0;
+      }
+    }
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.connect(destination);
+    source.start();
+    return source;
+  }
+
+  _createCricketLoop(destination) {
+    const osc = this.ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(4200, this.ctx.currentTime);
+
+    // Amplitude modulation for chirp pattern
+    const modGain = this.ctx.createGain();
+    const modOsc = this.ctx.createOscillator();
+    modOsc.type = 'square';
+    modOsc.frequency.setValueAtTime(8, this.ctx.currentTime); // 8Hz chirp rate
+    modOsc.connect(modGain.gain);
+    modGain.gain.setValueAtTime(0, this.ctx.currentTime);
+
+    osc.connect(modGain);
+    modGain.connect(destination);
+    osc.start();
+    modOsc.start();
+    return osc;
+  }
+
+  _createNightLoop(destination) {
+    // Very low frequency hum
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(60, this.ctx.currentTime);
+    osc.connect(destination);
+    osc.start();
+    return osc;
+  }
+
+  /**
+   * Stop ambient sounds.
+   */
+  stopAmbient() {
+    this._ambientPhase = null;
+    if (this._ambientGain) {
+      try {
+        this._ambientGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.5);
+      } catch {}
+    }
+    if (this._ambientNode) {
+      setTimeout(() => {
+        try { this._ambientNode.stop(); } catch {}
+      }, 600);
+      this._ambientNode = null;
+    }
+  }
 }
 
 // Singleton export

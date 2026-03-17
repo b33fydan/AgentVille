@@ -9,6 +9,8 @@ import { populateTerrainProps } from '../../utils/terrainPropsBuilder.js';
 import { initAgentPosition, setAgentTarget, recallAgentToCenter, getZoneWorldPosition, updateAgentPositions } from '../../utils/agentMovement.js';
 import { applyDayNightLighting } from '../../engine/DayNightCycle.js';
 import { initAnimals, updateAnimals, disposeAnimals } from '../../engine/AnimalAI.js';
+import { initCrops, updateCrops, disposeCrops } from '../../engine/CropGrowth.js';
+import { initParticles, updateParticles, disposeParticles } from '../../engine/AmbientParticles.js';
 
 // Initial dimensions — will be updated by resize handler to match container
 let SCENE_WIDTH = window.innerWidth;
@@ -187,6 +189,10 @@ export default function IslandScene() {
     // ============= Spawn Farm Animals =============
     initAnimals(scene);
 
+    // ============= Crop Growth + Particles =============
+    initCrops(scene, terrainGrid);
+    initParticles(scene);
+
     // ============= Animation Loop =============
 
     let animationId;
@@ -253,6 +259,17 @@ export default function IslandScene() {
       // 4. Update farm animals
       updateAnimals(deltaTime);
 
+      // 5. Update crops (throttled internally — only rebuilds on day change)
+      updateCrops(terrainGrid);
+
+      // 6. Update ambient particles (smoke, fireflies)
+      updateParticles(deltaTime);
+
+      // 7. Enhanced water animation (color shimmer with time-of-day)
+      const waterHue = Math.sin(waterAnimationRef.time * 0.3) * 0.02;
+      water1.material.color.setRGB(0.23 + waterHue, 0.51 + waterHue, 0.96);
+      water2.material.color.setRGB(0.11 + waterHue * 0.5, 0.31 + waterHue * 0.5, 0.84);
+
       controls.update();
 
       renderer.render(scene, camera);
@@ -299,6 +316,8 @@ export default function IslandScene() {
         sceneManagerRef.current.dispose();
       }
       disposeAnimals(scene);
+      disposeCrops(scene);
+      disposeParticles(scene);
 
       if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
         mountRef.current.removeChild(renderer.domElement);

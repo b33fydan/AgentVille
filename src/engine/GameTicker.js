@@ -6,6 +6,7 @@
 import { useGameStore } from '../store/gameStore';
 import { advanceDayLogic } from '../utils/advanceDayHandler';
 import { tickAgentAI, initAgentAI } from './AgentAI';
+import { soundManager } from '../utils/soundManager';
 
 // ─── Constants ───
 const SECONDS_PER_GAME_DAY = 180; // 3 real minutes = 1 game day at 1x
@@ -79,6 +80,9 @@ class GameTicker {
 
     // Initialize agent AI task states
     initAgentAI();
+
+    // Start ambient soundscape for current phase
+    soundManager.setAmbientPhase(this.currentDayPhase);
 
     this._loop();
   }
@@ -174,6 +178,9 @@ class GameTicker {
       this.currentDayPhase = newPhase;
       useGameStore.getState().setDayPhase(newPhase);
       this._emit('dayPhaseChange', newPhase, prevPhase);
+
+      // Update ambient soundscape
+      soundManager.setAmbientPhase(newPhase);
     }
 
     // Morning → Evening boundary (hour crosses 12)
