@@ -1,187 +1,133 @@
-# AgentVille — Phase 3A: Game Tick + Agent Autonomy
+# AgentVille — Current State
 
-**Status:** Active
-**Executor:** Claude Code
-**Estimated Effort:** 8–12 hours
-**Depends On:** Nothing — starts from stable main branch
-**Previous:** AV-MOVE-001 (Complete), CC-FIX Desktop SeasonHUD (Complete)
-
----
-
-## Vision
-
-Transform AgentVille from button-click-to-advance into a living world. Same game mechanics, same crisis engine, same morale system — new continuous tick model where agents act autonomously and time flows.
-
-**The shift:** discrete event model → continuous tick model.
-
-Today: Player clicks "Advance" → advanceDay() fires → everything happens at once.
-Phase 3A: GameTicker runs continuously → agents evaluate tasks → move → work → resources trickle in → crises roll per tick → day boundaries trigger season logic.
+**Last Updated:** March 16, 2026
+**Phase 3:** Complete (Living World)
+**Deploy:** agent-ville-kappa.vercel.app
+**Repo:** github.com/b33fydan/AgentVille
 
 ---
 
-## Execution Order
+## Architecture Overview
 
 ```
-3A-1: GameTicker Engine          [FIRST — everything depends on this]
-3A-2: Agent Task Queue + Movement [SECOND — depends on 3A-1]
-3A-3: UI Migration (Speed Controls) [PARALLEL with 3A-2]
-3A-4: Day/Night Lighting Cycle     [PARALLEL with 3A-2]
+src/
+  engine/                    ← NEW (Phase 3) — game simulation layer
+    GameTicker.js            — RAF loop, speed controls, day boundaries
+    AgentAI.js               — per-agent task state machine + resource trickle
+    DayNightCycle.js         — 8-preset lighting interpolation
+    AnimalAI.js              — 9 NPC farm animals with wander AI
+    CropGrowth.js            — day-based crop stage visualization
+    AmbientParticles.js      — chimney smoke + firefly particle pools
+
+  store/                     ← Zustand + localStorage
+    gameStore.js             — season, day, gameHour, dayPhase, gameSpeed, resources
+    agentStore.js            — agents (morale, zone, inventory, needs, decisions, trading)
+    logStore.js              — field log entries
+
+  utils/                     ← game logic + rendering
+    advanceDayHandler.js     — game loop logic (crises, morale, needs, economy)
+    crisisEngine.js          — 20+ crisis templates, CrisisQueue
+    agentReactions.js        — 190+ trait-based reactions
+    moraleConsequences.js    — desertions, strikes, demands
+    agentDecisions.js        — autonomous decision matrix
+    economicEngine.js        — supply/demand price simulation
+    agentConflict.js         — theft, alliances, boycotts
+    agentTrading.js          — agent-to-agent trading
+    soundManager.js          — 22 procedural sounds + ambient soundscape
+    cardGenerator.js         — 4 share card types
+    agentBuilder.js          — ~180 voxel agent models with animation
+    agentMovement.js         — smooth position interpolation
+    voxelBuilder.js          — voxel primitives + terrain colors
+    voxelBatcher.js          — InstancedMesh batching utility
+    terrainBuilder.js        — 16x16 terrain grid + cliff layers (InstancedMesh)
+    terrainPropsBuilder.js   — trees/bushes/rocks/reeds (batched via VoxelBatcher)
+    islandSceneManager.js    — Three.js scene sync (agents, resources, flags)
+
+  components/
+    scene/IslandScene.jsx    — Three.js canvas, animation loop, all visual systems
+    ui/SeasonHUD.jsx         — speed controls, time display, resources, capture/share/mute
+    ui/AgentPanel.jsx        — agent list, assignments, field log
+    ui/CrisisModal.jsx       — crisis choices + resolution
+    ui/SaleDay.jsx           — harvest tally, profit, season card
+    ui/RiotModal.jsx         — ACA violation + share card
+    ui/ShareModal.jsx        — download/copy/share pipeline
+    ui/OnboardingFlow.jsx    — 3-stage intro
+    ui/LandingPage.jsx       — pre-game landing
+    ConsequencesHandler.jsx  — orchestrates desertion/strike/demand modals
 ```
 
 ---
 
-## 3A-1: GameTicker Engine
+## Game Loop Flow
 
-**New file:** `src/engine/GameTicker.js`
-
-- `requestAnimationFrame`-based loop with delta time accumulator
-- Configurable tick rate: 1 game-day = 3 real-minutes at 1x speed
-- Speed controls: Pause / 1x / 2x / 3x (multiplies tick rate)
-- Emits events on boundaries: `tick`, `hourChange`, `dayPhaseChange` (morning/afternoon/evening/night), `dayChange`, `seasonEnd`
-- Zustand integration: reads/writes to gameStore time state
-- Pause automatically on: crisis modal open, sale day modal, any consequence modal
-- Resume on modal close
-- Exposed via singleton for component access
-
-**Time model:**
 ```
-1 game-day = 3 minutes real time (at 1x)
-1 game-season = 7 days = 21 minutes real time (at 1x)
-Morning:   0:00 - 6:00 game-hours (0-25% of day)
-Afternoon: 6:00 - 12:00 game-hours (25-50%)
-Evening:   12:00 - 18:00 game-hours (50-75%)
-Night:     18:00 - 24:00 game-hours (75-100%)
-```
+GameTicker (continuous, speed-controlled)
+  ├── gameHour advances (0-24, 1 day = 3 min at 1x)
+  ├── AgentAI ticked every frame → agents work → resources trickle
+  ├── At hour 12: advanceDayLogic() → crises, morale, economy, needs
+  ├── At hour 24: advanceDayLogic() → day increments, season check
+  ├── dayPhaseChange → ambient sound crossfade
+  └── Auto-pause on crisis/saleDay/consequence modals
 
-**Acceptance Criteria:**
-- [ ] Game time advances without player input
-- [ ] Speed buttons (Pause/1x/2x/3x) replace "Advance to..." button
-- [ ] Game pauses when any modal is open
-- [ ] Day counter increments automatically at day boundary
-- [ ] Season end triggers SaleDay sequence at Day 7 boundary
-- [ ] All existing crisis/morale/consequence logic fires at correct time boundaries
-- [ ] localStorage persists game time state across refreshes
+IslandScene (RAF animation loop)
+  ├── DayNightCycle → lights/sky/fog based on gameHour
+  ├── Agent movement + animations
+  ├── Animal wander + animations
+  ├── Crop growth rebuild on day change
+  ├── Particles (smoke morning/evening, fireflies night)
+  └── Water shimmer
+```
 
 ---
 
-## 3A-2: Agent Task Queue + Autonomous Movement
+## DO NOT TOUCH (Stable Systems)
 
-**New file:** `src/engine/AgentAI.js`
-**Modified:** `src/store/agentStore.js` (READ — do NOT change store shape)
+These are proven and should not be modified without good reason:
 
-**Agent Task State Machine:**
-```
-IDLE → WALKING_TO_ZONE → WORKING → WALKING_TO_STORAGE → DEPOSITING → IDLE
-                                      ↓ (crisis)
-                                  REACTING → resume previous
-                                      ↓ (low morale)
-                                  SULKING (reduced speed, no work)
-                                      ↓ (break time)
-                                  WANDERING (random movement, ambient reactions)
-```
-
-**Task Cycle (per agent, per tick):**
-- IDLE + assignedZone → pick tile in zone → WALKING_TO_ZONE
-- WALKING_TO_ZONE → move one step toward target → if arrived → WORKING
-- WORKING → play work animation, increment workTicks → when done → generate resource → loop
-- Unassigned agents → WANDERING (random nearby tile movement)
-
-**Movement:** Lerp between tiles, face direction of travel, bob animation. Simple adjacent-tile stepping (no A* needed on 8x8 grid).
-
-**Acceptance Criteria:**
-- [ ] Agents walk smoothly between tiles (no teleporting)
-- [ ] Agents face their direction of travel
-- [ ] Agents perform work cycles when at their assigned zone
-- [ ] Resources trickle in gradually (not all-at-once)
-- [ ] Unassigned agents wander randomly
-- [ ] Agents pause/react visually when crisis fires
-- [ ] Movement speed scales with game speed (1x/2x/3x)
-- [ ] Field log entries still fire for assignments, crises, morale
+- `crisisEngine.js` — 20+ templates, CrisisQueue
+- `moraleConsequences.js` — desertions, strikes, demands
+- `agentReactions.js` — 190+ reactions
+- `agentDecisions.js` — autonomous decision matrix
+- `economicEngine.js` — price simulation
+- `agentConflict.js` — theft/alliances
+- `agentTrading.js` — agent trading
+- `cardGenerator.js` — 4 card types
+- `terrainBuilder.js` — InstancedMesh terrain
 
 ---
 
-## 3A-3: UI Migration — Speed Controls + Time HUD
+## Key Constants
 
-**Modified:** `SeasonHUD.jsx`, mobile overlay
-
-Replace "Advance" button with speed controls and live time display:
-```
-Season 1 | Day 3 | Afternoon
- Pause  1x  2x  3x  | Wood 24  Wheat 18  Hay 12 | $42 coins
-```
-
-- Speed buttons: Pause / 1x / 2x / 3x (highlight active)
-- Time-of-day indicator (Morning/Afternoon/Evening/Night)
-- Resources update live as agents deposit
-- Day counter increments automatically
-- Keyboard shortcuts: Space = pause/play, 1/2/3 = speed
-
-**Acceptance Criteria:**
-- [ ] Speed controls visible and functional on desktop and mobile
-- [ ] Active speed visually highlighted
-- [ ] Time-of-day label updates in real time
-- [ ] Resources animate as they increment
-- [ ] Keyboard shortcuts work on desktop
-- [ ] "Advance" button fully removed from both layouts
+| Constant | Value | Location |
+|----------|-------|----------|
+| Game day duration | 180s real time (at 1x) | GameTicker.js |
+| Season length | 7 days | gameStore.js |
+| Agent work cycle | 2 game-hours | AgentAI.js |
+| Resource per work cycle | 2 base | AgentAI.js |
+| Crisis probability | 50% per advanceDay call | advanceDayHandler.js |
+| Move speed (agents) | 2.0 units/sec | agentMovement.js |
+| Move speed (animals) | 0.4 units/sec | AnimalAI.js |
+| Voxel unit (agents) | 0.06 units | agentBuilder.js |
+| Max animals | 9 (5 chicken, 2 cow, 1 dog, 1 cat) | AnimalAI.js |
+| Particle pool | 12 smoke + 20 firefly | AmbientParticles.js |
 
 ---
 
-## 3A-4: Day/Night Lighting Cycle
+## Completed Phases
 
-**Modified:** `IslandSceneManager.js`
-
-**Lighting States:**
-```
-Morning:   DirectionalLight warm gold (#FFE4B5), intensity 0.8, angle 15deg
-Afternoon: DirectionalLight bright white (#FFFFFF), intensity 1.0, angle 60deg
-Evening:   DirectionalLight orange (#FF8C42), intensity 0.6, angle 15deg (opposite side)
-Night:     DirectionalLight cool blue (#4A6FA5), intensity 0.3, angle 45deg (moon)
-           + AmbientLight bump to 0.4 to keep scene visible
-```
-
-- Lerp between states based on game-hour (smooth transitions)
-- Sky/background color shifts with time
-- Shadow direction rotates with sun position
-- Scene always visible (night is dim, never black)
-
-**Acceptance Criteria:**
-- [ ] Smooth lighting transitions over the course of a game day
-- [ ] Scene is always visible (night is dim, not black)
-- [ ] Shadows rotate with light source
-- [ ] Background color shifts match time-of-day
-- [ ] Zero additional draw calls (just parameter changes on existing lights)
+- **Phase 0:** Foundation cleanup (store split, legacy deletion)
+- **Phase 1:** Living island (voxel terrain, agent rendering, terrain props)
+- **Phase 1-001:** Agent needs + autonomous decisions
+- **Phase 1-002:** Dynamic economy + agent trading
+- **Phase 2A:** Game loop + crisis engine + morale consequences
+- **Phase 2B:** Audio + sharing (22 sounds, 4 card types)
+- **AV-MOVE-001:** Agent movement + work animations + morale visual states
+- **Phase 3A:** GameTicker + Agent AI + speed controls + day/night cycle
+- **Phase 3B:** InstancedMesh batching + high-density models + farm animals
+- **Phase 3C:** Crop growth + particles + water shimmer + ambient sound
 
 ---
 
-## What NOT to Change
+## Next Phase Candidates
 
-- **Crisis Engine** — just triggered by tick instead of button
-- **Morale Consequences** — same triggers, same modals
-- **Agent Reactions Library** — same library, new trigger contexts
-- **Share Card System** — untouched
-- **Field Log** — same system
-- **Zustand Store Architecture** — extended, not replaced
-- **Claude API Integration** — untouched
-- **Onboarding Flow** — untouched
-
----
-
-## DO NOT TOUCH (Stable Game Logic)
-
-- `crisisEngine.js` — stable, 20+ templates
-- `moraleConsequences.js` — stable
-- `agentReactions.js` — stable, 190+ reactions
-- `cardGenerator.js` — stable
-- `soundManager.js` — stable (will be extended in 3C-4, not now)
-
----
-
-## Test Checkpoint (After All 3A Complete)
-
-Game should be fully playable with:
-- Agents moving autonomously
-- Speed controls working
-- Day/night cycle visible
-- All existing mechanics firing on tick events
-- 60fps maintained
-- No regressions to crisis/morale/share systems
+See `docs/PHASE3_COMPLETE_REPORT.md` for detailed recommendations.
