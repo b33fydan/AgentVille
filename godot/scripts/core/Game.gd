@@ -518,9 +518,31 @@ func _apply_patience_tax(order: Dictionary) -> bool:
 	return true
 
 
+func _age_open_crafting_demands() -> void:
+	for demand_id in crafting_demand_ids:
+		var demand: Dictionary = crafting_demands.get(demand_id, {})
+		if str(demand.get("status", "")) != "open":
+			continue
+		demand["age_days"] = int(demand.get("age_days", 0)) + 1
+		demand["status_text"] = _demand_status_text(demand)
+		crafting_demands[demand_id] = demand
+		_record_crafting_demand_event(demand_id, "aged")
+		game_ui.add_field_log("%s is still open. %s noticed." % [str(demand.get("label", "Crew demand")), str(demand.get("agent_name", "Crew"))])
+		if _agent_manager:
+			_agent_manager.call("apply_adversarial_result", {
+				"agent_id": str(demand.get("agent_id", "")),
+				"outcome": "walked_away",
+				"agent_mood_delta": -1.0,
+				"agent_irritation_delta": 5.0
+			})
+	_refresh_crafting_demands()
+
+
 func _create_crafting_demand(template: Dictionary, source_event: Dictionary) -> String:
+	var demand_kind := str(template.get("kind", "deliver_item"))
 	var required_item := str(template.get("required_item", ""))
-	if required_item == "":
+	var required_action := str(template.get("required_action", ""))
+	if required_item == "" and required_action == "":
 		return ""
 
 	var demand_id := "demand_%03d" % _next_crafting_demand_number
@@ -528,13 +550,20 @@ func _create_crafting_demand(template: Dictionary, source_event: Dictionary) -> 
 	var demand := template.duplicate(true)
 	demand["id"] = demand_id
 	demand["status"] = "open"
+	demand["kind"] = demand_kind
 	demand["agent_id"] = str(source_event.get("agent_id", ""))
 	demand["agent_name"] = str(source_event.get("agent_name", "Crew"))
 	demand["created_day"] = grid_manager.day
+	demand["age_days"] = 0
 	demand["required_item"] = required_item
+	demand["required_action"] = required_action
 	demand["amount"] = maxi(1, int(demand.get("amount", 1)))
-	demand["label"] = str(demand.get("label", "Deliver %s" % _pretty_crafted_name(required_item)))
-	demand["status_text"] = "Needs %s" % _pretty_crafted_name(required_item)
+	demand["label"] = str(demand.get("label", _default_demand_label(demand)))
+	demand["status_text"] = _demand_status_text(demand)
+	var perk := _perk_for_demand(demand)
+	demand["perk_id"] = str(perk.get("id", ""))
+	demand["perk_label"] = str(perk.get("label", ""))
+	demand["perk"] = perk
 
 	crafting_demands[demand_id] = demand
 	crafting_demand_ids.append(demand_id)
@@ -552,6 +581,8 @@ func _satisfy_open_crafting_demands(item_id: String, source: String) -> void:
 		var demand: Dictionary = crafting_demands.get(demand_id, {})
 		if str(demand.get("status", "")) != "open":
 			continue
+		if str(demand.get("kind", "deliver_item")) != "deliver_item":
+			continue
 		if str(demand.get("required_item", "")) != item_id:
 			continue
 
@@ -560,21 +591,77 @@ func _satisfy_open_crafting_demands(item_id: String, source: String) -> void:
 			continue
 
 		_consume_crafted_cost({item_id: amount})
-		demand["status"] = "done"
-		demand["status_text"] = "Delivered"
-		demand["completed_day"] = grid_manager.day
-		crafting_demands[demand_id] = demand
-		_refresh_crafting_demands()
-		_record_crafting_demand_event(demand_id, "done")
-		game_ui.add_field_log("%s delivered to %s." % [_pretty_crafted_name(item_id), str(demand.get("agent_name", "Crew"))])
-		if _agent_manager:
-			_agent_manager.call("apply_adversarial_result", {
-				"agent_id": str(demand.get("agent_id", "")),
-				"outcome": "resolved",
-				"agent_mood_delta": 3.0,
-				"agent_irritation_delta": -12.0
-			})
+		_complete_crafting_demand(demand_id, "%s delivered to %s." % [_pretty_crafted_name(item_id), str(demand.get("agent_name", "Crew"))])
 		return
+
+
+func _satisfy_open_action_demands(event: Dictionary) -> void:
+	if not bool(event.get("success", false)):
+		return
+
+	for demand_id in crafting_demand_ids:
+		var demand: Dictionary = crafting_demands.get(demand_id, {})
+		if str(demand.get("status", "")) != "open":
+			continue
+		if not _event_satisfies_demand(event, demand):
+			continue
+		_complete_crafting_demand(demand_id, "%s completed for %s." % [str(demand.get("label", "Demand")), str(demand.get("agent_name", "Crew"))])
+		return
+
+
+func _event_satisfies_demand(event: Dictionary, demand: Dictionary) -> bool:
+	var demand_kind := str(demand.get("kind", ""))
+	var action := str(event.get("action", ""))
+	match demand_kind:
+		"clear_brush":
+			if action == "clear_brush":
+				return true
+			return action == "sickle" and int(event.get("resources", {}).get("fiber", 0)) > 0
+		"harvest_crop":
+			if action == "harvest_crop" or action == "harvest":
+				return true
+			return action == "sickle" and int(event.get("value", 0)) > 0
+		"build_fence":
+			if action == "build_fence_order":
+				return true
+			return action == "place" and str(event.get("item_id", "")) == "fence"
+	return false
+
+
+func _complete_crafting_demand(demand_id: String, message: String) -> void:
+	if not crafting_demands.has(demand_id):
+		return
+
+	var demand: Dictionary = crafting_demands[demand_id]
+	demand["status"] = "done"
+	demand["status_text"] = "Delivered"
+	demand["completed_day"] = grid_manager.day
+	crafting_demands[demand_id] = demand
+	_refresh_crafting_demands()
+	_record_crafting_demand_event(demand_id, "done")
+	game_ui.add_field_log(message)
+	_apply_demand_completion_effects(demand)
+
+
+func _apply_demand_completion_effects(demand: Dictionary) -> void:
+	if _agent_manager:
+		_agent_manager.call("apply_adversarial_result", {
+			"agent_id": str(demand.get("agent_id", "")),
+			"outcome": "resolved",
+			"agent_mood_delta": 3.0,
+			"agent_irritation_delta": -12.0
+		})
+
+	var perk: Dictionary = demand.get("perk", {})
+	var resource_delta: Dictionary = perk.get("resource_delta", {})
+	var accepted := _add_resources(resource_delta)
+	if not accepted.is_empty():
+		game_ui.add_field_log("%s: +%s." % [str(perk.get("label", "Crew perk")), _format_resource_list(accepted)])
+
+	var boost_seconds := float(perk.get("crew_boost_seconds", 0.0))
+	if boost_seconds > 0.0 and _agent_manager:
+		_agent_manager.call("apply_crew_boost", boost_seconds, float(perk.get("speed_multiplier", 1.16)))
+		game_ui.add_field_log(str(perk.get("label", "Crew focus improved.")))
 
 
 func _record_crafting_demand_event(demand_id: String, status: String) -> void:
@@ -589,9 +676,80 @@ func _record_crafting_demand_event(demand_id: String, status: String) -> void:
 		"status": status,
 		"agent_id": str(demand.get("agent_id", "")),
 		"agent_name": str(demand.get("agent_name", "")),
+		"kind": str(demand.get("kind", "")),
 		"required_item": str(demand.get("required_item", "")),
-		"amount": int(demand.get("amount", 1))
+		"required_action": str(demand.get("required_action", "")),
+		"amount": int(demand.get("amount", 1)),
+		"age_days": int(demand.get("age_days", 0)),
+		"perk_id": str(demand.get("perk_id", "")),
+		"perk_label": str(demand.get("perk_label", ""))
 	})
+
+
+func _default_demand_label(demand: Dictionary) -> String:
+	match str(demand.get("kind", "deliver_item")):
+		"clear_brush":
+			return "Clear Brush"
+		"harvest_crop":
+			return "Harvest Crop"
+		"build_fence":
+			return "Build Fence"
+	var required_item := str(demand.get("required_item", ""))
+	return "Deliver %s" % _pretty_crafted_name(required_item)
+
+
+func _demand_status_text(demand: Dictionary) -> String:
+	if str(demand.get("status", "")) == "done":
+		return "Done"
+
+	var age_days := int(demand.get("age_days", 0))
+	var age_prefix := "%sd " % age_days if age_days > 0 else ""
+	match str(demand.get("kind", "deliver_item")):
+		"deliver_item":
+			var required_item := str(demand.get("required_item", ""))
+			var amount := maxi(1, int(demand.get("amount", 1)))
+			if required_item != "" and _available_crafted_item(required_item) >= amount:
+				return "%sReady" % age_prefix
+			return "%sNeeds %s" % [age_prefix, _pretty_crafted_name(required_item)]
+		"clear_brush":
+			return "%sNeeds brush" % age_prefix
+		"harvest_crop":
+			return "%sNeeds crop" % age_prefix
+		"build_fence":
+			return "%sNeeds fence" % age_prefix
+	return "%sOpen" % age_prefix
+
+
+func _perk_for_demand(demand: Dictionary) -> Dictionary:
+	var agent_id := str(demand.get("agent_id", ""))
+	var demand_kind := str(demand.get("kind", "deliver_item"))
+	match agent_id:
+		"bert":
+			return {
+				"id": "bert_practical_focus_%s" % demand_kind,
+				"label": "Bert's practical focus",
+				"crew_boost_seconds": 7.0,
+				"speed_multiplier": 1.18
+			}
+		"marigold":
+			return {
+				"id": "marigold_goodwill_%s" % demand_kind,
+				"label": "Marigold's goodwill",
+				"resource_delta": {"grain": 1}
+			}
+		"chuck":
+			return {
+				"id": "chuck_hustle_%s" % demand_kind,
+				"label": "Chuck's sprint focus",
+				"crew_boost_seconds": 6.0,
+				"speed_multiplier": 1.24
+			}
+	return {
+		"id": "crew_focus_%s" % demand_kind,
+		"label": "Crew focus",
+		"crew_boost_seconds": 5.0,
+		"speed_multiplier": 1.16
+	}
 
 
 func _on_crew_order_targeted(action_id: String, grid_pos: Vector2i) -> void:
@@ -658,6 +816,7 @@ func _on_advance_day_requested() -> void:
 			"day": grid_manager.day,
 			"previous_day": ending_day
 		})
+	_age_open_crafting_demands()
 	game_ui.show_message("A warm morning rolls in. Crops advanced one stage.")
 
 
@@ -677,6 +836,7 @@ func _on_player_action_logged(event: Dictionary) -> void:
 	_add_resources(payload.get("resources", {}))
 	_event_log.record_event("player_action", payload)
 	game_ui.add_field_log(_format_player_receipt(payload))
+	_satisfy_open_action_demands(payload)
 	_maybe_queue_failure_grievance(payload)
 
 
@@ -694,6 +854,7 @@ func _on_agent_world_action(event: Dictionary) -> void:
 	if bool(payload.get("success", false)):
 		_consume_crafted_cost(payload.get("crafted_cost", {}))
 	_add_resources(payload.get("resources", {}))
+	_satisfy_open_action_demands(payload)
 	_update_work_order_from_agent_action(payload)
 	_continue_resource_orders()
 
@@ -1276,7 +1437,7 @@ func _crafting_demand_snapshot(demand_id: String) -> Dictionary:
 	var amount := maxi(1, int(demand.get("amount", 1)))
 	demand["has_required_item"] = required_item != "" and _available_crafted_item(required_item) >= amount
 	if str(demand.get("status", "")) == "open":
-		demand["status_text"] = "Ready" if bool(demand["has_required_item"]) else "Needs %s" % _pretty_crafted_name(required_item)
+		demand["status_text"] = _demand_status_text(demand)
 	return demand
 
 

@@ -364,12 +364,51 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 	if outcome != "resolved":
 		return {}
 
+	var context: Dictionary = session.get("context", {})
+	var demand_hint := str(context.get("demand_hint", "deliver_fence_kit"))
+	match demand_hint:
+		"clear_brush":
+			return _demand_template("clear_brush", session)
+		"harvest_crop":
+			return _demand_template("harvest_crop", session)
+		"build_fence":
+			return _demand_template("build_fence", session)
+	return _demand_template("deliver_fence_kit", session)
+
+
+func _demand_template(demand_kind: String, session: Dictionary) -> Dictionary:
+	var agent_name := str(session.get("agent_name", "Crew"))
+	match demand_kind:
+		"clear_brush":
+			return {
+				"kind": "clear_brush",
+				"required_action": "clear_brush",
+				"amount": 1,
+				"label": "Clear Brush",
+				"reason": "%s wants one messy patch cut before more grand plans." % agent_name
+			}
+		"harvest_crop":
+			return {
+				"kind": "harvest_crop",
+				"required_action": "harvest_crop",
+				"amount": 1,
+				"label": "Harvest Crop",
+				"reason": "%s wants proof the field can still produce something edible." % agent_name
+			}
+		"build_fence":
+			return {
+				"kind": "build_fence",
+				"required_action": "build_fence",
+				"amount": 1,
+				"label": "Build Fence",
+				"reason": "%s wants the kit to become an actual boundary." % agent_name
+			}
 	return {
 		"kind": "deliver_item",
 		"required_item": "fence_kit",
 		"amount": 1,
 		"label": "Deliver Fence Kit",
-		"reason": "%s wants proof that the recovery plan has materials behind it." % str(session.get("agent_name", "Crew"))
+		"reason": "%s wants proof that the recovery plan has materials behind it." % agent_name
 	}
 
 
