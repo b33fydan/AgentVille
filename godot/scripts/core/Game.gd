@@ -554,8 +554,13 @@ func _age_open_crafting_demands() -> void:
 		demand["age_days"] = int(demand.get("age_days", 0)) + 1
 		demand["status_text"] = _demand_status_text(demand)
 		crafting_demands[demand_id] = demand
+		var authored_order_id := _maybe_author_work_order_for_demand(demand_id)
 		_record_crafting_demand_event(demand_id, "aged")
 		game_ui.add_field_log("%s is still open. %s noticed." % [str(demand.get("label", "Crew demand")), str(demand.get("agent_name", "Crew"))])
+		if authored_order_id != "":
+			var authored_order: Dictionary = work_orders.get(authored_order_id, {})
+			var authored_label := _work_order_label(str(authored_order.get("action", "")), authored_order.get("target_tile", Vector2i.ZERO))
+			game_ui.add_field_log("%s drafted a crew order for %s." % [str(demand.get("agent_name", "Crew")), authored_label])
 		if _agent_manager:
 			_agent_manager.call("apply_adversarial_result", {
 				"agent_id": str(demand.get("agent_id", "")),
@@ -722,6 +727,53 @@ func _demand_label_with_target(label: String, target_tile: Vector2i) -> String:
 	return "%s %s" % [label, suffix]
 
 
+func _maybe_author_work_order_for_demand(demand_id: String) -> String:
+	if not crafting_demands.has(demand_id):
+		return ""
+
+	var demand: Dictionary = crafting_demands[demand_id]
+	if str(demand.get("status", "")) != "open" or not _demand_has_target(demand):
+		return ""
+
+	var existing_order_id := str(demand.get("authored_order_id", ""))
+	if existing_order_id != "" and work_orders.has(existing_order_id):
+		return ""
+	if existing_order_id != "":
+		demand.erase("authored_order_id")
+
+	var action_id := _work_order_action_for_demand(demand)
+	if action_id == "":
+		crafting_demands[demand_id] = demand
+		return ""
+
+	var target_tile: Vector2i = demand.get("target_tile", Vector2i(-1, -1))
+	if not _can_target_crew_order(action_id, target_tile):
+		crafting_demands[demand_id] = demand
+		return ""
+
+	var order_id := _create_npc_authored_work_order(action_id, target_tile, demand_id, demand)
+	if order_id == "":
+		crafting_demands[demand_id] = demand
+		return ""
+
+	demand["authored_order_id"] = order_id
+	demand["status_text"] = _demand_status_text(demand)
+	crafting_demands[demand_id] = demand
+	_record_crafting_demand_event(demand_id, "authored_order")
+	return order_id
+
+
+func _work_order_action_for_demand(demand: Dictionary) -> String:
+	match str(demand.get("kind", "")):
+		"clear_brush":
+			return "clear_brush"
+		"harvest_crop":
+			return "harvest_crop"
+		"build_fence":
+			return "build_fence"
+	return ""
+
+
 func _complete_crafting_demand(demand_id: String, message: String) -> void:
 	if not crafting_demands.has(demand_id):
 		return
@@ -774,6 +826,7 @@ func _record_crafting_demand_event(demand_id: String, status: String) -> void:
 		"required_item": str(demand.get("required_item", "")),
 		"required_action": str(demand.get("required_action", "")),
 		"target_tile": demand.get("target_tile", Vector2i(-1, -1)),
+		"authored_order_id": str(demand.get("authored_order_id", "")),
 		"amount": int(demand.get("amount", 1)),
 		"age_days": int(demand.get("age_days", 0)),
 		"perk_id": str(demand.get("perk_id", "")),
@@ -799,6 +852,8 @@ func _demand_status_text(demand: Dictionary) -> String:
 
 	var age_days := int(demand.get("age_days", 0))
 	var age_prefix := "%sd " % age_days if age_days > 0 else ""
+	if str(demand.get("authored_order_id", "")) != "":
+		return "%sOrder drafted" % age_prefix
 	match str(demand.get("kind", "deliver_item")):
 		"deliver_item":
 			var required_item := str(demand.get("required_item", ""))
@@ -884,6 +939,36 @@ func _create_user_work_order(action_id: String, grid_pos: Vector2i) -> String:
 	_refresh_work_orders()
 	game_ui.add_field_log("Marked order: %s." % str(order.get("label", "Crew task")))
 	_record_work_order_event(order_id, "ready")
+	return order_id
+
+
+func _create_npc_authored_work_order(action_id: String, grid_pos: Vector2i, demand_id: String, demand: Dictionary) -> String:
+	if not WORK_ORDER_ACTIONS.has(action_id):
+		return ""
+
+	var action: Dictionary = WORK_ORDER_ACTIONS[action_id]
+	var order_id := "order_%03d" % _next_work_order_number
+	_next_work_order_number += 1
+	var author_name := str(demand.get("agent_name", "Crew"))
+	var base_label := _work_order_label(action_id, grid_pos)
+	var order := {
+		"id": order_id,
+		"label": "%s: %s" % [author_name, base_label],
+		"status": "ready",
+		"action": action_id,
+		"agent_action": str(action.get("agent_action", "")),
+		"target_tile": grid_pos,
+		"required_item": str(action.get("required_item", "")),
+		"created_day": grid_manager.day,
+		"source": "npc_demand",
+		"source_demand_id": demand_id,
+		"author_agent_id": str(demand.get("agent_id", "")),
+		"author_agent_name": author_name
+	}
+	work_orders[order_id] = order
+	work_order_ids.append(order_id)
+	_refresh_work_orders()
+	_record_work_order_event(order_id, "authored")
 	return order_id
 
 
@@ -1505,7 +1590,11 @@ func _record_work_order_event(order_id: String, status: String) -> void:
 		"order_id": order_id,
 		"label": str(order.get("label", "")),
 		"status": status,
-		"target_tile": order.get("target_tile", Vector2i.ZERO)
+		"target_tile": order.get("target_tile", Vector2i.ZERO),
+		"source": str(order.get("source", "player")),
+		"source_demand_id": str(order.get("source_demand_id", "")),
+		"author_agent_id": str(order.get("author_agent_id", "")),
+		"author_agent_name": str(order.get("author_agent_name", ""))
 	})
 
 
@@ -1518,7 +1607,11 @@ func _record_removed_work_order_event(order: Dictionary, status: String) -> void
 		"order_id": str(order.get("id", "")),
 		"label": str(order.get("label", "")),
 		"status": status,
-		"target_tile": order.get("target_tile", Vector2i.ZERO)
+		"target_tile": order.get("target_tile", Vector2i.ZERO),
+		"source": str(order.get("source", "player")),
+		"source_demand_id": str(order.get("source_demand_id", "")),
+		"author_agent_id": str(order.get("author_agent_id", "")),
+		"author_agent_name": str(order.get("author_agent_name", ""))
 	})
 
 
