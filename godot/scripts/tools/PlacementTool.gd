@@ -91,7 +91,7 @@ func clear_crew_order_targeting() -> void:
 	_update_preview_visibility()
 
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if grid_manager == null:
 		return
 
@@ -111,7 +111,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _update_hover(mouse_position: Vector2) -> void:
-	if game_ui != null and game_ui.is_pointer_over_ui():
+	if game_ui != null and game_ui.is_pointer_over_ui(mouse_position):
 		_set_hovered_tile(null)
 		_update_preview_visibility()
 		return

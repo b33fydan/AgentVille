@@ -36,6 +36,7 @@ var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
 var _work_order_list_stack: VBoxContainer
 var _active_work_order_tool: String = ""
+var _ui_hit_regions: Array[Control] = []
 
 
 func _ready() -> void:
@@ -51,8 +52,15 @@ func _process(_delta: float) -> void:
 	_cursor_ghost.position = _root.get_local_mouse_position() + Vector2(18, 18)
 
 
-func is_pointer_over_ui() -> bool:
-	return get_viewport().gui_get_hovered_control() != null
+func is_pointer_over_ui(mouse_position: Vector2 = Vector2(-1.0, -1.0)) -> bool:
+	if mouse_position.x >= 0.0 and mouse_position.y >= 0.0:
+		for region in _ui_hit_regions:
+			if region != null and region.visible and region.get_global_rect().has_point(mouse_position):
+				return true
+		return false
+
+	var hovered := get_viewport().gui_get_hovered_control()
+	return hovered != null and hovered != _root
 
 
 func set_selected_tool(tool_name: String) -> void:
@@ -264,6 +272,7 @@ func _build_ui() -> void:
 	_root.name = "UIRoot"
 	_root.anchor_right = 1.0
 	_root.anchor_bottom = 1.0
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
 
 	_build_title_card()
@@ -284,6 +293,7 @@ func _build_title_card() -> void:
 	panel.anchor_bottom = 0.118
 	panel.add_theme_stylebox_override("panel", _panel_style(14, 1))
 	_root.add_child(panel)
+	_register_ui_hit_region(panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 12)
@@ -337,6 +347,7 @@ func _build_toolbar() -> void:
 	panel.anchor_bottom = 0.67
 	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
 	_root.add_child(panel)
+	_register_ui_hit_region(panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 9)
@@ -390,6 +401,7 @@ func _build_palette() -> void:
 	_palette.anchor_bottom = 0.975
 	_palette.item_selected.connect(_on_item_selected)
 	_root.add_child(_palette)
+	_register_ui_hit_region(_palette)
 
 
 func _build_crew_panel() -> void:
@@ -401,6 +413,7 @@ func _build_crew_panel() -> void:
 	panel.anchor_bottom = 0.545
 	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
 	_root.add_child(panel)
+	_register_ui_hit_region(panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 14)
@@ -542,6 +555,7 @@ func _build_settings_panel() -> void:
 	panel.anchor_bottom = 0.99
 	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
 	_root.add_child(panel)
+	_register_ui_hit_region(panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 14)
@@ -797,6 +811,7 @@ func _build_toast() -> void:
 	toast_panel.anchor_top = 0.705
 	toast_panel.anchor_right = 0.64
 	toast_panel.anchor_bottom = 0.752
+	toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast_panel.add_theme_stylebox_override("panel", _soft_box(Color("#fffdf8"), 13, 1))
 	_root.add_child(toast_panel)
 
@@ -807,6 +822,11 @@ func _build_toast() -> void:
 	_toast_label.add_theme_font_size_override("font_size", 18)
 	_toast_label.add_theme_color_override("font_color", Color("#2b2924"))
 	toast_panel.add_child(_toast_label)
+
+
+func _register_ui_hit_region(control: Control) -> void:
+	if control != null and not _ui_hit_regions.has(control):
+		_ui_hit_regions.append(control)
 
 
 func _make_toggle(label: String, default_value: bool, signal_ref: Signal) -> Button:
