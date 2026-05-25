@@ -43,6 +43,9 @@ func build_day_summary(day: int) -> Dictionary:
 		"crafted_items": {},
 		"craft_count": 0,
 		"work_order_events": {},
+		"adversarial_sessions": {},
+		"adversarial_session_count": 0,
+		"resolved_adversarial_sessions": 0,
 		"total_player_actions": 0,
 		"top_action": "none",
 		"notable_events": [],
@@ -81,6 +84,13 @@ func build_day_summary(day: int) -> Dictionary:
 			"work_order":
 				var status := str(event.get("status", "unknown"))
 				summary["work_order_events"][status] = int(summary["work_order_events"].get(status, 0)) + 1
+			"adversarial_session":
+				var outcome := str(event.get("outcome", "unknown"))
+				summary["adversarial_sessions"][outcome] = int(summary["adversarial_sessions"].get(outcome, 0)) + 1
+				summary["adversarial_session_count"] += 1
+				if outcome in ["resolved", "uneasy_truce"]:
+					summary["resolved_adversarial_sessions"] += 1
+				summary["notable_events"].append(event)
 
 	var top_action := "none"
 	var top_count := 0

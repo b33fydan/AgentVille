@@ -12,6 +12,8 @@ signal craft_requested(recipe_id: String)
 signal work_order_requested(order_id: String)
 signal work_order_cancel_requested(order_id: String)
 signal work_order_tool_selected(action_id: String)
+signal adversarial_encounter_requested(agent_id: String)
+signal adversarial_response_selected(choice_id: String)
 
 const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
 
@@ -36,6 +38,13 @@ var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
 var _work_order_list_stack: VBoxContainer
 var _active_work_order_tool: String = ""
+var _encounter_panel: PanelContainer
+var _encounter_title_label: Label
+var _encounter_meter: ProgressBar
+var _encounter_goal_label: Label
+var _encounter_line_label: Label
+var _encounter_choice_buttons: Array[Button] = []
+var _encounter_choices: Array = []
 var _ui_hit_regions: Array[Control] = []
 
 
@@ -250,6 +259,37 @@ func set_agent_snapshots(snapshots: Array) -> void:
 		(row["card"] as PanelContainer).add_theme_stylebox_override("panel", _crew_row_style(mood))
 
 
+func set_adversarial_session(session: Dictionary) -> void:
+	if _encounter_panel == null:
+		return
+
+	var active := bool(session.get("active", false))
+	_encounter_panel.visible = active
+	if not active:
+		_encounter_choices = []
+		return
+
+	var agent_name := str(session.get("agent_name", "Crew"))
+	_encounter_title_label.text = "%s'S GRIEVANCE" % agent_name.to_upper()
+	_encounter_meter.value = float(session.get("patience_meter", 0.0))
+	_encounter_goal_label.text = "Patience %s | Turns %s" % [roundi(float(session.get("patience_meter", 0.0))), int(session.get("max_turns", 3)) - int(session.get("turn_count", 0))]
+	_encounter_line_label.text = str(session.get("npc_line", ""))
+	_encounter_choices = session.get("choices", [])
+
+	for index in range(_encounter_choice_buttons.size()):
+		var button := _encounter_choice_buttons[index]
+		if index >= _encounter_choices.size():
+			button.visible = false
+			button.disabled = true
+			continue
+
+		var choice: Dictionary = _encounter_choices[index]
+		button.visible = true
+		button.disabled = false
+		button.text = str(choice.get("label", "Choice"))
+		button.tooltip_text = str(choice.get("claim", ""))
+
+
 func add_field_log(message: String) -> void:
 	if _field_log_stack == null:
 		return
@@ -284,6 +324,7 @@ func _build_ui() -> void:
 	_build_crew_panel()
 	_build_palette()
 	_build_settings_panel()
+	_build_adversarial_panel()
 	_build_toast()
 	_build_cursor_ghost()
 
@@ -439,6 +480,22 @@ func _build_crew_panel() -> void:
 	title.add_theme_font_size_override("font_size", 12)
 	title.add_theme_color_override("font_color", Color("#8a806f"))
 	header.add_child(title)
+
+	var parley_button := Button.new()
+	parley_button.text = "Parley"
+	parley_button.tooltip_text = "Open the crew grievance meter"
+	parley_button.custom_minimum_size = Vector2(58, 22)
+	parley_button.focus_mode = Control.FOCUS_NONE
+	parley_button.add_theme_font_size_override("font_size", 11)
+	parley_button.add_theme_color_override("font_color", Color("#4b4337"))
+	parley_button.add_theme_stylebox_override("normal", _crew_order_button_style(false))
+	parley_button.add_theme_stylebox_override("hover", _crew_order_button_style(true))
+	parley_button.add_theme_stylebox_override("pressed", _crew_order_button_style(true))
+	parley_button.pressed.connect(func() -> void:
+		sound_requested.emit("ui_click")
+		adversarial_encounter_requested.emit("")
+	)
+	header.add_child(parley_button)
 
 	var status := Label.new()
 	status.text = "watching"
@@ -777,6 +834,84 @@ func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
 	_update_work_order_row(order)
 
 
+func _build_adversarial_panel() -> void:
+	_encounter_panel = PanelContainer.new()
+	_encounter_panel.name = "AdversarialEncounterPanel"
+	_encounter_panel.anchor_left = 0.31
+	_encounter_panel.anchor_top = 0.145
+	_encounter_panel.anchor_right = 0.74
+	_encounter_panel.anchor_bottom = 0.345
+	_encounter_panel.visible = false
+	_encounter_panel.add_theme_stylebox_override("panel", _encounter_panel_style())
+	_root.add_child(_encounter_panel)
+	_register_ui_hit_region(_encounter_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 13)
+	margin.add_theme_constant_override("margin_right", 13)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	_encounter_panel.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 6)
+	margin.add_child(stack)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 10)
+	stack.add_child(header)
+
+	_encounter_title_label = Label.new()
+	_encounter_title_label.text = "CREW GRIEVANCE"
+	_encounter_title_label.add_theme_font_size_override("font_size", 13)
+	_encounter_title_label.add_theme_color_override("font_color", Color("#5a342b"))
+	header.add_child(_encounter_title_label)
+
+	_encounter_meter = ProgressBar.new()
+	_encounter_meter.min_value = 0
+	_encounter_meter.max_value = 100
+	_encounter_meter.value = 60
+	_encounter_meter.show_percentage = false
+	_encounter_meter.custom_minimum_size = Vector2(142, 8)
+	_encounter_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_encounter_meter.add_theme_stylebox_override("background", _soft_box(Color("#f1e2d4"), 6, 0))
+	_encounter_meter.add_theme_stylebox_override("fill", _soft_box(Color("#de8559"), 6, 0))
+	header.add_child(_encounter_meter)
+
+	_encounter_goal_label = Label.new()
+	_encounter_goal_label.text = "Patience"
+	_encounter_goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_encounter_goal_label.add_theme_font_size_override("font_size", 11)
+	_encounter_goal_label.add_theme_color_override("font_color", Color("#7b604e"))
+	stack.add_child(_encounter_goal_label)
+
+	_encounter_line_label = Label.new()
+	_encounter_line_label.text = ""
+	_encounter_line_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_encounter_line_label.custom_minimum_size = Vector2(0, 40)
+	_encounter_line_label.add_theme_font_size_override("font_size", 13)
+	_encounter_line_label.add_theme_color_override("font_color", Color("#2f2922"))
+	stack.add_child(_encounter_line_label)
+
+	var choices := HBoxContainer.new()
+	choices.add_theme_constant_override("separation", 7)
+	stack.add_child(choices)
+	for index in range(3):
+		var button := Button.new()
+		button.text = "Choice"
+		button.custom_minimum_size = Vector2(0, 30)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_font_size_override("font_size", 13)
+		button.add_theme_color_override("font_color", Color("#3f372d"))
+		button.add_theme_stylebox_override("normal", _encounter_choice_style(false))
+		button.add_theme_stylebox_override("hover", _encounter_choice_style(true))
+		button.add_theme_stylebox_override("pressed", _encounter_choice_style(true))
+		button.pressed.connect(_on_encounter_choice_pressed.bind(index))
+		choices.add_child(button)
+		_encounter_choice_buttons.append(button)
+
+
 func _on_work_order_row_button_pressed(order_id: String) -> void:
 	if not _work_order_rows.has(order_id):
 		return
@@ -785,6 +920,17 @@ func _on_work_order_row_button_pressed(order_id: String) -> void:
 		work_order_cancel_requested.emit(order_id)
 		return
 	work_order_requested.emit(order_id)
+
+
+func _on_encounter_choice_pressed(index: int) -> void:
+	if index < 0 or index >= _encounter_choices.size():
+		return
+	var choice: Dictionary = _encounter_choices[index]
+	var choice_id := str(choice.get("id", ""))
+	if choice_id == "":
+		return
+	sound_requested.emit("ui_click")
+	adversarial_response_selected.emit(choice_id)
 
 
 func _make_inventory_pill(id: String, text: String, color: Color, is_crafted: bool) -> PanelContainer:
@@ -1105,6 +1251,27 @@ func _crew_order_button_style(active: bool) -> StyleBoxFlat:
 	style.border_color = Color("#769352") if active else Color("#d1bea0")
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(9)
+	return style
+
+
+func _encounter_panel_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.965, 0.90, 0.96)
+	style.border_color = Color("#9b654c")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(12)
+	style.shadow_color = Color(0, 0, 0, 0.16)
+	style.shadow_size = 14
+	style.shadow_offset = Vector2(0, 7)
+	return style
+
+
+func _encounter_choice_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#ffe4c8") if active else Color("#fff6e9")
+	style.border_color = Color("#b87956") if active else Color("#d0aa8b")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
 	return style
 
 

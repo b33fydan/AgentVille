@@ -2,6 +2,7 @@ extends Node
 
 const GameEventLogScript: Script = preload("res://scripts/ai/GameEventLog.gd")
 const AgentManagerScript: Script = preload("res://scripts/ai/AgentManager.gd")
+const AdversarialSessionManagerScript: Script = preload("res://scripts/ai/AdversarialSessionManager.gd")
 const RECIPES: Dictionary = {
 	"fence_kit": {
 		"label": "Fence Kit",
@@ -61,6 +62,7 @@ var _environment: Environment
 var _sun: DirectionalLight3D
 var _event_log
 var _agent_manager
+var _adversarial_session
 var _crew_priority_timer: float = 0.0
 var _next_work_order_number: int = 1
 
@@ -105,6 +107,8 @@ func _connect_systems() -> void:
 	game_ui.work_order_requested.connect(_on_work_order_requested)
 	game_ui.work_order_cancel_requested.connect(_on_work_order_cancel_requested)
 	game_ui.work_order_tool_selected.connect(_on_work_order_tool_selected)
+	game_ui.adversarial_encounter_requested.connect(_on_adversarial_encounter_requested)
+	game_ui.adversarial_response_selected.connect(_on_adversarial_response_selected)
 
 	if _agent_manager:
 		_agent_manager.agent_comment.connect(game_ui.show_message)
@@ -155,6 +159,8 @@ func _setup_ai_layer() -> void:
 	_event_log.set_script(GameEventLogScript)
 	_event_log.name = "GameEventLog"
 	add_child(_event_log)
+
+	_adversarial_session = AdversarialSessionManagerScript.new()
 
 	_agent_manager = Node3D.new()
 	_agent_manager.set_script(AgentManagerScript)
@@ -243,6 +249,121 @@ func _on_work_order_tool_selected(action_id: String) -> void:
 	game_ui.set_selected_work_order_tool(action_id)
 	game_ui.show_message("%s: mark a farm tile." % str(action.get("verb", "Crew order")))
 	sound_manager.play_stamp("tool_select")
+
+
+func _on_adversarial_encounter_requested(agent_id: String = "") -> void:
+	if _agent_manager == null or _adversarial_session == null:
+		return
+
+	if bool(_adversarial_session.call("has_active_session")):
+		game_ui.set_adversarial_session(_adversarial_session.call("get_session_snapshot"))
+		sound_manager.play_stamp("ui_click")
+		return
+
+	var agent_snapshot := _select_adversarial_agent(agent_id)
+	if agent_snapshot.is_empty():
+		game_ui.show_message("No crew member is available for a grievance.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var session: Dictionary = _adversarial_session.call("start_session", agent_snapshot, _build_adversarial_context())
+	game_ui.set_adversarial_session(session)
+	game_ui.add_field_log("%s raised a grievance." % str(session.get("agent_name", "Crew")))
+	sound_manager.play_stamp("ui_click")
+
+
+func _on_adversarial_response_selected(choice_id: String) -> void:
+	if _adversarial_session == null or not bool(_adversarial_session.call("has_active_session")):
+		return
+
+	var update: Dictionary = _adversarial_session.call("choose_response", choice_id)
+	if update.is_empty():
+		return
+
+	var npc_line := str(update.get("npc_line", ""))
+	if npc_line != "":
+		game_ui.add_field_log(npc_line)
+	game_ui.set_adversarial_session(update)
+	sound_manager.play_stamp("ui_click")
+
+	if not bool(update.get("active", false)):
+		_apply_adversarial_result(update)
+
+
+func _select_adversarial_agent(agent_id: String = "") -> Dictionary:
+	if _agent_manager == null:
+		return {}
+
+	var snapshots: Array = _agent_manager.call("get_agent_snapshots")
+	var selected: Dictionary = {}
+	var highest_irritation := -1.0
+	for snapshot in snapshots:
+		if typeof(snapshot) != TYPE_DICTIONARY:
+			continue
+		if agent_id != "" and str(snapshot.get("id", "")) == agent_id:
+			return snapshot.duplicate(true)
+		if agent_id == "":
+			var irritation := float(snapshot.get("irritation", 0.0))
+			if selected.is_empty() or irritation > highest_irritation:
+				selected = snapshot.duplicate(true)
+				highest_irritation = irritation
+	return selected
+
+
+func _build_adversarial_context() -> Dictionary:
+	var recent_events: Array = _event_log.call("get_recent_events", 16) if _event_log else []
+	var failed_actions: Dictionary = {}
+	var recent_failures := 0
+	for event in recent_events:
+		if typeof(event) != TYPE_DICTIONARY:
+			continue
+		if str(event.get("type", "")) != "player_action" or bool(event.get("success", true)):
+			continue
+		recent_failures += 1
+		var action := str(event.get("action", "work"))
+		failed_actions[action] = int(failed_actions.get(action, 0)) + 1
+
+	var top_failed_action := "farm_work"
+	var top_failed_count := 0
+	for action in failed_actions.keys():
+		var count := int(failed_actions[action])
+		if count > top_failed_count:
+			top_failed_action = str(action)
+			top_failed_count = count
+
+	return {
+		"day": grid_manager.day,
+		"recent_events": recent_events,
+		"recent_failures": recent_failures,
+		"top_failed_action": top_failed_action,
+		"open_work_orders": work_order_ids.size(),
+		"money": money,
+		"resources": resources.duplicate(true),
+		"crafted_items": crafted_items.duplicate(true)
+	}
+
+
+func _apply_adversarial_result(result: Dictionary) -> void:
+	var payload := result.duplicate(true)
+	payload["day"] = grid_manager.day
+	if _event_log:
+		_event_log.record_event("adversarial_session", payload)
+
+	if _agent_manager:
+		_agent_manager.call("apply_adversarial_result", payload)
+
+	var money_delta := int(payload.get("money_delta", 0))
+	if money_delta != 0:
+		money = maxi(0, money + money_delta)
+		game_ui.set_money(money)
+
+	var verdict := str(payload.get("verdict", "The encounter ended."))
+	game_ui.add_field_log(verdict)
+	game_ui.show_message(_format_adversarial_result(payload))
+	if money_delta < 0:
+		sound_manager.play_stamp("error_soft")
+	elif money_delta > 0:
+		sound_manager.play_stamp("coin_burst")
 
 
 func _on_crew_order_targeted(action_id: String, grid_pos: Vector2i) -> void:
@@ -949,6 +1070,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var failed := int(summary.get("failed_player_actions", 0))
 	var harvest_value := int(summary.get("harvest_value", 0))
 	var agent_harvest_value := int(summary.get("agent_harvest_value", 0))
+	var adversarial_session_count := int(summary.get("adversarial_session_count", 0))
+	var resolved_adversarial_sessions := int(summary.get("resolved_adversarial_sessions", 0))
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
 	var top_action := str(summary.get("top_action", "none"))
 	var vibe: Dictionary = summary.get("vibe", {})
@@ -963,6 +1086,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", %s coins harvested" % harvest_value
 	if agent_harvest_value > 0:
 		line += ", crew added %s" % agent_harvest_value
+	if adversarial_session_count > 0:
+		line += ", settled %s/%s grievances" % [resolved_adversarial_sessions, adversarial_session_count]
 	if not resources_gained.is_empty():
 		line += ", gathered %s" % _format_resource_list(resources_gained)
 	if top_action != "none":
@@ -995,6 +1120,16 @@ func _format_agent_receipt(event: Dictionary) -> String:
 		"inspect_soil":
 			return "%s checked open soil at %s." % [name, target]
 	return "%s completed %s at %s." % [name, action.replace("_", " "), target]
+
+
+func _format_adversarial_result(result: Dictionary) -> String:
+	var verdict := str(result.get("verdict", "The encounter ended."))
+	var money_delta := int(result.get("money_delta", 0))
+	if money_delta > 0:
+		return "%s +%s coins." % [verdict, money_delta]
+	if money_delta < 0:
+		return "%s %s coins." % [verdict, money_delta]
+	return verdict
 
 
 func _format_resource_suffix(gains) -> String:

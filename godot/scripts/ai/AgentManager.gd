@@ -119,6 +119,19 @@ func get_agent_snapshots() -> Array:
 	return snapshots
 
 
+func apply_adversarial_result(result: Dictionary) -> void:
+	var target_id := str(result.get("agent_id", ""))
+	if target_id == "":
+		return
+
+	for agent in agents:
+		if str(agent.get("agent_id")) != target_id:
+			continue
+		agent.call("apply_adversarial_result", result)
+		crew_updated.emit(get_agent_snapshots())
+		return
+
+
 func assign_work_order(order: Dictionary) -> bool:
 	if agents.is_empty():
 		return false

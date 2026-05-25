@@ -200,6 +200,25 @@ func get_snapshot() -> Dictionary:
 	}
 
 
+func apply_adversarial_result(result: Dictionary) -> void:
+	state["mood"] = clampf(float(state.get("mood", 50.0)) + float(result.get("agent_mood_delta", 0.0)), 0.0, 100.0)
+	state["irritation"] = clampf(float(state.get("irritation", 0.0)) + float(result.get("agent_irritation_delta", 0.0)), 0.0, 100.0)
+	match str(result.get("outcome", "")):
+		"resolved":
+			state["expression"] = "pleased"
+		"lost_patience":
+			state["expression"] = "angry"
+		"uneasy_truce":
+			state["expression"] = "side_eye"
+		"walked_away":
+			state["expression"] = "annoyed"
+		_:
+			state["expression"] = "neutral"
+	state["reaction_intensity"] = maxf(float(state.get("reaction_intensity", 0.0)), 0.82)
+	_update_expression_visuals()
+	state_changed.emit(get_snapshot())
+
+
 func _apply_action_state_change(action: String) -> void:
 	var energy := float(state.get("energy", 70.0))
 	var mood := float(state.get("mood", 50.0))
