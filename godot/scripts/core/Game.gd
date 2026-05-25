@@ -852,7 +852,10 @@ func _demand_status_text(demand: Dictionary) -> String:
 
 	var age_days := int(demand.get("age_days", 0))
 	var age_prefix := "%sd " % age_days if age_days > 0 else ""
-	if str(demand.get("authored_order_id", "")) != "":
+	var authored_order_id := str(demand.get("authored_order_id", ""))
+	if authored_order_id != "" and work_orders.has(authored_order_id) and int(work_orders[authored_order_id].get("escalation_count", 0)) > 0:
+		return "%sEscalated" % age_prefix
+	if authored_order_id != "":
 		return "%sOrder drafted" % age_prefix
 	match str(demand.get("kind", "deliver_item")):
 		"deliver_item":
@@ -977,6 +980,80 @@ func _work_order_label(action_id: String, grid_pos: Vector2i) -> String:
 	return "%s %s,%s" % [str(action.get("label", "Order")), grid_pos.x, grid_pos.y]
 
 
+func _escalate_ignored_npc_authored_orders() -> void:
+	for order_id in work_order_ids:
+		if not work_orders.has(order_id):
+			continue
+		var order: Dictionary = work_orders[order_id]
+		if str(order.get("source", "")) != "npc_demand":
+			continue
+		if str(order.get("status", "ready")) != "ready":
+			continue
+		if int(order.get("created_day", grid_manager.day)) >= grid_manager.day:
+			continue
+		if int(order.get("escalated_day", 0)) == grid_manager.day:
+			continue
+		_escalate_npc_authored_order(order_id)
+
+
+func _escalate_npc_authored_order(order_id: String) -> bool:
+	if not work_orders.has(order_id):
+		return false
+
+	var order: Dictionary = work_orders[order_id]
+	var author_name := str(order.get("author_agent_name", "Crew"))
+	order["escalation_count"] = int(order.get("escalation_count", 0)) + 1
+	order["escalated_day"] = grid_manager.day
+	order["status_text"] = "%s escalated" % author_name
+	order["last_escalation"] = "auto_send" if _can_order_target(order) and _agent_manager != null and bool(_agent_manager.call("has_available_agent")) else "waiting"
+	work_orders[order_id] = order
+	_refresh_work_orders()
+	_refresh_crafting_demands()
+	_record_work_order_event(order_id, "escalated")
+	var escalation_label := _work_order_label(str(order.get("action", "")), order.get("target_tile", Vector2i.ZERO))
+	game_ui.add_field_log("%s escalated %s." % [author_name, escalation_label])
+
+	if _agent_manager:
+		_agent_manager.call("apply_adversarial_result", {
+			"agent_id": str(order.get("author_agent_id", "")),
+			"outcome": "walked_away",
+			"agent_mood_delta": -0.8,
+			"agent_irritation_delta": 4.0
+		})
+
+	if str(order.get("last_escalation", "")) != "auto_send":
+		return false
+
+	return _queue_escalated_work_order(order_id)
+
+
+func _queue_escalated_work_order(order_id: String) -> bool:
+	if not work_orders.has(order_id):
+		return false
+
+	var order: Dictionary = work_orders[order_id]
+	if not _can_order_target(order):
+		order["status_text"] = "Target changed"
+		order["last_escalation"] = "blocked"
+		work_orders[order_id] = order
+		_refresh_work_orders()
+		return false
+
+	var action_id := str(order.get("action", "build_fence"))
+	if action_id != "build_fence":
+		return _queue_directive_order(order_id, true)
+
+	if _has_required_item_for_order(order):
+		return _queue_build_order(order_id, true)
+
+	if _can_craft_required_item_for_order(order):
+		if _craft_recipe(str(order.get("required_item", "")), "crew_quiet"):
+			return _queue_build_order(order_id, true)
+		return false
+
+	return _queue_supply_for_order(order_id, true)
+
+
 func _on_advance_day_requested() -> void:
 	sound_manager.play_stamp("day_advance")
 	var ending_day: int = grid_manager.day
@@ -997,6 +1074,7 @@ func _on_advance_day_requested() -> void:
 			"previous_day": ending_day
 		})
 	_age_open_crafting_demands()
+	_escalate_ignored_npc_authored_orders()
 	game_ui.show_message("A warm morning rolls in. Crops advanced one stage.")
 
 
@@ -1594,7 +1672,10 @@ func _record_work_order_event(order_id: String, status: String) -> void:
 		"source": str(order.get("source", "player")),
 		"source_demand_id": str(order.get("source_demand_id", "")),
 		"author_agent_id": str(order.get("author_agent_id", "")),
-		"author_agent_name": str(order.get("author_agent_name", ""))
+		"author_agent_name": str(order.get("author_agent_name", "")),
+		"escalation_count": int(order.get("escalation_count", 0)),
+		"escalated_day": int(order.get("escalated_day", 0)),
+		"last_escalation": str(order.get("last_escalation", ""))
 	})
 
 
@@ -1611,7 +1692,10 @@ func _record_removed_work_order_event(order: Dictionary, status: String) -> void
 		"source": str(order.get("source", "player")),
 		"source_demand_id": str(order.get("source_demand_id", "")),
 		"author_agent_id": str(order.get("author_agent_id", "")),
-		"author_agent_name": str(order.get("author_agent_name", ""))
+		"author_agent_name": str(order.get("author_agent_name", "")),
+		"escalation_count": int(order.get("escalation_count", 0)),
+		"escalated_day": int(order.get("escalated_day", 0)),
+		"last_escalation": str(order.get("last_escalation", ""))
 	})
 
 
