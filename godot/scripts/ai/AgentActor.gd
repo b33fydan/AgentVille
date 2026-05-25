@@ -8,6 +8,8 @@ signal world_action_performed(event: Dictionary)
 const VoxelFactory := preload("res://scripts/core/Voxel.gd")
 const AgentMemoryScript := preload("res://scripts/ai/AgentMemory.gd")
 const UtilityAgentDecisionModelScript := preload("res://scripts/ai/UtilityAgentDecisionModel.gd")
+const AgentReactionModelScript := preload("res://scripts/ai/AgentReactionModel.gd")
+const AgentDialogueLibraryScript := preload("res://scripts/ai/AgentDialogueLibrary.gd")
 const ARRIVAL_DISTANCE := 0.04
 const WORK_SECONDS := 0.58
 
@@ -20,6 +22,8 @@ var target_grid_pos: Vector2i = Vector2i.ZERO
 var state: Dictionary = {}
 var memory = AgentMemoryScript.new()
 var decision_model = UtilityAgentDecisionModelScript.new()
+var reaction_model = AgentReactionModelScript.new()
+var dialogue_library = AgentDialogueLibraryScript.new()
 var move_speed: float = 1.85
 
 var grid_manager
@@ -29,10 +33,14 @@ var _body_color := Color("#5e8ec7")
 var _accent_color := Color("#f2cf6b")
 var _skin_color := Color("#ffd8aa")
 var _visual_root: Node3D
+var _head: MeshInstance3D
+var _mood_pip: MeshInstance3D
+var _face_label: Label3D
 var _target_position := Vector3.ZERO
 var _decision_timer: float = 1.5
 var _pending_focus_event: Dictionary = {}
 var _walk_phase: float = 0.0
+var _reaction_shake_phase: float = 0.0
 var _active_decision: Dictionary = {}
 var _arrival_action_done: bool = false
 var _work_timer: float = 0.0
@@ -57,6 +65,9 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"energy": float(config.get("energy", 72.0)),
 		"mood": float(config.get("mood", 58.0)),
 		"friendship": float(config.get("friendship", 50.0)),
+		"irritation": float(config.get("irritation", 0.0)),
+		"expression": "neutral",
+		"reaction_intensity": 0.0,
 		"current_action": "idle",
 		"current_phase": "idle"
 	}
@@ -89,6 +100,10 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 		state["energy"] = minf(100.0, float(state.get("energy", 60.0)) + 24.0)
 		_decision_timer = minf(_decision_timer, 0.8)
 		return
+
+	var reaction: Dictionary = reaction_model.score_event(state, event, focus)
+	if not reaction.is_empty():
+		_apply_reaction(reaction, event, focus)
 
 	if focus and str(event.get("type", "")) == "player_action":
 		_pending_focus_event = event.duplicate(true)
@@ -175,6 +190,9 @@ func get_snapshot() -> Dictionary:
 		"trait": personality_trait,
 		"mood": float(state.get("mood", 0.0)),
 		"energy": float(state.get("energy", 0.0)),
+		"irritation": float(state.get("irritation", 0.0)),
+		"expression": str(state.get("expression", "neutral")),
+		"reaction_intensity": float(state.get("reaction_intensity", 0.0)),
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
 		"grid_pos": current_grid_pos,
@@ -200,6 +218,20 @@ func _apply_action_state_change(action: String) -> void:
 
 	state["energy"] = clampf(energy, 0.0, 100.0)
 	state["mood"] = clampf(mood, 0.0, 100.0)
+
+
+func _apply_reaction(reaction: Dictionary, event: Dictionary, focus: bool) -> void:
+	state["mood"] = clampf(float(state.get("mood", 50.0)) + float(reaction.get("mood_delta", 0.0)), 0.0, 100.0)
+	state["irritation"] = clampf(float(state.get("irritation", 0.0)) + float(reaction.get("irritation_delta", 0.0)), 0.0, 100.0)
+	state["expression"] = str(reaction.get("expression", "neutral"))
+	state["reaction_intensity"] = maxf(float(state.get("reaction_intensity", 0.0)), float(reaction.get("intensity", 0.0)))
+	_update_expression_visuals()
+
+	if focus:
+		var line := dialogue_library.line_for(state, reaction, event)
+		if line != "":
+			comment_generated.emit("%s: \"%s\"" % [display_name, line])
+	state_changed.emit(get_snapshot())
 
 
 func _build_world_snapshot() -> Dictionary:
@@ -518,7 +550,14 @@ func _update_visual_motion(delta: float) -> void:
 
 	_walk_phase += delta * (7.0 if position.distance_to(_target_position) > 0.02 else 2.0)
 	var bob: float = abs(sin(_walk_phase)) * (0.035 if position.distance_to(_target_position) > 0.02 else 0.012)
-	_visual_root.position.y = bob
+	var intensity := float(state.get("reaction_intensity", 0.0))
+	var shake := 0.0
+	if intensity > 0.05 and str(state.get("expression", "neutral")) in ["side_eye", "annoyed", "angry"]:
+		_reaction_shake_phase += delta * 42.0
+		shake = sin(_reaction_shake_phase) * 0.03 * intensity
+		state["reaction_intensity"] = maxf(0.0, intensity - delta * 0.42)
+	_face_camera_if_judging()
+	_visual_root.position = Vector3(shake, bob, 0.0)
 
 
 func _build_visual() -> void:
@@ -527,10 +566,68 @@ func _build_visual() -> void:
 	add_child(_visual_root)
 
 	_visual_root.add_child(VoxelFactory.cube("Body", Vector3(0.24, 0.34, 0.18), _body_color, Vector3(0.0, 0.34, 0.0)))
-	_visual_root.add_child(VoxelFactory.cube("Head", Vector3(0.20, 0.20, 0.20), _skin_color, Vector3(0.0, 0.64, 0.0)))
+	_head = VoxelFactory.cube("Head", Vector3(0.20, 0.20, 0.20), _skin_color, Vector3(0.0, 0.64, 0.0))
+	_visual_root.add_child(_head)
 	_visual_root.add_child(VoxelFactory.cube("HairHat", Vector3(0.23, 0.08, 0.23), _accent_color, Vector3(0.0, 0.78, 0.0)))
 	_visual_root.add_child(VoxelFactory.cube("LegA", Vector3(0.08, 0.22, 0.08), Color("#4f4138"), Vector3(-0.06, 0.13, 0.0)))
 	_visual_root.add_child(VoxelFactory.cube("LegB", Vector3(0.08, 0.22, 0.08), Color("#4f4138"), Vector3(0.06, 0.13, 0.0)))
 	_visual_root.add_child(VoxelFactory.cube("ArmA", Vector3(0.07, 0.25, 0.07), _skin_color, Vector3(-0.18, 0.36, 0.0)))
 	_visual_root.add_child(VoxelFactory.cube("ArmB", Vector3(0.07, 0.25, 0.07), _skin_color, Vector3(0.18, 0.36, 0.0)))
-	_visual_root.add_child(VoxelFactory.cube("MoodPip", Vector3(0.10, 0.10, 0.10), _accent_color, Vector3(0.0, 0.98, 0.0)))
+	_mood_pip = VoxelFactory.cube("MoodPip", Vector3(0.10, 0.10, 0.10), _accent_color, Vector3(0.0, 0.98, 0.0))
+	_visual_root.add_child(_mood_pip)
+
+	_face_label = Label3D.new()
+	_face_label.name = "FaceLabel"
+	_face_label.text = "o_o"
+	_face_label.font_size = 36
+	_face_label.pixel_size = 0.006
+	_face_label.position = Vector3(0.0, 0.65, 0.105)
+	_face_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_face_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_face_label.modulate = Color("#2f241f")
+	_face_label.outline_size = 3
+	_face_label.outline_modulate = Color("#ffe2bd")
+	_face_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_face_label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_visual_root.add_child(_face_label)
+	_update_expression_visuals()
+
+
+func _update_expression_visuals() -> void:
+	var expression := str(state.get("expression", "neutral"))
+	var irritation := float(state.get("irritation", 0.0))
+	var heat := clampf(irritation / 80.0, 0.0, 1.0)
+
+	if _face_label:
+		_face_label.text = _face_text(expression)
+	if _head:
+		_head.material_override = VoxelFactory.material(_skin_color.lerp(Color("#ff8a68"), heat * 0.68))
+	if _mood_pip:
+		_mood_pip.material_override = VoxelFactory.material(_accent_color.lerp(Color("#ff5348"), heat))
+
+
+func _face_text(expression: String) -> String:
+	match expression:
+		"pleased":
+			return "^_^"
+		"side_eye":
+			return "-_-"
+		"annoyed":
+			return ">_>"
+		"angry":
+			return "-_-!"
+	return "o_o"
+
+
+func _face_camera_if_judging() -> void:
+	if str(state.get("expression", "neutral")) not in ["annoyed", "angry"]:
+		return
+	if position.distance_to(_target_position) > 0.03:
+		return
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	var direction: Vector3 = camera.global_position - global_position
+	direction.y = 0.0
+	if direction.length_squared() > 0.001:
+		rotation.y = atan2(direction.x, direction.z)

@@ -23,6 +23,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Marked crew jobs show small in-world order pins until the job is complete.
 - Completed, waiting, or blocked crew orders can be cleared from the compact order list.
 - Marked fence orders can use an existing kit, craft one from stash resources, or gather missing Fiber/Grain first.
+- NPCs now have a first local adversarial reaction layer: repeated failed player actions can trigger side-eye, annoyance, warmer face tint, shake, and sarcastic local dialogue.
 - Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys.
 - Zoom with the mouse wheel.
 
@@ -41,14 +42,18 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `scripts/ai/GameEventLog.gd` records structured player/agent events for future observer summaries.
 - `scripts/ai/AgentManager.gd` spawns the current NPC crew: Bert, Marigold, and Chuck.
 - `scripts/ai/AgentActor.gd` owns each visible NPC, its state, memory, movement, reactions, and small world actions.
+- `scripts/ai/AgentReactionModel.gd` scores player receipts into local NPC mood, irritation, and expression changes.
+- `scripts/ai/AgentDialogueLibrary.gd` stores the first no-API sarcastic reaction lines.
 - `scripts/ai/UtilityAgentDecisionModel.gd` is the deterministic decision layer that an LSTM can later replace or assist.
 - `tools/smoke_receipts.gd` exercises player-action receipts, agent reactions, and day summaries.
 - `tools/smoke_agents.gd` exercises NPC harvesting, coin updates, and brush clearing.
+- `tools/smoke_adversarial_reactions.gd` exercises local NPC irritation, sarcastic reactions, and crew UI expression state.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, and harvest orders.
 - `tools/capture_crafting.gd` captures `artifacts/screenshots/agentville-crafting.png`.
+- `tools/capture_adversarial_reaction.gd` captures `artifacts/screenshots/agentville-adversarial-reaction.png`.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
 - `tools/capture_npc_work.gd` captures `artifacts/screenshots/agentville-npc-work.png`.
 - `tools/capture_placement_preview.gd` captures `artifacts/screenshots/agentville-placement-preview.png`.
@@ -65,6 +70,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Resource gains are stored locally in the Godot runtime as the seed of the crafting economy.
 - Tile-authored work orders are the first bridge from crafted inventory back into NPC-driven world changes.
 - The crew priority loop now chooses between building, crafting support, and gathering missing resources for active orders.
+- The first adversarial NPC layer is local and deterministic: no runtime API calls or LSTM model are used for moment-to-moment reactions yet.
 - End-day summaries turn action history into compact receipts the crew can judge.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
 

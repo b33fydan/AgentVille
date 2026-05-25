@@ -238,10 +238,14 @@ func set_agent_snapshots(snapshots: Array) -> void:
 		var row: Dictionary = _crew_rows[agent_id]
 		var mood := float(snapshot.get("mood", 0.0))
 		var energy := float(snapshot.get("energy", 0.0))
-		var action := _format_action(str(snapshot.get("action", "idle")), str(snapshot.get("phase", "idle")))
+		var irritation := float(snapshot.get("irritation", 0.0))
+		var expression := str(snapshot.get("expression", "neutral"))
+		var action := _format_reaction_action(expression, _format_action(str(snapshot.get("action", "idle")), str(snapshot.get("phase", "idle"))))
 		(row["mood"] as ProgressBar).value = mood
 		(row["energy"] as ProgressBar).value = energy
-		(row["action"] as Label).text = action
+		var action_label := row["action"] as Label
+		action_label.text = action
+		action_label.add_theme_color_override("font_color", Color("#9a4936") if irritation >= 55.0 else (Color("#7f6335") if irritation >= 28.0 else Color("#5e5548")))
 		(row["mood_value"] as Label).text = "%s" % roundi(mood)
 		(row["card"] as PanelContainer).add_theme_stylebox_override("panel", _crew_row_style(mood))
 
@@ -868,6 +872,19 @@ func _on_item_selected(item_id: String) -> void:
 
 func _update_toggle_text(button: Button, label: String) -> void:
 	button.text = "%s  %s" % [label, "ON" if button.button_pressed else "OFF"]
+
+
+func _format_reaction_action(expression: String, fallback: String) -> String:
+	match expression:
+		"side_eye":
+			return "-_- Side-eye"
+		"annoyed":
+			return ">_> Annoyed"
+		"angry":
+			return "-_-! Judging"
+		"pleased":
+			return "^_^ Pleased"
+	return fallback
 
 
 func _format_action(action: String, phase: String = "idle") -> String:

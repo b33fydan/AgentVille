@@ -67,9 +67,9 @@ func _spawn_agents() -> void:
 		var actor = Node3D.new()
 		actor.set_script(AgentActorScript)
 		actor.call("setup", config, grid_manager, event_log)
-		actor.connect("comment_generated", Callable(self, "_on_agent_comment"))
-		actor.connect("state_changed", Callable(self, "_on_agent_state_changed"))
-		actor.connect("world_action_performed", Callable(self, "_on_agent_world_action"))
+		actor.comment_generated.connect(_on_agent_comment)
+		actor.state_changed.connect(_on_agent_state_changed)
+		actor.world_action_performed.connect(_on_agent_world_action)
 		add_child(actor)
 		agents.append(actor)
 	crew_updated.emit(get_agent_snapshots())
@@ -90,6 +90,7 @@ func _on_event_recorded(event: Dictionary) -> void:
 		focused_agent = _next_focused_agent()
 	for agent in agents:
 		agent.call("observe_event", event, agent == focused_agent)
+	crew_updated.emit(get_agent_snapshots())
 
 
 func _next_focused_agent():
