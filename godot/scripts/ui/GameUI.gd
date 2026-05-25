@@ -14,6 +14,7 @@ signal work_order_cancel_requested(order_id: String)
 signal work_order_tool_selected(action_id: String)
 signal adversarial_encounter_requested(agent_id: String)
 signal adversarial_response_selected(choice_id: String)
+signal crafting_demand_target_requested(demand_id: String)
 
 const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
 
@@ -874,7 +875,7 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 
 	var label := Label.new()
 	label.text = str(demand.get("label", "Crew Demand"))
-	label.custom_minimum_size = Vector2(106, 0)
+	label.custom_minimum_size = Vector2(88, 0)
 	label.add_theme_font_size_override("font_size", 11)
 	label.add_theme_color_override("font_color", Color("#3f372d"))
 	row.add_child(label)
@@ -887,9 +888,28 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 	status.add_theme_color_override("font_color", Color("#746b5f"))
 	row.add_child(status)
 
+	var target_button: Button = null
+	if typeof(demand.get("target_tile", null)) == TYPE_VECTOR2I:
+		target_button = Button.new()
+		target_button.text = "Go"
+		target_button.tooltip_text = "Focus demand target"
+		target_button.custom_minimum_size = Vector2(36, 19)
+		target_button.focus_mode = Control.FOCUS_NONE
+		target_button.add_theme_font_size_override("font_size", 10)
+		target_button.add_theme_color_override("font_color", Color("#5d4938"))
+		target_button.add_theme_stylebox_override("normal", _craft_button_style(true))
+		target_button.add_theme_stylebox_override("hover", _craft_button_style(true))
+		target_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+		target_button.pressed.connect(func() -> void:
+			sound_requested.emit("ui_click")
+			crafting_demand_target_requested.emit(demand_id)
+		)
+		row.add_child(target_button)
+
 	_crafting_demand_rows[demand_id] = {
 		"label": label,
-		"status": status
+		"status": status,
+		"button": target_button
 	}
 
 

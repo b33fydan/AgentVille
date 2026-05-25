@@ -23,6 +23,7 @@ var _decor_root: Node3D
 var _structure_root: Node3D
 var _crop_root: Node3D
 var _order_marker_root: Node3D
+var _demand_marker_root: Node3D
 var _wind_phase: float = 0.0
 
 
@@ -47,6 +48,8 @@ func _process(delta: float) -> void:
 
 	if _order_marker_root and _order_marker_root.visible:
 		_order_marker_root.position.y = sin(t * 2.15 + _wind_phase) * 0.025
+	if _demand_marker_root and _demand_marker_root.visible:
+		_demand_marker_root.position.y = sin(t * 2.45 + _wind_phase + 1.3) * 0.028
 
 
 func set_grid_visible(is_visible: bool) -> void:
@@ -75,6 +78,32 @@ func set_order_marker(marker: Dictionary) -> void:
 		str(marker.get("status", "ready")),
 		str(marker.get("status_text", ""))
 	)
+
+
+func set_demand_marker(demand: Dictionary) -> void:
+	if _demand_marker_root == null:
+		return
+
+	_clear_children(_demand_marker_root)
+	if demand.is_empty() or str(demand.get("status", "")) == "done":
+		_demand_marker_root.visible = false
+		return
+
+	_demand_marker_root.visible = true
+	_build_demand_marker(
+		_demand_marker_root,
+		str(demand.get("kind", "deliver_item")),
+		str(demand.get("status", "open"))
+	)
+
+
+func pulse_demand_marker() -> void:
+	if _demand_marker_root == null or not _demand_marker_root.visible:
+		return
+
+	var tween := create_tween()
+	_demand_marker_root.scale = Vector3.ONE * 1.22
+	tween.tween_property(_demand_marker_root, "scale", Vector3.ONE, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func set_terrain(new_terrain: String) -> bool:
@@ -335,6 +364,11 @@ func _build_static() -> void:
 	add_child(_order_marker_root)
 	_order_marker_root.visible = false
 
+	_demand_marker_root = Node3D.new()
+	_demand_marker_root.name = "DemandMarker"
+	add_child(_demand_marker_root)
+	_demand_marker_root.visible = false
+
 
 func _top_color() -> Color:
 	match terrain:
@@ -487,6 +521,35 @@ func _build_order_marker(root: Node3D, action_id: String, status: String, _statu
 		root.add_child(VoxelFactory.cube("StatusDot", Vector3(0.10, 0.10, 0.08), Color("#fff0a8"), Vector3(offset.x + 0.27, 0.83, offset.z - 0.04)))
 
 
+func _build_demand_marker(root: Node3D, demand_kind: String, _status: String) -> void:
+	var color := _demand_marker_color(demand_kind)
+	var shade := color.darkened(0.30)
+	var light := color.lightened(0.24)
+	var cream := Color("#fff7dc")
+	var offset := Vector3(-0.31, 0.0, -0.31)
+
+	root.add_child(VoxelFactory.cube("DemandShadow", Vector3(0.32, 0.025, 0.24), Color(0.16, 0.11, 0.13, 0.22), Vector3(offset.x, 0.17, offset.z)))
+	root.add_child(VoxelFactory.cube("DemandStem", Vector3(0.055, 0.42, 0.055), shade, Vector3(offset.x, 0.43, offset.z)))
+	var badge := VoxelFactory.cube("DemandBadge", Vector3(0.28, 0.28, 0.06), color, Vector3(offset.x, 0.72, offset.z))
+	badge.rotation.z = deg_to_rad(45.0)
+	root.add_child(badge)
+	var inset := VoxelFactory.cube("DemandBadgeInset", Vector3(0.18, 0.18, 0.065), light, Vector3(offset.x, 0.72, offset.z - 0.01))
+	inset.rotation.z = deg_to_rad(45.0)
+	root.add_child(inset)
+
+	match demand_kind:
+		"clear_brush":
+			var blade := VoxelFactory.cube("DemandClearSlash", Vector3(0.18, 0.035, 0.075), cream, Vector3(offset.x, 0.72, offset.z - 0.045))
+			blade.rotation.z = deg_to_rad(-24.0)
+			root.add_child(blade)
+		"harvest_crop":
+			root.add_child(VoxelFactory.cube("DemandHarvestStem", Vector3(0.040, 0.16, 0.075), cream, Vector3(offset.x, 0.70, offset.z - 0.045)))
+			root.add_child(VoxelFactory.cube("DemandHarvestHead", Vector3(0.12, 0.09, 0.075), cream, Vector3(offset.x, 0.80, offset.z - 0.045)))
+		"build_fence":
+			root.add_child(VoxelFactory.cube("DemandFencePost", Vector3(0.040, 0.15, 0.075), cream, Vector3(offset.x - 0.04, 0.72, offset.z - 0.045)))
+			root.add_child(VoxelFactory.cube("DemandFenceRail", Vector3(0.18, 0.035, 0.075), cream, Vector3(offset.x + 0.03, 0.72, offset.z - 0.045)))
+
+
 func _order_marker_color(action_id: String, status: String) -> Color:
 	if status == "waiting":
 		return Color("#c7b89d")
@@ -500,6 +563,17 @@ func _order_marker_color(action_id: String, status: String) -> Color:
 		"harvest_crop":
 			return Color("#e7b84e")
 	return Color("#9fb7e8")
+
+
+func _demand_marker_color(demand_kind: String) -> Color:
+	match demand_kind:
+		"clear_brush":
+			return Color("#c86f74")
+		"harvest_crop":
+			return Color("#8e80c8")
+		"build_fence":
+			return Color("#4f9e8f")
+	return Color("#c8924f")
 
 
 func _clear_crop() -> void:

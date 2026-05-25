@@ -75,6 +75,17 @@ func center_on_farm() -> void:
 	_apply_transform()
 
 
+func focus_world_position(world_position: Vector3, zoom_size: float = -1.0) -> void:
+	target_position = Vector3(
+		clampf(world_position.x, -2.2, 2.2),
+		0.0,
+		clampf(world_position.z, -2.0, 2.0)
+	)
+	if zoom_size > 0.0:
+		camera.size = clampf(zoom_size, min_zoom, max_zoom)
+	_apply_transform()
+
+
 func _pan_screen_delta(delta_pixels: Vector2) -> void:
 	var viewport_height := maxf(1.0, get_viewport().get_visible_rect().size.y)
 	var world_per_pixel := camera.size / viewport_height

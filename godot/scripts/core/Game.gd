@@ -117,6 +117,7 @@ func _connect_systems() -> void:
 	game_ui.work_order_tool_selected.connect(_on_work_order_tool_selected)
 	game_ui.adversarial_encounter_requested.connect(_on_adversarial_encounter_requested)
 	game_ui.adversarial_response_selected.connect(_on_adversarial_response_selected)
+	game_ui.crafting_demand_target_requested.connect(_on_crafting_demand_target_requested)
 
 	if _agent_manager:
 		_agent_manager.agent_comment.connect(game_ui.show_message)
@@ -257,6 +258,33 @@ func _on_work_order_tool_selected(action_id: String) -> void:
 	game_ui.set_selected_work_order_tool(action_id)
 	game_ui.show_message("%s: mark a farm tile." % str(action.get("verb", "Crew order")))
 	sound_manager.play_stamp("tool_select")
+
+
+func _on_crafting_demand_target_requested(demand_id: String) -> void:
+	if not crafting_demands.has(demand_id):
+		game_ui.show_message("Unknown crew demand.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var demand: Dictionary = crafting_demands[demand_id]
+	if not _demand_has_target(demand):
+		game_ui.show_message("That demand has no field target.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var target_tile: Vector2i = demand.get("target_tile", Vector2i(-1, -1))
+	var tile = grid_manager.get_tile(target_tile)
+	if tile == null:
+		game_ui.show_message("Demand target is no longer on the farm.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	if camera_controller != null and camera_controller.has_method("focus_world_position"):
+		camera_controller.call("focus_world_position", tile.global_position, 6.8)
+	if tile.has_method("pulse_demand_marker"):
+		tile.call("pulse_demand_marker")
+	game_ui.show_message("%s wants %s." % [str(demand.get("agent_name", "Crew")), str(demand.get("label", "that target"))])
+	sound_manager.play_stamp("ui_click")
 
 
 func _on_adversarial_encounter_requested(agent_id: String = "") -> void:
@@ -559,6 +587,7 @@ func _create_crafting_demand(template: Dictionary, source_event: Dictionary) -> 
 	demand["required_action"] = required_action
 	demand["amount"] = maxi(1, int(demand.get("amount", 1)))
 	demand["label"] = str(demand.get("label", _default_demand_label(demand)))
+	_assign_demand_target(demand)
 	demand["status_text"] = _demand_status_text(demand)
 	var perk := _perk_for_demand(demand)
 	demand["perk_id"] = str(perk.get("id", ""))
@@ -612,6 +641,9 @@ func _satisfy_open_action_demands(event: Dictionary) -> void:
 func _event_satisfies_demand(event: Dictionary, demand: Dictionary) -> bool:
 	var demand_kind := str(demand.get("kind", ""))
 	var action := str(event.get("action", ""))
+	if _demand_has_target(demand):
+		if not event.has("grid_pos") or event.get("grid_pos", Vector2i(-1, -1)) != demand.get("target_tile", Vector2i(-1, -1)):
+			return false
 	match demand_kind:
 		"clear_brush":
 			if action == "clear_brush":
@@ -626,6 +658,68 @@ func _event_satisfies_demand(event: Dictionary, demand: Dictionary) -> bool:
 				return true
 			return action == "place" and str(event.get("item_id", "")) == "fence"
 	return false
+
+
+func _assign_demand_target(demand: Dictionary) -> void:
+	if not _demand_needs_target(demand):
+		return
+
+	var target_tile := _demand_target_from_value(demand.get("target_tile", Vector2i(-1, -1)))
+	if target_tile == Vector2i(-1, -1) or not _is_valid_demand_target(str(demand.get("kind", "")), target_tile):
+		target_tile = _find_demand_target_tile(demand)
+	if target_tile == Vector2i(-1, -1):
+		return
+
+	demand["target_tile"] = target_tile
+	demand["label"] = _demand_label_with_target(str(demand.get("label", _default_demand_label(demand))), target_tile)
+
+
+func _demand_needs_target(demand: Dictionary) -> bool:
+	return str(demand.get("kind", "")) in ["clear_brush", "harvest_crop", "build_fence"]
+
+
+func _demand_has_target(demand: Dictionary) -> bool:
+	return typeof(demand.get("target_tile", null)) == TYPE_VECTOR2I
+
+
+func _demand_target_from_value(value) -> Vector2i:
+	if typeof(value) == TYPE_VECTOR2I:
+		return value
+	if typeof(value) == TYPE_VECTOR2:
+		return Vector2i(int(value.x), int(value.y))
+	if typeof(value) == TYPE_DICTIONARY:
+		return Vector2i(int(value.get("x", -1)), int(value.get("y", -1)))
+	if typeof(value) == TYPE_ARRAY and value.size() >= 2:
+		return Vector2i(int(value[0]), int(value[1]))
+	return Vector2i(-1, -1)
+
+
+func _find_demand_target_tile(demand: Dictionary) -> Vector2i:
+	var demand_kind := str(demand.get("kind", ""))
+	for x in range(grid_manager.width):
+		for z in range(grid_manager.height):
+			var grid_pos := Vector2i(x, z)
+			if _is_valid_demand_target(demand_kind, grid_pos):
+				return grid_pos
+	return Vector2i(-1, -1)
+
+
+func _is_valid_demand_target(demand_kind: String, grid_pos: Vector2i) -> bool:
+	match demand_kind:
+		"clear_brush":
+			return _can_target_crew_order("clear_brush", grid_pos)
+		"harvest_crop":
+			return _can_target_crew_order("harvest_crop", grid_pos)
+		"build_fence":
+			return _can_target_crew_order("build_fence", grid_pos)
+	return false
+
+
+func _demand_label_with_target(label: String, target_tile: Vector2i) -> String:
+	var suffix := "%s,%s" % [target_tile.x, target_tile.y]
+	if label.ends_with(suffix) or label.contains(" %s" % suffix):
+		return label
+	return "%s %s" % [label, suffix]
 
 
 func _complete_crafting_demand(demand_id: String, message: String) -> void:
@@ -679,6 +773,7 @@ func _record_crafting_demand_event(demand_id: String, status: String) -> void:
 		"kind": str(demand.get("kind", "")),
 		"required_item": str(demand.get("required_item", "")),
 		"required_action": str(demand.get("required_action", "")),
+		"target_tile": demand.get("target_tile", Vector2i(-1, -1)),
 		"amount": int(demand.get("amount", 1)),
 		"age_days": int(demand.get("age_days", 0)),
 		"perk_id": str(demand.get("perk_id", "")),
@@ -1177,6 +1272,7 @@ func _refresh_inventory_and_orders() -> void:
 
 
 func _refresh_crafting_demands() -> void:
+	_refresh_demand_markers()
 	game_ui.set_crafting_demands(_crafting_demand_snapshots())
 
 
@@ -1203,6 +1299,26 @@ func _refresh_order_markers() -> void:
 		var tile = grid_manager.get_tile(target_tile)
 		if tile != null and tile.has_method("set_order_marker"):
 			tile.set_order_marker(order)
+
+
+func _refresh_demand_markers() -> void:
+	if grid_manager == null:
+		return
+
+	for tile in grid_manager.tiles.values():
+		if tile.has_method("set_demand_marker"):
+			tile.set_demand_marker({})
+
+	for demand_id in crafting_demand_ids:
+		if not crafting_demands.has(demand_id):
+			continue
+		var demand := _crafting_demand_snapshot(demand_id)
+		if demand.is_empty() or str(demand.get("status", "")) == "done" or not _demand_has_target(demand):
+			continue
+		var target_tile: Vector2i = demand.get("target_tile", Vector2i(-1, -1))
+		var tile = grid_manager.get_tile(target_tile)
+		if tile != null and tile.has_method("set_demand_marker"):
+			tile.set_demand_marker(demand)
 
 
 func _can_place_palette_item(item_id: String) -> bool:

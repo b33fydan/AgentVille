@@ -30,6 +30,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
 - Resolved Parley sessions now create a compact crew crafting demand; crafting and delivering the requested Fence Kit completes the contract and cools the NPC down.
 - Crew demands now vary between delivery and farm-work contracts, age across days, raise NPC pressure when ignored, and award small NPC-specific perks when completed.
+- Farm-work crew demands now pick real target tiles, show compact coordinates in the demand row, place distinct in-world demand markers, and only complete from work on the requested tile.
 - Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys.
 - Zoom with the mouse wheel.
 
@@ -59,6 +60,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_adversarial_session.gd` exercises bounded NPC grievance sessions, scene UI wiring, result receipts, and rewards.
 - `tools/smoke_crafting_demands.gd` exercises Parley-created crafting demands, player delivery, demand receipts, and NPC cooldown.
 - `tools/smoke_demand_variety.gd` exercises demand type selection, demand aging, pressure receipts, action completion, and NPC-specific perks.
+- `tools/smoke_demand_targeting.gd` exercises targeted demand tile selection, UI coordinates, demand markers, target focus, and tile-specific completion.
 - `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, formatted day summaries, and NPC vibe verdicts.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
@@ -67,6 +69,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/capture_crafting.gd` captures `artifacts/screenshots/agentville-crafting.png`.
 - `tools/capture_crafting_demand.gd` captures `artifacts/screenshots/agentville-crafting-demand.png`.
 - `tools/capture_demand_variety.gd` captures `artifacts/screenshots/agentville-demand-variety.png`.
+- `tools/capture_demand_targeting.gd` captures `artifacts/screenshots/agentville-demand-targeting.png`.
 - `tools/capture_adversarial_reaction.gd` captures `artifacts/screenshots/agentville-adversarial-reaction.png`.
 - `tools/capture_adversarial_session.gd` captures `artifacts/screenshots/agentville-adversarial-session.png`.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
@@ -90,6 +93,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Encounter triggers and consequences are deterministic: repeated misses or chaotic summaries queue the grievance, while resolved/lost sessions feed compact rewards, boosts, irritation changes, and next-order tax receipts.
 - Crafting demands are the first contract bridge from social friction back into production: a resolved grievance can request a Fence Kit, and player crafting satisfies the demand without API calls.
 - Demand variety is still deterministic and local: Parley context chooses delivery, brush-clearing, crop-harvest, or fence-building contracts; aging open contracts adds pressure, while completion applies small personality-flavored perks.
+- Targeted demand selection is deterministic and local too: action demands bind to live farm tiles and become visible world intent markers before later NPC-authored contracts get smarter.
 - The first vibe scorer is also local and threshold-based. It creates structured labels that a future observer model or LSTM/classifier can consume later.
 - End-day summaries turn action history into compact receipts the crew can judge.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
