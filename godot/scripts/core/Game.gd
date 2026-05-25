@@ -951,11 +951,14 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var agent_harvest_value := int(summary.get("agent_harvest_value", 0))
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
 	var top_action := str(summary.get("top_action", "none"))
+	var vibe: Dictionary = summary.get("vibe", {})
+	var vibe_label := str(vibe.get("label", "mixed"))
+	var vibe_score := int(vibe.get("score", 50))
 
 	if total == 0:
-		return "Day %s closed with no farm work logged." % int(summary.get("day", 1))
+		return "Day %s: neglectful, no farm work logged." % int(summary.get("day", 1))
 
-	var line := "Day %s: %s actions, %s missed" % [int(summary.get("day", 1)), total, failed]
+	var line := "Day %s: %s vibe (%s), %s actions, %s missed" % [int(summary.get("day", 1)), vibe_label, vibe_score, total, failed]
 	if harvest_value > 0:
 		line += ", %s coins harvested" % harvest_value
 	if agent_harvest_value > 0:

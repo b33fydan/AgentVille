@@ -3,9 +3,11 @@ extends Node
 
 signal event_recorded(event: Dictionary)
 
+const PlayerVibeScorerScript := preload("res://scripts/ai/PlayerVibeScorer.gd")
 const MAX_EVENTS := 240
 
 var events: Array[Dictionary] = []
+var _vibe_scorer = PlayerVibeScorerScript.new()
 
 
 func record_event(event_type: String, payload: Dictionary = {}) -> Dictionary:
@@ -38,9 +40,13 @@ func build_day_summary(day: int) -> Dictionary:
 		"harvest_value": 0,
 		"agent_harvest_value": 0,
 		"resources_gained": {},
+		"crafted_items": {},
+		"craft_count": 0,
+		"work_order_events": {},
 		"total_player_actions": 0,
 		"top_action": "none",
-		"notable_events": []
+		"notable_events": [],
+		"vibe": {}
 	}
 
 	for event in events:
@@ -68,6 +74,13 @@ func build_day_summary(day: int) -> Dictionary:
 				summary["agent_world_actions"][action_name] = int(summary["agent_world_actions"].get(action_name, 0)) + 1
 				summary["agent_harvest_value"] += int(event.get("value", 0))
 				_add_resource_summary(summary, event.get("resources", {}))
+			"craft_action":
+				var recipe_id := str(event.get("recipe_id", "recipe"))
+				summary["crafted_items"][recipe_id] = int(summary["crafted_items"].get(recipe_id, 0)) + 1
+				summary["craft_count"] += 1
+			"work_order":
+				var status := str(event.get("status", "unknown"))
+				summary["work_order_events"][status] = int(summary["work_order_events"].get(status, 0)) + 1
 
 	var top_action := "none"
 	var top_count := 0
@@ -77,6 +90,7 @@ func build_day_summary(day: int) -> Dictionary:
 			top_action = str(action)
 			top_count = count
 	summary["top_action"] = top_action
+	summary["vibe"] = _vibe_scorer.score_summary(summary)
 
 	return summary
 

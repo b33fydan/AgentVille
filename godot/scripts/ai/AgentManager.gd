@@ -173,15 +173,46 @@ func _summary_comment(summary: Dictionary) -> String:
 	var harvest_value := int(summary.get("harvest_value", 0))
 	var agent_harvest_value := int(summary.get("agent_harvest_value", 0))
 	var top_action := str(summary.get("top_action", "work"))
+	var vibe: Dictionary = summary.get("vibe", {})
+	var vibe_label := str(vibe.get("label", "mixed"))
+	var vibe_reasons: Array = vibe.get("reasons", [])
+	var first_reason := str(vibe_reasons[0]) if not vibe_reasons.is_empty() else "the day happened"
 
 	if total == 0:
 		match personality:
 			"grizzled":
-				return "%s: \"Quiet day. Even the weeds looked under-managed.\"" % name
+				return "%s: \"Neglectful day. Even the weeds looked under-managed.\"" % name
 			"hopeful":
-				return "%s: \"Quiet day. Tomorrow can still earn its keep.\"" % name
+				return "%s: \"Quiet day. Tomorrow can still earn its keep. Please let it.\"" % name
 			"chaotic":
 				return "%s: \"No farm work? Bold performance art.\"" % name
+
+	if vibe_label == "chaotic":
+		match personality:
+			"grizzled":
+				return "%s: \"Chaotic day: %s. I am putting the farm on emotional probation.\"" % [name, first_reason]
+			"hopeful":
+				return "%s: \"Chaotic day, but recoverable. %s is not the end of the story.\"" % [name, first_reason.capitalize()]
+			"chaotic":
+				return "%s: \"Chaotic day. %s. Horrible. Fascinating. Continue.\"" % [name, first_reason.capitalize()]
+
+	if vibe_label == "productive":
+		match personality:
+			"grizzled":
+				return "%s: \"Productive day. %s. I will complain quieter.\"" % [name, first_reason.capitalize()]
+			"hopeful":
+				return "%s: \"Productive day. %s, and the farm felt it.\"" % [name, first_reason.capitalize()]
+			"chaotic":
+				return "%s: \"Productive day. %s. Capitalism has entered the vegetables.\"" % [name, first_reason.capitalize()]
+
+	if vibe_label == "careful":
+		match personality:
+			"grizzled":
+				return "%s: \"Careful day. No drama, which is suspicious but useful.\"" % name
+			"hopeful":
+				return "%s: \"Careful day. The farm likes a steady hand.\"" % name
+			"chaotic":
+				return "%s: \"Careful day. Disturbingly competent. I am bored and proud.\"" % name
 
 	if failed >= 3:
 		match personality:

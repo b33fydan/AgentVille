@@ -24,6 +24,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Completed, waiting, or blocked crew orders can be cleared from the compact order list.
 - Marked fence orders can use an existing kit, craft one from stash resources, or gather missing Fiber/Grain first.
 - NPCs now have a first local adversarial reaction layer: repeated failed player actions can trigger side-eye, annoyance, warmer face tint, shake, and sarcastic local dialogue.
+- End-day summaries now include a local player vibe label such as chaotic, productive, careful, or neglectful.
 - Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys.
 - Zoom with the mouse wheel.
 
@@ -44,10 +45,12 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `scripts/ai/AgentActor.gd` owns each visible NPC, its state, memory, movement, reactions, and small world actions.
 - `scripts/ai/AgentReactionModel.gd` scores player receipts into local NPC mood, irritation, and expression changes.
 - `scripts/ai/AgentDialogueLibrary.gd` stores the first no-API sarcastic reaction lines.
+- `scripts/ai/PlayerVibeScorer.gd` classifies day summaries into local player vibe labels for sharper crew verdicts.
 - `scripts/ai/UtilityAgentDecisionModel.gd` is the deterministic decision layer that an LSTM can later replace or assist.
 - `tools/smoke_receipts.gd` exercises player-action receipts, agent reactions, and day summaries.
 - `tools/smoke_agents.gd` exercises NPC harvesting, coin updates, and brush clearing.
 - `tools/smoke_adversarial_reactions.gd` exercises local NPC irritation, sarcastic reactions, and crew UI expression state.
+- `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, formatted day summaries, and NPC vibe verdicts.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
@@ -71,6 +74,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Tile-authored work orders are the first bridge from crafted inventory back into NPC-driven world changes.
 - The crew priority loop now chooses between building, crafting support, and gathering missing resources for active orders.
 - The first adversarial NPC layer is local and deterministic: no runtime API calls or LSTM model are used for moment-to-moment reactions yet.
+- The first vibe scorer is also local and threshold-based. It creates structured labels that a future observer model or LSTM/classifier can consume later.
 - End-day summaries turn action history into compact receipts the crew can judge.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
 
