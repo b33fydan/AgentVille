@@ -1,0 +1,522 @@
+class_name Tile
+extends Node3D
+
+signal changed(tile)
+
+const CropScene := preload("res://scenes/world/Crop.tscn")
+const VoxelFactory := preload("res://scripts/core/Voxel.gd")
+
+var grid_pos: Vector2i
+var terrain: String = "grass"
+var is_tilled: bool = false
+var crop
+var decor_id: String = ""
+var structure_id: String = ""
+var tile_size: float = 1.0
+
+var _top_mesh: MeshInstance3D
+var _soil_mesh: MeshInstance3D
+var _grid_root: Node3D
+var _hover_root: Node3D
+var _terrain_detail_root: Node3D
+var _decor_root: Node3D
+var _structure_root: Node3D
+var _crop_root: Node3D
+var _order_marker_root: Node3D
+var _wind_phase: float = 0.0
+
+
+func setup(new_grid_pos: Vector2i, new_tile_size: float = 1.0) -> void:
+	grid_pos = new_grid_pos
+	tile_size = new_tile_size
+	_wind_phase = float((grid_pos.x * 37 + grid_pos.y * 71) % 100) * 0.19
+	_build_static()
+	refresh()
+
+
+func _process(delta: float) -> void:
+	if _decor_root == null:
+		return
+
+	var t := Time.get_ticks_msec() * 0.001
+	if decor_id == "tall_grass":
+		_decor_root.rotation.x = sin(t * 1.55 + _wind_phase) * 0.025
+		_decor_root.rotation.z = cos(t * 1.18 + _wind_phase) * 0.018
+	else:
+		_decor_root.rotation = Vector3.ZERO
+
+	if _order_marker_root and _order_marker_root.visible:
+		_order_marker_root.position.y = sin(t * 2.15 + _wind_phase) * 0.025
+
+
+func set_grid_visible(is_visible: bool) -> void:
+	if _grid_root:
+		_grid_root.visible = is_visible
+
+
+func set_hovered(is_hovered: bool) -> void:
+	if _hover_root:
+		_hover_root.visible = is_hovered
+
+
+func set_order_marker(marker: Dictionary) -> void:
+	if _order_marker_root == null:
+		return
+
+	_clear_children(_order_marker_root)
+	if marker.is_empty() or str(marker.get("status", "")) == "done":
+		_order_marker_root.visible = false
+		return
+
+	_order_marker_root.visible = true
+	_build_order_marker(
+		_order_marker_root,
+		str(marker.get("action", "build_fence")),
+		str(marker.get("status", "ready")),
+		str(marker.get("status_text", ""))
+	)
+
+
+func set_terrain(new_terrain: String) -> bool:
+	terrain = new_terrain
+	is_tilled = new_terrain == "soil"
+	_clear_crop()
+	decor_id = ""
+	structure_id = ""
+	refresh()
+	_pulse()
+	changed.emit(self)
+	return true
+
+
+func till() -> bool:
+	if crop != null or structure_id != "" or terrain == "dirt_path":
+		return false
+
+	terrain = "soil"
+	is_tilled = true
+	decor_id = ""
+	refresh()
+	_pulse()
+	changed.emit(self)
+	return true
+
+
+func plant_corn() -> bool:
+	return plant_crop("corn")
+
+
+func plant_wheat() -> bool:
+	return plant_crop("wheat")
+
+
+func plant_crop(crop_id: String) -> bool:
+	if crop != null or not is_tilled or structure_id != "":
+		return false
+
+	crop = CropScene.instantiate()
+	crop.setup(crop_id, 0)
+	_crop_root.add_child(crop)
+	_pulse()
+	changed.emit(self)
+	return true
+
+
+func grow_crop() -> bool:
+	if crop == null:
+		return false
+	return crop.grow()
+
+
+func harvest() -> int:
+	if crop == null or not crop.is_ready():
+		return 0
+
+	var value: int = crop.harvest_value()
+	_clear_crop()
+	terrain = "soil"
+	is_tilled = true
+	refresh()
+	_pulse()
+	changed.emit(self)
+	return value
+
+
+func can_apply_item(item_id: String) -> bool:
+	match item_id:
+		"grass_block", "dirt_path", "dirt_road":
+			return true
+		"soil":
+			return crop == null and structure_id == "" and terrain != "dirt_path"
+		"corn_seed", "wheat_seed":
+			return crop == null and is_tilled and structure_id == ""
+		"fence", "flower_patch", "tall_grass", "wooden_sign", "rock":
+			return crop == null and structure_id == ""
+		"barn", "silo", "well":
+			return crop == null
+		"pickaxe":
+			return can_pickaxe()
+		"sickle":
+			return can_sickle()
+	return false
+
+
+func can_pickaxe() -> bool:
+	return structure_id != "" or decor_id in ["rock", "fence", "wooden_sign"] or terrain == "dirt_path"
+
+
+func can_sickle() -> bool:
+	if crop != null:
+		return crop.is_ready()
+	return decor_id in ["tall_grass", "flower_patch"]
+
+
+func break_with_pickaxe() -> bool:
+	if not can_pickaxe():
+		return false
+
+	if structure_id != "":
+		structure_id = ""
+	elif decor_id in ["rock", "fence", "wooden_sign"]:
+		decor_id = ""
+	elif terrain == "dirt_path":
+		terrain = "grass"
+		is_tilled = false
+
+	refresh()
+	_pulse()
+	changed.emit(self)
+	return true
+
+
+func cut_with_sickle() -> int:
+	if crop != null:
+		return harvest()
+
+	if decor_id in ["tall_grass", "flower_patch"]:
+		decor_id = ""
+		refresh()
+		_pulse()
+		changed.emit(self)
+		return -1
+
+	return 0
+
+
+func place_item(item_id: String) -> bool:
+	match item_id:
+		"grass_block":
+			return set_terrain("grass")
+		"dirt_path", "dirt_road":
+			return set_terrain("dirt_path")
+		"soil":
+			return till()
+		"corn_seed":
+			return plant_corn()
+		"wheat_seed":
+			return plant_wheat()
+		"fence", "flower_patch", "tall_grass", "wooden_sign", "rock":
+			if crop != null or structure_id != "":
+				return false
+			decor_id = item_id
+			structure_id = ""
+			is_tilled = false
+			if terrain == "soil":
+				terrain = "grass"
+			refresh()
+			_pulse()
+			changed.emit(self)
+			return true
+		"barn", "silo", "well":
+			if crop != null:
+				return false
+			structure_id = item_id
+			decor_id = ""
+			is_tilled = false
+			terrain = "grass"
+			refresh()
+			_pulse()
+			changed.emit(self)
+			return true
+	return false
+
+
+func erase() -> bool:
+	var had_content := crop != null or decor_id != "" or structure_id != "" or is_tilled or terrain != "grass"
+	if not had_content:
+		return false
+
+	_clear_crop()
+	decor_id = ""
+	structure_id = ""
+	terrain = "grass"
+	is_tilled = false
+	refresh()
+	_pulse()
+	changed.emit(self)
+	return true
+
+
+func refresh() -> void:
+	if _top_mesh:
+		_top_mesh.material_override = VoxelFactory.material(_top_color())
+	if _soil_mesh:
+		_soil_mesh.visible = is_tilled
+
+	_clear_children(_decor_root)
+	_clear_children(_structure_root)
+	_clear_children(_terrain_detail_root)
+
+	if terrain == "dirt_path":
+		_build_dirt_road_details(_terrain_detail_root)
+
+	match decor_id:
+		"fence":
+			_build_fence(_decor_root)
+		"flower_patch":
+			_build_flower_patch(_decor_root)
+		"tall_grass":
+			_build_tall_grass(_decor_root)
+		"wooden_sign":
+			_build_wooden_sign(_decor_root)
+		"rock":
+			_build_rock(_decor_root)
+
+	match structure_id:
+		"barn":
+			_build_barn(_structure_root)
+		"silo":
+			_build_silo(_structure_root)
+		"well":
+			_build_well(_structure_root)
+
+
+func _build_static() -> void:
+	_clear_children(self)
+
+	add_child(VoxelFactory.cube("DirtCore", Vector3(0.98, 0.34, 0.98), Color("#a66b42"), Vector3(0.0, -0.18, 0.0)))
+	add_child(VoxelFactory.cube("LowerLip", Vector3(0.92, 0.08, 0.92), Color("#7f563d"), Vector3(0.0, -0.39, 0.0)))
+
+	_top_mesh = VoxelFactory.cube("TileTop", Vector3(0.98, 0.10, 0.98), _top_color(), Vector3(0.0, 0.04, 0.0))
+	add_child(_top_mesh)
+
+	_soil_mesh = VoxelFactory.cube("TilledSoil", Vector3(0.78, 0.045, 0.78), Color("#845136"), Vector3(0.0, 0.105, 0.0))
+	add_child(_soil_mesh)
+
+	_grid_root = Node3D.new()
+	_grid_root.name = "GridLines"
+	add_child(_grid_root)
+	_build_frame(_grid_root, Color("#503d30"), 0.025, 0.13)
+
+	_hover_root = Node3D.new()
+	_hover_root.name = "HoverFrame"
+	add_child(_hover_root)
+	_build_frame(_hover_root, Color("#fff1a8"), 0.055, 0.19)
+	_hover_root.visible = false
+
+	_terrain_detail_root = Node3D.new()
+	_terrain_detail_root.name = "TerrainDetails"
+	add_child(_terrain_detail_root)
+
+	_decor_root = Node3D.new()
+	_decor_root.name = "Decor"
+	add_child(_decor_root)
+
+	_structure_root = Node3D.new()
+	_structure_root.name = "Structure"
+	add_child(_structure_root)
+
+	_crop_root = Node3D.new()
+	_crop_root.name = "Crop"
+	add_child(_crop_root)
+
+	_order_marker_root = Node3D.new()
+	_order_marker_root.name = "OrderMarker"
+	add_child(_order_marker_root)
+	_order_marker_root.visible = false
+
+
+func _top_color() -> Color:
+	match terrain:
+		"dirt_path":
+			return Color("#e9c782")
+		"soil":
+			return Color("#9a613d")
+		_:
+			return Color("#a8cf65")
+
+
+func _build_frame(root: Node3D, color: Color, thickness: float, y: float) -> void:
+	root.add_child(VoxelFactory.cube("North", Vector3(0.98, thickness, thickness), color, Vector3(0.0, y, -0.49)))
+	root.add_child(VoxelFactory.cube("South", Vector3(0.98, thickness, thickness), color, Vector3(0.0, y, 0.49)))
+	root.add_child(VoxelFactory.cube("West", Vector3(thickness, thickness, 0.98), color, Vector3(-0.49, y, 0.0)))
+	root.add_child(VoxelFactory.cube("East", Vector3(thickness, thickness, 0.98), color, Vector3(0.49, y, 0.0)))
+
+
+func _build_dirt_road_details(root: Node3D) -> void:
+	var edge := Color("#d6ad6b")
+	var pebble := Color("#b88755")
+	root.add_child(VoxelFactory.cube("RoadEdgeA", Vector3(0.80, 0.025, 0.035), edge, Vector3(0.0, 0.14, -0.32)))
+	root.add_child(VoxelFactory.cube("RoadEdgeB", Vector3(0.78, 0.025, 0.035), edge, Vector3(0.0, 0.14, 0.32)))
+	root.add_child(VoxelFactory.cube("PebbleA", Vector3(0.09, 0.025, 0.06), pebble, Vector3(-0.22, 0.155, -0.05)))
+	root.add_child(VoxelFactory.cube("PebbleB", Vector3(0.06, 0.025, 0.08), pebble, Vector3(0.18, 0.155, 0.10)))
+
+
+func _build_fence(root: Node3D) -> void:
+	var post := Color("#9c6a3e")
+	var rail := Color("#bd8147")
+	root.add_child(VoxelFactory.cube("PostA", Vector3(0.12, 0.58, 0.12), post, Vector3(-0.32, 0.40, 0.0)))
+	root.add_child(VoxelFactory.cube("PostB", Vector3(0.12, 0.58, 0.12), post, Vector3(0.32, 0.40, 0.0)))
+	root.add_child(VoxelFactory.cube("RailLow", Vector3(0.82, 0.11, 0.10), rail, Vector3(0.0, 0.30, 0.0)))
+	root.add_child(VoxelFactory.cube("RailHigh", Vector3(0.82, 0.11, 0.10), rail, Vector3(0.0, 0.54, 0.0)))
+
+
+func _build_flower_patch(root: Node3D) -> void:
+	root.add_child(VoxelFactory.cube("FlowerSoil", Vector3(0.65, 0.08, 0.65), Color("#7d4e34"), Vector3(0.0, 0.16, 0.0)))
+	var colors := [Color("#ef6f8f"), Color("#f6cf57"), Color("#8ab9ff"), Color("#ffffff")]
+	var offsets := [Vector3(-0.22, 0.0, -0.12), Vector3(0.18, 0.0, -0.18), Vector3(-0.06, 0.0, 0.20), Vector3(0.22, 0.0, 0.16)]
+	for i in range(offsets.size()):
+		var offset: Vector3 = offsets[i]
+		root.add_child(VoxelFactory.cube("Stem%s" % i, Vector3(0.06, 0.22, 0.06), Color("#4b8a3d"), Vector3(offset.x, 0.30, offset.z)))
+		root.add_child(VoxelFactory.cube("Bloom%s" % i, Vector3(0.13, 0.13, 0.13), colors[i], Vector3(offset.x, 0.44, offset.z)))
+
+
+func _build_tall_grass(root: Node3D) -> void:
+	var colors := [Color("#6fa649"), Color("#80b957"), Color("#9bc765"), Color("#c6ba5a")]
+	var offsets := [
+		Vector3(-0.30, 0.0, -0.24), Vector3(-0.12, 0.0, -0.28), Vector3(0.10, 0.0, -0.24), Vector3(0.28, 0.0, -0.14),
+		Vector3(-0.24, 0.0, -0.04), Vector3(-0.04, 0.0, -0.02), Vector3(0.18, 0.0, 0.00),
+		Vector3(-0.28, 0.0, 0.20), Vector3(-0.06, 0.0, 0.22), Vector3(0.16, 0.0, 0.20), Vector3(0.32, 0.0, 0.12)
+	]
+
+	for i in range(offsets.size()):
+		var offset: Vector3 = offsets[i]
+		var blade_height := 0.34 + float((i * 13) % 5) * 0.055
+		var blade_width := 0.045 + float(i % 3) * 0.01
+		root.add_child(VoxelFactory.cube("TallGrass%s" % i, Vector3(blade_width, blade_height, blade_width), colors[i % colors.size()], Vector3(offset.x, 0.16 + blade_height * 0.5, offset.z)))
+		if i % 3 == 0:
+			root.add_child(VoxelFactory.cube("SeedTop%s" % i, Vector3(0.07, 0.10, 0.07), Color("#dfc76a"), Vector3(offset.x, 0.29 + blade_height, offset.z)))
+
+
+func _build_wooden_sign(root: Node3D) -> void:
+	var post := Color("#8f6139")
+	var face := Color("#c88a4b")
+	var trim := Color("#6f4930")
+	root.add_child(VoxelFactory.cube("SignPost", Vector3(0.10, 0.50, 0.10), post, Vector3(0.0, 0.38, 0.08)))
+	root.add_child(VoxelFactory.cube("SignFace", Vector3(0.54, 0.28, 0.08), face, Vector3(0.0, 0.68, -0.02)))
+	root.add_child(VoxelFactory.cube("SignTrimTop", Vector3(0.58, 0.045, 0.09), trim, Vector3(0.0, 0.84, -0.02)))
+	root.add_child(VoxelFactory.cube("SignTrimBottom", Vector3(0.58, 0.045, 0.09), trim, Vector3(0.0, 0.52, -0.02)))
+
+
+func _build_rock(root: Node3D) -> void:
+	var stone := Color("#8b8c82")
+	var light := Color("#aeb09f")
+	var dark := Color("#66685f")
+	root.add_child(VoxelFactory.cube("RockBase", Vector3(0.48, 0.22, 0.42), stone, Vector3(0.0, 0.23, 0.0)))
+	root.add_child(VoxelFactory.cube("RockFaceA", Vector3(0.32, 0.28, 0.30), light, Vector3(-0.08, 0.38, -0.04)))
+	root.add_child(VoxelFactory.cube("RockFaceB", Vector3(0.24, 0.20, 0.26), dark, Vector3(0.15, 0.33, 0.10)))
+	root.add_child(VoxelFactory.cube("RockChip", Vector3(0.16, 0.12, 0.14), dark, Vector3(-0.28, 0.20, 0.18)))
+
+
+func _build_barn(root: Node3D) -> void:
+	root.add_child(VoxelFactory.cube("BarnBody", Vector3(1.18, 0.92, 1.02), Color("#c94135"), Vector3(0.0, 0.58, 0.0)))
+	root.add_child(VoxelFactory.cube("BarnTrimFront", Vector3(0.18, 0.76, 0.04), Color("#f7ead8"), Vector3(0.0, 0.52, -0.53)))
+	root.add_child(VoxelFactory.cube("BarnDoor", Vector3(0.42, 0.50, 0.05), Color("#873326"), Vector3(0.0, 0.38, -0.56)))
+	root.add_child(VoxelFactory.cube("BarnWindow", Vector3(0.26, 0.23, 0.055), Color("#f9e9d6"), Vector3(0.0, 0.84, -0.56)))
+	root.add_child(VoxelFactory.cube("RoofMain", Vector3(1.36, 0.26, 1.18), Color("#5b3f34"), Vector3(0.0, 1.11, 0.0)))
+	root.add_child(VoxelFactory.cube("RoofCap", Vector3(1.08, 0.19, 0.96), Color("#6c4b3d"), Vector3(0.0, 1.28, 0.0)))
+	root.add_child(VoxelFactory.cube("HayStack", Vector3(0.38, 0.34, 0.38), Color("#e9bc50"), Vector3(-0.44, 0.30, 0.44)))
+
+
+func _build_silo(root: Node3D) -> void:
+	var body := Color("#d9d1bc")
+	var shade := Color("#bfb59e")
+	var roof := Color("#b8483b")
+	var band := Color("#8e7e65")
+	root.add_child(VoxelFactory.cube("SiloBase", Vector3(0.74, 0.18, 0.74), Color("#a27652"), Vector3(0.0, 0.20, 0.0)))
+	root.add_child(VoxelFactory.cube("SiloBodyLow", Vector3(0.62, 0.48, 0.62), body, Vector3(0.0, 0.52, 0.0)))
+	root.add_child(VoxelFactory.cube("SiloBodyHigh", Vector3(0.56, 0.44, 0.56), shade, Vector3(0.0, 0.98, 0.0)))
+	root.add_child(VoxelFactory.cube("SiloBandA", Vector3(0.66, 0.055, 0.66), band, Vector3(0.0, 0.73, 0.0)))
+	root.add_child(VoxelFactory.cube("SiloBandB", Vector3(0.60, 0.055, 0.60), band, Vector3(0.0, 1.15, 0.0)))
+	root.add_child(VoxelFactory.cube("SiloRoof", Vector3(0.72, 0.24, 0.72), roof, Vector3(0.0, 1.33, 0.0)))
+	root.add_child(VoxelFactory.cube("SiloCap", Vector3(0.38, 0.15, 0.38), Color("#cf6655"), Vector3(0.0, 1.52, 0.0)))
+
+
+func _build_well(root: Node3D) -> void:
+	var stone := Color("#9c9588")
+	var stone_dark := Color("#716d65")
+	var wood := Color("#8f6139")
+	var roof := Color("#b46f3b")
+	root.add_child(VoxelFactory.cube("WellBase", Vector3(0.62, 0.28, 0.62), stone, Vector3(0.0, 0.26, 0.0)))
+	root.add_child(VoxelFactory.cube("WellHole", Vector3(0.34, 0.08, 0.34), stone_dark, Vector3(0.0, 0.44, 0.0)))
+	root.add_child(VoxelFactory.cube("WellPostA", Vector3(0.08, 0.70, 0.08), wood, Vector3(-0.30, 0.70, 0.0)))
+	root.add_child(VoxelFactory.cube("WellPostB", Vector3(0.08, 0.70, 0.08), wood, Vector3(0.30, 0.70, 0.0)))
+	root.add_child(VoxelFactory.cube("WellBeam", Vector3(0.72, 0.08, 0.08), wood, Vector3(0.0, 1.07, 0.0)))
+	root.add_child(VoxelFactory.cube("WellRoofA", Vector3(0.82, 0.12, 0.52), roof, Vector3(0.0, 1.23, -0.12)))
+	root.add_child(VoxelFactory.cube("WellRoofB", Vector3(0.70, 0.10, 0.42), Color("#c78348"), Vector3(0.0, 1.34, 0.10)))
+
+
+func _build_order_marker(root: Node3D, action_id: String, status: String, _status_text: String) -> void:
+	var color := _order_marker_color(action_id, status)
+	var shade := color.darkened(0.28)
+	var light := color.lightened(0.20)
+	var offset := Vector3(0.31, 0.0, -0.31)
+
+	root.add_child(VoxelFactory.cube("MarkerShadow", Vector3(0.34, 0.025, 0.24), Color(0.18, 0.14, 0.10, 0.20), Vector3(offset.x, 0.17, offset.z)))
+	root.add_child(VoxelFactory.cube("MarkerPin", Vector3(0.055, 0.48, 0.055), shade, Vector3(offset.x - 0.12, 0.46, offset.z)))
+	root.add_child(VoxelFactory.cube("MarkerFlag", Vector3(0.34, 0.22, 0.055), color, Vector3(offset.x + 0.07, 0.66, offset.z)))
+	root.add_child(VoxelFactory.cube("MarkerFlagLip", Vector3(0.34, 0.045, 0.065), light, Vector3(offset.x + 0.07, 0.795, offset.z)))
+	root.add_child(VoxelFactory.cube("MarkerTip", Vector3(0.10, 0.10, 0.07), light, Vector3(offset.x + 0.28, 0.66, offset.z)))
+
+	match action_id:
+		"build_fence":
+			root.add_child(VoxelFactory.cube("FenceGlyphPost", Vector3(0.035, 0.17, 0.07), Color("#fff9df"), Vector3(offset.x + 0.00, 0.66, offset.z - 0.035)))
+			root.add_child(VoxelFactory.cube("FenceGlyphRail", Vector3(0.20, 0.035, 0.075), Color("#fff9df"), Vector3(offset.x + 0.08, 0.66, offset.z - 0.035)))
+		"clear_brush":
+			var blade_a := VoxelFactory.cube("ClearGlyphBladeA", Vector3(0.20, 0.04, 0.075), Color("#fff9df"), Vector3(offset.x + 0.08, 0.68, offset.z - 0.035))
+			blade_a.rotation.z = deg_to_rad(24.0)
+			root.add_child(blade_a)
+			var blade_b := VoxelFactory.cube("ClearGlyphBladeB", Vector3(0.15, 0.035, 0.075), Color("#fff9df"), Vector3(offset.x + 0.16, 0.61, offset.z - 0.035))
+			blade_b.rotation.z = deg_to_rad(-28.0)
+			root.add_child(blade_b)
+		"harvest_crop":
+			root.add_child(VoxelFactory.cube("HarvestGlyphStem", Vector3(0.045, 0.18, 0.075), Color("#fff9df"), Vector3(offset.x + 0.07, 0.65, offset.z - 0.035)))
+			root.add_child(VoxelFactory.cube("HarvestGlyphHead", Vector3(0.13, 0.11, 0.075), Color("#fff9df"), Vector3(offset.x + 0.07, 0.76, offset.z - 0.035)))
+
+	if status in ["queued", "gathering", "waiting"]:
+		root.add_child(VoxelFactory.cube("StatusDot", Vector3(0.10, 0.10, 0.08), Color("#fff0a8"), Vector3(offset.x + 0.27, 0.83, offset.z - 0.04)))
+
+
+func _order_marker_color(action_id: String, status: String) -> Color:
+	if status == "waiting":
+		return Color("#c7b89d")
+	if status == "gathering":
+		return Color("#f2c94c")
+	match action_id:
+		"build_fence":
+			return Color("#78a65a")
+		"clear_brush":
+			return Color("#65b99a")
+		"harvest_crop":
+			return Color("#e7b84e")
+	return Color("#9fb7e8")
+
+
+func _clear_crop() -> void:
+	if crop != null:
+		crop.queue_free()
+		crop = null
+
+
+func _clear_children(node: Node) -> void:
+	if node == null:
+		return
+	for child in node.get_children():
+		child.queue_free()
+
+
+func _pulse() -> void:
+	var tween := create_tween()
+	scale = Vector3.ONE
+	tween.tween_property(self, "scale", Vector3.ONE * 1.035, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "scale", Vector3.ONE, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)

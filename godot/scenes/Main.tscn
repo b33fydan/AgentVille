@@ -1,0 +1,28 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/Game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/camera/CameraController.gd" id="2_camera"]
+[ext_resource type="Script" path="res://scripts/world/GridManager.gd" id="3_grid"]
+[ext_resource type="Script" path="res://scripts/tools/PlacementTool.gd" id="4_tool"]
+[ext_resource type="Script" path="res://scripts/ui/GameUI.gd" id="5_ui"]
+[ext_resource type="Script" path="res://scripts/audio/SoundManager.gd" id="6_sound"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_game")
+
+[node name="CameraController" type="Node3D" parent="."]
+script = ExtResource("2_camera")
+
+[node name="FarmWorld" type="Node3D" parent="."]
+
+[node name="GridManager" type="Node3D" parent="FarmWorld"]
+script = ExtResource("3_grid")
+
+[node name="PlacementTool" type="Node" parent="."]
+script = ExtResource("4_tool")
+
+[node name="SoundManager" type="Node" parent="."]
+script = ExtResource("6_sound")
+
+[node name="GameUI" type="CanvasLayer" parent="."]
+script = ExtResource("5_ui")

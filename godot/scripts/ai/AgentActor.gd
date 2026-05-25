@@ -1,0 +1,536 @@
+class_name AgentActor
+extends Node3D
+
+signal comment_generated(message: String)
+signal state_changed(snapshot: Dictionary)
+signal world_action_performed(event: Dictionary)
+
+const VoxelFactory := preload("res://scripts/core/Voxel.gd")
+const AgentMemoryScript := preload("res://scripts/ai/AgentMemory.gd")
+const UtilityAgentDecisionModelScript := preload("res://scripts/ai/UtilityAgentDecisionModel.gd")
+const ARRIVAL_DISTANCE := 0.04
+const WORK_SECONDS := 0.58
+
+var agent_id: String = "agent"
+var display_name: String = "Agent"
+var personality_trait: String = "steady"
+var home_tile: Vector2i = Vector2i.ZERO
+var current_grid_pos: Vector2i = Vector2i.ZERO
+var target_grid_pos: Vector2i = Vector2i.ZERO
+var state: Dictionary = {}
+var memory = AgentMemoryScript.new()
+var decision_model = UtilityAgentDecisionModelScript.new()
+var move_speed: float = 1.85
+
+var grid_manager
+var event_log
+
+var _body_color := Color("#5e8ec7")
+var _accent_color := Color("#f2cf6b")
+var _skin_color := Color("#ffd8aa")
+var _visual_root: Node3D
+var _target_position := Vector3.ZERO
+var _decision_timer: float = 1.5
+var _pending_focus_event: Dictionary = {}
+var _walk_phase: float = 0.0
+var _active_decision: Dictionary = {}
+var _arrival_action_done: bool = false
+var _work_timer: float = 0.0
+
+
+func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
+	agent_id = str(config.get("id", agent_id))
+	display_name = str(config.get("name", display_name))
+	personality_trait = str(config.get("trait", personality_trait))
+	home_tile = config.get("home_tile", home_tile)
+	current_grid_pos = home_tile
+	target_grid_pos = home_tile
+	_body_color = config.get("body_color", _body_color)
+	_accent_color = config.get("accent_color", _accent_color)
+	_skin_color = config.get("skin_color", _skin_color)
+	grid_manager = new_grid_manager
+	event_log = new_event_log
+	state = {
+		"id": agent_id,
+		"name": display_name,
+		"trait": personality_trait,
+		"energy": float(config.get("energy", 72.0)),
+		"mood": float(config.get("mood", 58.0)),
+		"friendship": float(config.get("friendship", 50.0)),
+		"current_action": "idle",
+		"current_phase": "idle"
+	}
+
+
+func _ready() -> void:
+	_build_visual()
+	_reset_position()
+	_decision_timer = randf_range(0.6, 2.2)
+	state_changed.emit(get_snapshot())
+
+
+func _process(delta: float) -> void:
+	_update_movement(delta)
+	_update_visual_motion(delta)
+
+	if not _active_decision.is_empty():
+		_update_active_decision(delta)
+		return
+
+	_decision_timer -= delta
+	if _decision_timer <= 0.0:
+		_choose_next_action()
+
+
+func observe_event(event: Dictionary, focus: bool = false) -> void:
+	memory.remember_event(event)
+
+	if str(event.get("type", "")) == "day_advanced":
+		state["energy"] = minf(100.0, float(state.get("energy", 60.0)) + 24.0)
+		_decision_timer = minf(_decision_timer, 0.8)
+		return
+
+	if focus and str(event.get("type", "")) == "player_action":
+		_pending_focus_event = event.duplicate(true)
+		_decision_timer = minf(_decision_timer, 0.18)
+
+
+func start_work_order(order: Dictionary) -> void:
+	var target_tile := _validated_tile(order.get("target_tile", home_tile))
+	start_directive("build_fence_order", target_tile, "crew work order: %s" % str(order.get("label", "farm task")), {
+		"work_order": order.duplicate(true)
+	})
+
+
+func start_directive(action_name: String, target_tile: Vector2i, reason: String, extra: Dictionary = {}) -> void:
+	var decision := {
+		"action": action_name,
+		"reason": reason,
+		"score": 110.0,
+		"target_tile": _validated_tile(target_tile),
+		"comment": ""
+	}
+	for key in extra.keys():
+		decision[key] = extra[key]
+	_start_decision(decision)
+
+
+func is_available() -> bool:
+	return _active_decision.is_empty()
+
+
+func _choose_next_action() -> void:
+	if not _active_decision.is_empty():
+		return
+
+	var world := _build_world_snapshot()
+	if not _pending_focus_event.is_empty():
+		world["focus_event"] = _pending_focus_event
+		_pending_focus_event = {}
+
+	var decision := decision_model.decide(state, world, memory)
+	_start_decision(decision)
+	_decision_timer = randf_range(4.8, 7.6)
+
+
+func _start_decision(decision: Dictionary) -> void:
+	var action := str(decision.get("action", "idle"))
+	var reason := str(decision.get("reason", ""))
+	var score := float(decision.get("score", 0.0))
+	var target_tile := _validated_tile(decision.get("target_tile", home_tile))
+
+	state["current_action"] = action
+	_apply_action_state_change(action)
+	memory.remember_action(action, reason, score)
+	_set_target_grid(target_tile)
+	_active_decision = decision.duplicate(true)
+	_arrival_action_done = false
+	_work_timer = 0.0
+	_set_phase("working" if _is_at_target() else "walking")
+
+	if event_log:
+		event_log.record_event("agent_action", {
+			"agent_id": agent_id,
+			"agent_name": display_name,
+			"day": int(grid_manager.day) if grid_manager else 1,
+			"action": action,
+			"phase": str(state.get("current_phase", "walking")),
+			"reason": reason,
+			"score": score,
+			"target_tile": target_tile,
+			"mood": float(state.get("mood", 0.0)),
+			"energy": float(state.get("energy", 0.0))
+		})
+
+	var comment := str(decision.get("comment", ""))
+	if comment != "":
+		comment_generated.emit("%s: \"%s\"" % [display_name, comment])
+	state_changed.emit(get_snapshot())
+
+
+func get_snapshot() -> Dictionary:
+	return {
+		"id": agent_id,
+		"name": display_name,
+		"trait": personality_trait,
+		"mood": float(state.get("mood", 0.0)),
+		"energy": float(state.get("energy", 0.0)),
+		"action": str(state.get("current_action", "idle")),
+		"phase": str(state.get("current_phase", "idle")),
+		"grid_pos": current_grid_pos,
+		"target_grid_pos": target_grid_pos
+	}
+
+
+func _apply_action_state_change(action: String) -> void:
+	var energy := float(state.get("energy", 70.0))
+	var mood := float(state.get("mood", 50.0))
+
+	match action:
+		"rest":
+			energy += 13.0
+		"approve":
+			energy -= 1.0
+			mood += 1.4
+		"side_eye":
+			energy -= 1.0
+			mood -= 0.9
+		_:
+			energy -= 2.2
+
+	state["energy"] = clampf(energy, 0.0, 100.0)
+	state["mood"] = clampf(mood, 0.0, 100.0)
+
+
+func _build_world_snapshot() -> Dictionary:
+	var ready_tiles: Array[Vector2i] = []
+	var growing_tiles: Array[Vector2i] = []
+	var soil_tiles: Array[Vector2i] = []
+	var brush_tiles: Array[Vector2i] = []
+	var structure_tiles: Array[Vector2i] = []
+
+	if grid_manager:
+		for tile in grid_manager.tiles.values():
+			if tile.crop:
+				if tile.crop.is_ready():
+					ready_tiles.append(tile.grid_pos)
+				else:
+					growing_tiles.append(tile.grid_pos)
+			elif tile.is_tilled:
+				soil_tiles.append(tile.grid_pos)
+
+			if str(tile.decor_id) in ["tall_grass", "flower_patch"]:
+				brush_tiles.append(tile.grid_pos)
+			if str(tile.structure_id) != "" or str(tile.decor_id) in ["rock", "fence", "wooden_sign"]:
+				structure_tiles.append(tile.grid_pos)
+
+	return {
+		"home_tile": home_tile,
+		"ready_crops": ready_tiles.size(),
+		"growing_crops": growing_tiles.size(),
+		"empty_soil": soil_tiles.size(),
+		"brush_tiles": brush_tiles.size(),
+		"structures": structure_tiles.size(),
+		"ready_tile": _nearest_tile(ready_tiles),
+		"soil_tile": _nearest_tile(soil_tiles),
+		"brush_tile": _nearest_tile(brush_tiles),
+		"structure_tile": _nearest_tile(structure_tiles),
+		"wander_tile": _wander_tile()
+	}
+
+
+func _nearest_tile(candidates: Array[Vector2i]) -> Vector2i:
+	if candidates.is_empty():
+		return home_tile
+
+	var best := candidates[0]
+	var best_distance := current_grid_pos.distance_squared_to(best)
+	for candidate in candidates:
+		var distance := current_grid_pos.distance_squared_to(candidate)
+		if distance < best_distance:
+			best = candidate
+			best_distance = distance
+	return best
+
+
+func _wander_tile() -> Vector2i:
+	if grid_manager == null:
+		return home_tile
+
+	var x := clampi(home_tile.x + randi_range(-2, 2), 0, grid_manager.width - 1)
+	var z := clampi(home_tile.y + randi_range(-2, 2), 0, grid_manager.height - 1)
+	return Vector2i(x, z)
+
+
+func _validated_tile(value) -> Vector2i:
+	if typeof(value) != TYPE_VECTOR2I:
+		return home_tile
+	if grid_manager == null or grid_manager.get_tile(value) == null:
+		return home_tile
+	return value
+
+
+func _set_target_grid(tile_pos: Vector2i) -> void:
+	target_grid_pos = tile_pos
+	_target_position = _world_for(tile_pos)
+
+
+func _reset_position() -> void:
+	position = _world_for(home_tile)
+	current_grid_pos = home_tile
+	target_grid_pos = home_tile
+	_target_position = position
+
+
+func _world_for(tile_pos: Vector2i) -> Vector3:
+	if grid_manager == null:
+		return Vector3.ZERO
+	var world: Vector3 = grid_manager.grid_to_world(tile_pos)
+	world.y = 0.20
+	return world
+
+
+func _update_movement(delta: float) -> void:
+	var before: Vector3 = position
+	position = position.move_toward(_target_position, move_speed * delta)
+	if _is_at_target():
+		current_grid_pos = target_grid_pos
+	var movement: Vector3 = position - before
+	if movement.length_squared() > 0.0001:
+		rotation.y = atan2(movement.x, movement.z)
+
+
+func _update_active_decision(delta: float) -> void:
+	if _work_timer > 0.0:
+		_work_timer -= delta
+		if _work_timer <= 0.0:
+			_complete_active_decision()
+		return
+
+	if not _is_at_target():
+		_set_phase("walking")
+		return
+
+	current_grid_pos = target_grid_pos
+	if not _arrival_action_done:
+		_arrival_action_done = true
+		_set_phase("working")
+		_execute_arrival_action(_active_decision)
+		_work_timer = WORK_SECONDS
+
+
+func _execute_arrival_action(decision: Dictionary) -> void:
+	var action := str(decision.get("action", "idle"))
+	var tile_pos: Vector2i = _validated_tile(decision.get("target_tile", target_grid_pos))
+
+	match action:
+		"harvest_crop":
+			_harvest_crop_at(tile_pos, str(decision.get("work_order_id", "")))
+		"clear_brush":
+			_clear_brush_at(tile_pos, str(decision.get("work_order_id", "")))
+		"inspect_structure":
+			_inspect_structure_at(tile_pos)
+		"inspect_ready_crop":
+			_inspect_crop_at(tile_pos)
+		"inspect_soil":
+			_inspect_soil_at(tile_pos)
+		"build_fence_order":
+			_build_fence_order_at(tile_pos, decision.get("work_order", {}))
+		_:
+			pass
+
+
+func _complete_active_decision() -> void:
+	_active_decision = {}
+	_arrival_action_done = false
+	_work_timer = 0.0
+	state["current_action"] = "idle"
+	_set_phase("idle")
+	state_changed.emit(get_snapshot())
+
+
+func _is_at_target() -> bool:
+	return position.distance_to(_target_position) <= ARRIVAL_DISTANCE
+
+
+func _set_phase(new_phase: String) -> void:
+	var previous := str(state.get("current_phase", "idle"))
+	state["current_phase"] = new_phase
+	if previous != new_phase:
+		state_changed.emit(get_snapshot())
+
+
+func _harvest_crop_at(tile_pos: Vector2i, work_order_id: String = "") -> void:
+	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
+	var crop_name := "crop"
+	if tile and tile.crop:
+		crop_name = str(tile.crop.crop_id)
+
+	var value := 0
+	var success: bool = tile != null and tile.crop != null and tile.crop.is_ready()
+	if success:
+		value = tile.harvest()
+		success = value > 0
+
+	var resource_gain := {"grain": 1} if success else {}
+	var message := "%s harvested %s for %s coins." % [display_name, crop_name, value] if success else "%s reached for a crop, but it was not ready." % display_name
+	_emit_world_action("harvest_crop", tile_pos, success, message, value, crop_name, ["harvest_chime", "coin_burst", "plant_pop"] if success else [], resource_gain, {}, work_order_id)
+
+
+func _clear_brush_at(tile_pos: Vector2i, work_order_id: String = "") -> void:
+	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
+	var brush_name := "brush"
+	if tile:
+		brush_name = str(tile.decor_id).replace("_", " ")
+
+	var success: bool = tile != null and str(tile.decor_id) in ["tall_grass", "flower_patch"]
+	if success:
+		tile.cut_with_sickle()
+
+	var resource_gain := {"fiber": 2} if success else {}
+	var message := "%s cleared %s." % [display_name, brush_name] if success else "%s found nothing useful to cut." % display_name
+	_emit_world_action("clear_brush", tile_pos, success, message, 0, brush_name, ["plant_pop"] if success else [], resource_gain, {}, work_order_id)
+
+
+func _inspect_structure_at(tile_pos: Vector2i) -> void:
+	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
+	var subject := _tile_subject(tile)
+	var success: bool = tile != null and subject != "empty tile"
+	var message := "%s inspected %s." % [display_name, subject] if success else "%s inspected an empty tile." % display_name
+	_emit_world_action("inspect_structure", tile_pos, success, message, 0, subject, ["ui_click"] if success else [])
+
+
+func _inspect_crop_at(tile_pos: Vector2i) -> void:
+	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
+	var subject := _tile_subject(tile)
+	var success: bool = tile != null and tile.crop != null
+	var message := "%s checked %s." % [display_name, subject] if success else "%s found no crop to check." % display_name
+	_emit_world_action("inspect_ready_crop", tile_pos, success, message, 0, subject, [])
+
+
+func _inspect_soil_at(tile_pos: Vector2i) -> void:
+	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
+	var success: bool = tile != null and tile.is_tilled and tile.crop == null
+	var message := "%s checked open soil." % display_name if success else "%s found no open soil there." % display_name
+	_emit_world_action("inspect_soil", tile_pos, success, message, 0, "soil", [])
+
+
+func _build_fence_order_at(tile_pos: Vector2i, order: Dictionary) -> void:
+	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
+	var success: bool = tile != null and tile.can_apply_item("fence")
+	if success:
+		success = tile.place_item("fence")
+
+	var label := str(order.get("label", "Fence order"))
+	var message := "%s built a fence for %s." % [display_name, label] if success else "%s could not build the fence order." % display_name
+	_emit_world_action(
+		"build_fence_order",
+		tile_pos,
+		success,
+		message,
+		0,
+		"fence",
+		["place_soft", "plant_pop"] if success else [],
+		{},
+		{"fence_kit": 1} if success else {},
+		str(order.get("id", "road_fence"))
+	)
+
+
+func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, message: String, value: int = 0, subject: String = "", stamps: Array = [], resources: Dictionary = {}, crafted_cost: Dictionary = {}, work_order_id: String = "") -> void:
+	world_action_performed.emit({
+		"actor": "agent",
+		"agent_id": agent_id,
+		"agent_name": display_name,
+		"trait": personality_trait,
+		"action": action_name,
+		"grid_pos": tile_pos,
+		"success": success,
+		"message": message,
+		"value": value,
+		"subject": subject,
+		"stamps": stamps,
+		"resources": resources,
+		"crafted_cost": crafted_cost,
+		"work_order_id": work_order_id
+	})
+
+	if success:
+		var comment := _work_comment(action_name, value, subject)
+		if comment != "":
+			comment_generated.emit("%s: \"%s\"" % [display_name, comment])
+
+
+func _tile_subject(tile) -> String:
+	if tile == null:
+		return "empty tile"
+	if tile.crop:
+		return "%s crop" % str(tile.crop.crop_id)
+	if str(tile.structure_id) != "":
+		return str(tile.structure_id).replace("_", " ")
+	if str(tile.decor_id) != "":
+		return str(tile.decor_id).replace("_", " ")
+	if tile.is_tilled:
+		return "open soil"
+	return "%s tile" % str(tile.terrain).replace("_", " ")
+
+
+func _work_comment(action_name: String, value: int, subject: String) -> String:
+	match action_name:
+		"harvest_crop":
+			match personality_trait:
+				"grizzled":
+					return "%s coins in. Try not to spend it all on decorative rocks." % value
+				"hopeful":
+					return "%s coins harvested. That is a real little win." % value
+				"chaotic":
+					return "%s coins liberated from the vegetables." % value
+		"clear_brush":
+			match personality_trait:
+				"grizzled":
+					return "Cleared the %s. The farm looks one sigh better." % subject
+				"hopeful":
+					return "Cleared the %s. We made room for something nicer." % subject
+				"chaotic":
+					return "The %s has been dramatically removed." % subject
+		"inspect_structure":
+			match personality_trait:
+				"grizzled":
+					return "%s is still standing. I will allow it." % subject.capitalize()
+				"hopeful":
+					return "%s looks useful. We should build around it." % subject.capitalize()
+				"chaotic":
+					return "%s passed the vibe inspection." % subject.capitalize()
+		"build_fence_order":
+			match personality_trait:
+				"grizzled":
+					return "Fence kit became fence. Paperwork trembles."
+				"hopeful":
+					return "Fence is up. That is a proper little boundary."
+				"chaotic":
+					return "Fence deployed. The map has opinions now."
+	return ""
+
+
+func _update_visual_motion(delta: float) -> void:
+	if _visual_root == null:
+		return
+
+	_walk_phase += delta * (7.0 if position.distance_to(_target_position) > 0.02 else 2.0)
+	var bob: float = abs(sin(_walk_phase)) * (0.035 if position.distance_to(_target_position) > 0.02 else 0.012)
+	_visual_root.position.y = bob
+
+
+func _build_visual() -> void:
+	_visual_root = Node3D.new()
+	_visual_root.name = "VoxelRig"
+	add_child(_visual_root)
+
+	_visual_root.add_child(VoxelFactory.cube("Body", Vector3(0.24, 0.34, 0.18), _body_color, Vector3(0.0, 0.34, 0.0)))
+	_visual_root.add_child(VoxelFactory.cube("Head", Vector3(0.20, 0.20, 0.20), _skin_color, Vector3(0.0, 0.64, 0.0)))
+	_visual_root.add_child(VoxelFactory.cube("HairHat", Vector3(0.23, 0.08, 0.23), _accent_color, Vector3(0.0, 0.78, 0.0)))
+	_visual_root.add_child(VoxelFactory.cube("LegA", Vector3(0.08, 0.22, 0.08), Color("#4f4138"), Vector3(-0.06, 0.13, 0.0)))
+	_visual_root.add_child(VoxelFactory.cube("LegB", Vector3(0.08, 0.22, 0.08), Color("#4f4138"), Vector3(0.06, 0.13, 0.0)))
+	_visual_root.add_child(VoxelFactory.cube("ArmA", Vector3(0.07, 0.25, 0.07), _skin_color, Vector3(-0.18, 0.36, 0.0)))
+	_visual_root.add_child(VoxelFactory.cube("ArmB", Vector3(0.07, 0.25, 0.07), _skin_color, Vector3(0.18, 0.36, 0.0)))
+	_visual_root.add_child(VoxelFactory.cube("MoodPip", Vector3(0.10, 0.10, 0.10), _accent_color, Vector3(0.0, 0.98, 0.0)))

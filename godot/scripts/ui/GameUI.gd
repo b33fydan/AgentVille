@@ -1,0 +1,1089 @@
+class_name GameUI
+extends CanvasLayer
+
+signal tool_selected(tool_name: String)
+signal item_selected(item_id: String)
+signal advance_day_requested
+signal grid_visibility_changed(is_visible: bool)
+signal shadows_changed(is_enabled: bool)
+signal ambient_occlusion_changed(is_enabled: bool)
+signal sound_requested(stamp_name: String)
+signal craft_requested(recipe_id: String)
+signal work_order_requested(order_id: String)
+signal work_order_cancel_requested(order_id: String)
+signal work_order_tool_selected(action_id: String)
+
+const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
+
+var _root: Control
+var _tool_buttons: Dictionary = {}
+var _active_tool: String = "till"
+var _day_label: Label
+var _money_label: Label
+var _toast_label: Label
+var _toast_tween: Tween
+var _palette
+var _crew_rows: Dictionary = {}
+var _field_log_stack: VBoxContainer
+var _field_log_entries: Array[String] = []
+var _cursor_ghost: PanelContainer
+var _cursor_ghost_label: Label
+var _cursor_item_id: String = ""
+var _resource_labels: Dictionary = {}
+var _crafted_labels: Dictionary = {}
+var _craft_buttons: Dictionary = {}
+var _work_order_rows: Dictionary = {}
+var _work_order_action_buttons: Dictionary = {}
+var _work_order_list_stack: VBoxContainer
+var _active_work_order_tool: String = ""
+
+
+func _ready() -> void:
+	_build_ui()
+	set_selected_tool("till")
+	show_message("Till soil, plant corn, grow it, then harvest.")
+
+
+func _process(_delta: float) -> void:
+	if _cursor_ghost == null or not _cursor_ghost.visible:
+		return
+
+	_cursor_ghost.position = _root.get_local_mouse_position() + Vector2(18, 18)
+
+
+func is_pointer_over_ui() -> bool:
+	return get_viewport().gui_get_hovered_control() != null
+
+
+func set_selected_tool(tool_name: String) -> void:
+	_active_tool = tool_name
+	for key in _tool_buttons.keys():
+		var button := _tool_buttons[key] as Button
+		var active: bool = str(key) == _active_tool
+		button.add_theme_color_override("font_color", Color("#2d3b1d") if active else Color("#4b4337"))
+		button.add_theme_stylebox_override("normal", _tool_button_style(active))
+		button.add_theme_stylebox_override("hover", _tool_button_style(true))
+		button.add_theme_stylebox_override("pressed", _tool_button_style(true))
+
+
+func set_selected_work_order_tool(action_id: String) -> void:
+	_active_work_order_tool = action_id
+	for key in _work_order_action_buttons.keys():
+		var button := _work_order_action_buttons[key] as Button
+		var active: bool = str(key) == _active_work_order_tool
+		button.add_theme_stylebox_override("normal", _crew_order_button_style(active))
+		button.add_theme_stylebox_override("hover", _crew_order_button_style(true))
+		button.add_theme_stylebox_override("pressed", _crew_order_button_style(true))
+		button.add_theme_color_override("font_color", Color("#23331a") if active else Color("#4b4337"))
+
+	if action_id != "":
+		_set_cursor_item("order_%s" % action_id)
+	elif _cursor_item_id.begins_with("order_"):
+		_set_cursor_item("")
+
+
+func set_day(day: int) -> void:
+	if _day_label:
+		_day_label.text = "DAY %s / 10:00 AM" % day
+
+
+func set_money(amount: int) -> void:
+	if _money_label:
+		_money_label.text = "%s COINS" % amount
+
+
+func set_inventory(resources: Dictionary, crafted_items: Dictionary) -> void:
+	if _resource_labels.has("fiber"):
+		(_resource_labels["fiber"] as Label).text = "FBR %s" % int(resources.get("fiber", 0))
+	if _resource_labels.has("grain"):
+		(_resource_labels["grain"] as Label).text = "GRN %s" % int(resources.get("grain", 0))
+	if _resource_labels.has("stone"):
+		(_resource_labels["stone"] as Label).text = "STN %s" % int(resources.get("stone", 0))
+	if _crafted_labels.has("fence_kit"):
+		(_crafted_labels["fence_kit"] as Label).text = "KIT %s" % int(crafted_items.get("fence_kit", 0))
+
+	if _craft_buttons.has("fence_kit"):
+		var button := _craft_buttons["fence_kit"] as Button
+		var can_craft := int(resources.get("fiber", 0)) >= 2 and int(resources.get("grain", 0)) >= 1
+		button.disabled = not can_craft
+		button.add_theme_stylebox_override("normal", _craft_button_style(can_craft))
+		button.add_theme_stylebox_override("hover", _craft_button_style(true))
+		button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+		button.add_theme_color_override("font_color", Color("#2d3b1d") if can_craft else Color("#998e7d"))
+		button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+
+
+func set_work_order(order: Dictionary) -> void:
+	set_work_orders([order])
+
+
+func set_work_orders(orders: Array) -> void:
+	if _work_order_list_stack == null:
+		return
+
+	for child in _work_order_list_stack.get_children():
+		child.queue_free()
+	_work_order_rows.clear()
+
+	if orders.is_empty():
+		_add_empty_work_order_row(_work_order_list_stack)
+		return
+
+	for order in orders:
+		if typeof(order) != TYPE_DICTIONARY:
+			continue
+		_add_work_order_row(_work_order_list_stack, order)
+
+
+func _update_work_order_row(order: Dictionary) -> void:
+	if order.is_empty():
+		return
+
+	var order_id := str(order.get("id", ""))
+	if not _work_order_rows.has(order_id):
+		return
+
+	var row: Dictionary = _work_order_rows[order_id]
+	var label := str(order.get("label", "Work Order"))
+	var status := str(order.get("status", "ready"))
+	var action_id := str(order.get("action", "build_fence"))
+	var has_required_item := bool(order.get("has_required_item", false))
+	var can_craft_item := bool(order.get("can_craft_item", false))
+	var can_progress := bool(order.get("can_progress", false))
+	(row["label"] as Label).text = label
+	row["intent"] = "send"
+
+	match status:
+		"done":
+			(row["status"] as Label).text = "Done"
+			(row["button"] as Button).text = "Clear"
+			(row["button"] as Button).disabled = false
+			row["intent"] = "clear"
+		"queued":
+			(row["status"] as Label).text = "Crew"
+			(row["button"] as Button).text = "Busy"
+			(row["button"] as Button).disabled = true
+		"waiting":
+			(row["status"] as Label).text = str(order.get("status_text", "Waiting"))
+			(row["button"] as Button).text = "Drop"
+			(row["button"] as Button).disabled = false
+			row["intent"] = "clear"
+		"gathering":
+			(row["status"] as Label).text = str(order.get("status_text", "Gather"))
+			(row["button"] as Button).text = "Busy"
+			(row["button"] as Button).disabled = true
+		_:
+			if not can_progress:
+				(row["status"] as Label).text = str(order.get("status_text", "Blocked"))
+				(row["button"] as Button).text = "Drop"
+				(row["button"] as Button).disabled = false
+				row["intent"] = "clear"
+			elif action_id != "build_fence":
+				(row["status"] as Label).text = str(order.get("status_text", "Ready"))
+				(row["button"] as Button).text = "Send"
+			else:
+				if has_required_item:
+					(row["status"] as Label).text = "Kit ready"
+					(row["button"] as Button).text = "Send"
+				elif can_craft_item:
+					(row["status"] as Label).text = "Can craft"
+					(row["button"] as Button).text = "Prep"
+				else:
+					(row["status"] as Label).text = str(order.get("status_text", "Needs mats"))
+					(row["button"] as Button).text = "Ask"
+				(row["button"] as Button).disabled = false
+
+	var can_send := status == "ready" and can_progress and str(row.get("intent", "send")) == "send"
+	var can_clear := str(row.get("intent", "send")) == "clear" and not (row["button"] as Button).disabled
+	var button := row["button"] as Button
+	button.add_theme_stylebox_override("normal", _remove_button_style(false) if can_clear else _craft_button_style(can_send))
+	button.add_theme_stylebox_override("hover", _remove_button_style(true) if can_clear else _craft_button_style(true))
+	button.add_theme_stylebox_override("pressed", _remove_button_style(true) if can_clear else _craft_button_style(true))
+	button.add_theme_color_override("font_color", Color("#5c382c") if can_clear else (Color("#2d3b1d") if can_send else Color("#8c8274")))
+	button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+
+
+func set_selected_item(item_id: String) -> void:
+	if _palette:
+		_palette.set_selected_item(item_id)
+	_set_cursor_item(item_id)
+
+
+func show_message(message: String) -> void:
+	if _toast_label == null:
+		return
+	_toast_label.text = message
+	_toast_label.modulate.a = 1.0
+	if _toast_tween:
+		_toast_tween.kill()
+	_toast_tween = create_tween()
+	_toast_tween.tween_interval(2.2)
+	_toast_tween.tween_property(_toast_label, "modulate:a", 0.0, 0.45)
+
+
+func set_agent_snapshots(snapshots: Array) -> void:
+	for snapshot in snapshots:
+		var agent_id := str(snapshot.get("id", ""))
+		if not _crew_rows.has(agent_id):
+			continue
+
+		var row: Dictionary = _crew_rows[agent_id]
+		var mood := float(snapshot.get("mood", 0.0))
+		var energy := float(snapshot.get("energy", 0.0))
+		var action := _format_action(str(snapshot.get("action", "idle")), str(snapshot.get("phase", "idle")))
+		(row["mood"] as ProgressBar).value = mood
+		(row["energy"] as ProgressBar).value = energy
+		(row["action"] as Label).text = action
+		(row["mood_value"] as Label).text = "%s" % roundi(mood)
+		(row["card"] as PanelContainer).add_theme_stylebox_override("panel", _crew_row_style(mood))
+
+
+func add_field_log(message: String) -> void:
+	if _field_log_stack == null:
+		return
+
+	_field_log_entries.push_front(message)
+	while _field_log_entries.size() > 3:
+		_field_log_entries.pop_back()
+
+	for child in _field_log_stack.get_children():
+		child.queue_free()
+
+	for entry in _field_log_entries:
+		var label := Label.new()
+		label.text = entry
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size = Vector2(0, 24)
+		label.add_theme_font_size_override("font_size", 11)
+		label.add_theme_color_override("font_color", Color("#4b4337"))
+		_field_log_stack.add_child(label)
+
+
+func _build_ui() -> void:
+	_root = Control.new()
+	_root.name = "UIRoot"
+	_root.anchor_right = 1.0
+	_root.anchor_bottom = 1.0
+	add_child(_root)
+
+	_build_title_card()
+	_build_toolbar()
+	_build_crew_panel()
+	_build_palette()
+	_build_settings_panel()
+	_build_toast()
+	_build_cursor_ghost()
+
+
+func _build_title_card() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "TitleCard"
+	panel.anchor_left = 0.022
+	panel.anchor_top = 0.026
+	panel.anchor_right = 0.295
+	panel.anchor_bottom = 0.118
+	panel.add_theme_stylebox_override("panel", _panel_style(14, 1))
+	_root.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	panel.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	margin.add_child(row)
+
+	var icon_panel := PanelContainer.new()
+	icon_panel.custom_minimum_size = Vector2(58, 58)
+	icon_panel.add_theme_stylebox_override("panel", _soft_box(Color("#f4dda0"), 12, 1))
+	row.add_child(icon_panel)
+
+	var icon := Label.new()
+	icon.text = "AV"
+	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	icon.add_theme_font_size_override("font_size", 21)
+	icon.add_theme_color_override("font_color", Color("#332918"))
+	icon_panel.add_child(icon)
+
+	var text_stack := VBoxContainer.new()
+	text_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	text_stack.add_theme_constant_override("separation", 0)
+	row.add_child(text_stack)
+
+	var title := Label.new()
+	title.text = "AgentVille"
+	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_color_override("font_color", Color("#201d18"))
+	text_stack.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "Voxel Farm Editor"
+	subtitle.add_theme_font_size_override("font_size", 16)
+	subtitle.add_theme_color_override("font_color", Color("#756f64"))
+	text_stack.add_child(subtitle)
+
+
+func _build_toolbar() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "Toolbar"
+	panel.anchor_left = 0.022
+	panel.anchor_top = 0.20
+	panel.anchor_right = 0.095
+	panel.anchor_bottom = 0.67
+	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
+	_root.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 9)
+	margin.add_theme_constant_override("margin_right", 9)
+	margin.add_theme_constant_override("margin_top", 9)
+	margin.add_theme_constant_override("margin_bottom", 9)
+	panel.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 8)
+	margin.add_child(stack)
+
+	var rail_label := Label.new()
+	rail_label.text = "TOOLS"
+	rail_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rail_label.add_theme_font_size_override("font_size", 12)
+	rail_label.add_theme_color_override("font_color", Color("#8a806f"))
+	stack.add_child(rail_label)
+
+	_add_tool_button(stack, "place", "BOX\nPlace", "Place the selected build item")
+	_add_tool_button(stack, "till", "SOIL\nTill", "Till soil")
+	_add_tool_button(stack, "plant", "CORN\nPlant", "Plant corn")
+	_add_tool_button(stack, "harvest", "CROP\nPick", "Harvest grown crops")
+	_add_tool_button(stack, "erase", "CLR\nErase", "Clear a tile")
+	_add_tool_button(stack, "pan", "PAN\nView", "Pan the camera")
+
+
+func _add_tool_button(parent: VBoxContainer, tool_name: String, label: String, tooltip: String) -> void:
+	var button := Button.new()
+	button.text = label
+	button.tooltip_text = tooltip
+	button.custom_minimum_size = Vector2(86, 54)
+	button.focus_mode = Control.FOCUS_NONE
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_color_override("font_color", Color("#3c352b"))
+	button.add_theme_stylebox_override("normal", _tool_button_style(false))
+	button.add_theme_stylebox_override("hover", _tool_button_style(true))
+	button.add_theme_stylebox_override("pressed", _tool_button_style(true))
+	button.pressed.connect(_on_tool_button_pressed.bind(tool_name))
+	parent.add_child(button)
+	_tool_buttons[tool_name] = button
+
+
+func _build_palette() -> void:
+	_palette = BuildPaletteScene.instantiate()
+	_palette.name = "BuildPalette"
+	_palette.anchor_left = 0.20
+	_palette.anchor_top = 0.795
+	_palette.anchor_right = 0.71
+	_palette.anchor_bottom = 0.975
+	_palette.item_selected.connect(_on_item_selected)
+	_root.add_child(_palette)
+
+
+func _build_crew_panel() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "CrewPanel"
+	panel.anchor_left = 0.79
+	panel.anchor_top = 0.075
+	panel.anchor_right = 0.98
+	panel.anchor_bottom = 0.545
+	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
+	_root.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	panel.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 8)
+	margin.add_child(stack)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	stack.add_child(header)
+
+	var title := Label.new()
+	title.text = "CREW"
+	title.add_theme_font_size_override("font_size", 12)
+	title.add_theme_color_override("font_color", Color("#8a806f"))
+	header.add_child(title)
+
+	var status := Label.new()
+	status.text = "watching"
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status.add_theme_font_size_override("font_size", 12)
+	status.add_theme_color_override("font_color", Color("#9b7433"))
+	header.add_child(status)
+
+	_add_crew_row(stack, "bert", "Bert", "grizzled", Color("#5c7f9f"))
+	_add_crew_row(stack, "marigold", "Marigold", "hopeful", Color("#7faf62"))
+	_add_crew_row(stack, "chuck", "Chuck", "chaotic", Color("#9b6fb6"))
+
+	var log_label := Label.new()
+	log_label.text = "FIELD LOG"
+	log_label.add_theme_font_size_override("font_size", 12)
+	log_label.add_theme_color_override("font_color", Color("#8a806f"))
+	stack.add_child(log_label)
+
+	_field_log_stack = VBoxContainer.new()
+	_field_log_stack.add_theme_constant_override("separation", 4)
+	stack.add_child(_field_log_stack)
+	add_field_log("Crew clocked in. Nobody has unionized yet.")
+
+
+func _add_crew_row(parent: VBoxContainer, agent_id: String, agent_name: String, trait_name: String, color: Color) -> void:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 54)
+	card.add_theme_stylebox_override("panel", _crew_row_style(50.0))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 9)
+	margin.add_theme_constant_override("margin_right", 9)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	card.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 4)
+	margin.add_child(stack)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 7)
+	stack.add_child(top)
+
+	var pip := PanelContainer.new()
+	pip.custom_minimum_size = Vector2(12, 12)
+	pip.add_theme_stylebox_override("panel", _soft_box(color, 6, 1))
+	top.add_child(pip)
+
+	var name_label := Label.new()
+	name_label.text = agent_name
+	name_label.add_theme_font_size_override("font_size", 14)
+	name_label.add_theme_color_override("font_color", Color("#2f2a22"))
+	top.add_child(name_label)
+
+	var trait_label := Label.new()
+	trait_label.text = trait_name
+	trait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	trait_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	trait_label.add_theme_font_size_override("font_size", 12)
+	trait_label.add_theme_color_override("font_color", Color("#8a806f"))
+	top.add_child(trait_label)
+
+	var action_label := Label.new()
+	action_label.text = "Idle"
+	action_label.add_theme_font_size_override("font_size", 12)
+	action_label.add_theme_color_override("font_color", Color("#5e5548"))
+	stack.add_child(action_label)
+
+	var bars := HBoxContainer.new()
+	bars.add_theme_constant_override("separation", 6)
+	stack.add_child(bars)
+
+	var mood_bar := _make_tiny_bar(Color("#8fba5a"))
+	bars.add_child(mood_bar)
+
+	var energy_bar := _make_tiny_bar(Color("#e0b94d"))
+	bars.add_child(energy_bar)
+
+	var mood_value := Label.new()
+	mood_value.text = "--"
+	mood_value.custom_minimum_size = Vector2(26, 0)
+	mood_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	mood_value.add_theme_font_size_override("font_size", 11)
+	mood_value.add_theme_color_override("font_color", Color("#7a6f60"))
+	bars.add_child(mood_value)
+
+	_crew_rows[agent_id] = {
+		"card": card,
+		"mood": mood_bar,
+		"energy": energy_bar,
+		"action": action_label,
+		"mood_value": mood_value
+	}
+
+
+func _make_tiny_bar(fill_color: Color) -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.min_value = 0
+	bar.max_value = 100
+	bar.value = 50
+	bar.show_percentage = false
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.custom_minimum_size = Vector2(0, 7)
+	bar.add_theme_stylebox_override("background", _soft_box(Color("#eee8d9"), 4, 0))
+	bar.add_theme_stylebox_override("fill", _soft_box(fill_color, 4, 0))
+	return bar
+
+
+func _build_settings_panel() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "SettingsPanel"
+	panel.anchor_left = 0.79
+	panel.anchor_top = 0.555
+	panel.anchor_right = 0.98
+	panel.anchor_bottom = 0.99
+	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
+	_root.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 3)
+	margin.add_child(stack)
+
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 8)
+	stack.add_child(top_row)
+
+	_day_label = Label.new()
+	_day_label.text = "DAY 1 / 10:00 AM"
+	_day_label.add_theme_font_size_override("font_size", 19)
+	_day_label.add_theme_color_override("font_color", Color("#201d18"))
+	top_row.add_child(_day_label)
+
+	_money_label = Label.new()
+	_money_label.text = "42 COINS"
+	_money_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_money_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_money_label.add_theme_font_size_override("font_size", 16)
+	_money_label.add_theme_color_override("font_color", Color("#9b7433"))
+	top_row.add_child(_money_label)
+
+	var progress := ProgressBar.new()
+	progress.min_value = 0
+	progress.max_value = 100
+	progress.value = 38
+	progress.show_percentage = false
+	progress.custom_minimum_size = Vector2(0, 8)
+	progress.add_theme_stylebox_override("background", _soft_box(Color("#eee8d9"), 7, 1))
+	progress.add_theme_stylebox_override("fill", _soft_box(Color("#f2c94c"), 7, 0))
+	stack.add_child(progress)
+
+	_build_inventory_strip(stack)
+	_build_craft_controls(stack)
+	_build_work_order_controls(stack)
+
+	var mode_label := Label.new()
+	mode_label.text = "VIEW"
+	mode_label.add_theme_font_size_override("font_size", 12)
+	mode_label.add_theme_color_override("font_color", Color("#8a806f"))
+	stack.add_child(mode_label)
+
+	stack.add_child(_make_toggle("AO", true, ambient_occlusion_changed))
+	stack.add_child(_make_toggle("Grid", true, grid_visibility_changed))
+	stack.add_child(_make_toggle("Shadows", true, shadows_changed))
+
+	var end_day := Button.new()
+	end_day.text = "End Day"
+	end_day.custom_minimum_size = Vector2(0, 28)
+	end_day.focus_mode = Control.FOCUS_NONE
+	end_day.tooltip_text = "Advance crop growth"
+	end_day.add_theme_font_size_override("font_size", 16)
+	end_day.add_theme_color_override("font_color", Color("#2c2619"))
+	end_day.add_theme_stylebox_override("normal", _big_button_style(false))
+	end_day.add_theme_stylebox_override("hover", _big_button_style(true))
+	end_day.add_theme_stylebox_override("pressed", _big_button_style(true))
+	end_day.pressed.connect(func() -> void: advance_day_requested.emit())
+	stack.add_child(end_day)
+
+
+func _build_inventory_strip(parent: VBoxContainer) -> void:
+	var label := Label.new()
+	label.text = "STASH"
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color("#8a806f"))
+	parent.add_child(label)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	parent.add_child(row)
+
+	row.add_child(_make_inventory_pill("fiber", "FBR 0", Color("#dfeecf"), false))
+	row.add_child(_make_inventory_pill("grain", "GRN 0", Color("#fff1bd"), false))
+	row.add_child(_make_inventory_pill("stone", "STN 0", Color("#e1e2d9"), false))
+	row.add_child(_make_inventory_pill("fence_kit", "KIT 0", Color("#e8f0ff"), true))
+
+
+func _build_craft_controls(parent: VBoxContainer) -> void:
+	var button := Button.new()
+	button.text = "Craft Fence Kit  2 FBR + 1 GRN"
+	button.tooltip_text = "Crafts one fence kit from gathered fiber and grain"
+	button.custom_minimum_size = Vector2(0, 24)
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_color_override("font_color", Color("#998e7d"))
+	button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+	button.add_theme_stylebox_override("normal", _craft_button_style(false))
+	button.add_theme_stylebox_override("hover", _craft_button_style(true))
+	button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+	button.pressed.connect(func() -> void:
+		sound_requested.emit("ui_click")
+		craft_requested.emit("fence_kit")
+	)
+	parent.add_child(button)
+	_craft_buttons["fence_kit"] = button
+
+
+func _build_work_order_controls(parent: VBoxContainer) -> void:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 106)
+	card.add_theme_stylebox_override("panel", _soft_box(Color("#fff7df"), 10, 1))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	card.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 2)
+	margin.add_child(stack)
+
+	var title := Label.new()
+	title.text = "CREW ORDERS"
+	title.add_theme_font_size_override("font_size", 10)
+	title.add_theme_color_override("font_color", Color("#8a806f"))
+	stack.add_child(title)
+
+	var action_row := HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 5)
+	stack.add_child(action_row)
+
+	_add_work_order_action_button(action_row, "build_fence", "FNC\nFence", "Mark a tile for crew-built fence")
+	_add_work_order_action_button(action_row, "clear_brush", "CLR\nClear", "Mark brush for the crew to clear")
+	_add_work_order_action_button(action_row, "harvest_crop", "HRV\nPick", "Mark a ready crop for the crew to harvest")
+
+	_work_order_list_stack = VBoxContainer.new()
+	_work_order_list_stack.add_theme_constant_override("separation", 2)
+	stack.add_child(_work_order_list_stack)
+	_add_empty_work_order_row(_work_order_list_stack)
+
+
+func _add_work_order_action_button(parent: HBoxContainer, action_id: String, label: String, tooltip: String) -> void:
+	var button := Button.new()
+	button.text = label
+	button.tooltip_text = tooltip
+	button.custom_minimum_size = Vector2(0, 30)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_NONE
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.add_theme_font_size_override("font_size", 10)
+	button.add_theme_color_override("font_color", Color("#4b4337"))
+	button.add_theme_stylebox_override("normal", _crew_order_button_style(false))
+	button.add_theme_stylebox_override("hover", _crew_order_button_style(true))
+	button.add_theme_stylebox_override("pressed", _crew_order_button_style(true))
+	button.pressed.connect(func() -> void:
+		var next_action := "" if _active_work_order_tool == action_id else action_id
+		work_order_tool_selected.emit(next_action)
+	)
+	parent.add_child(button)
+	_work_order_action_buttons[action_id] = button
+
+
+func _add_empty_work_order_row(parent: VBoxContainer) -> void:
+	var label := Label.new()
+	label.text = "No marked jobs"
+	label.custom_minimum_size = Vector2(0, 18)
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", Color("#8a806f"))
+	parent.add_child(label)
+
+
+func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
+	var order_id := str(order.get("id", ""))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	parent.add_child(row)
+
+	var label := Label.new()
+	label.text = str(order.get("label", "Work Order"))
+	label.custom_minimum_size = Vector2(82, 0)
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color("#3f372d"))
+	row.add_child(label)
+
+	var status := Label.new()
+	status.text = "Needs mats"
+	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status.add_theme_font_size_override("font_size", 10)
+	status.add_theme_color_override("font_color", Color("#746b5f"))
+	row.add_child(status)
+
+	var button := Button.new()
+	button.text = "Ask"
+	button.custom_minimum_size = Vector2(56, 19)
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 10)
+	button.add_theme_color_override("font_color", Color("#8c8274"))
+	button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+	button.add_theme_stylebox_override("normal", _craft_button_style(false))
+	button.add_theme_stylebox_override("hover", _craft_button_style(true))
+	button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+	button.pressed.connect(func() -> void:
+		sound_requested.emit("ui_click")
+		_on_work_order_row_button_pressed(order_id)
+	)
+	row.add_child(button)
+
+	_work_order_rows[order_id] = {
+		"label": label,
+		"status": status,
+		"button": button,
+		"intent": "send"
+	}
+	_update_work_order_row(order)
+
+
+func _on_work_order_row_button_pressed(order_id: String) -> void:
+	if not _work_order_rows.has(order_id):
+		return
+	var row: Dictionary = _work_order_rows[order_id]
+	if str(row.get("intent", "send")) == "clear":
+		work_order_cancel_requested.emit(order_id)
+		return
+	work_order_requested.emit(order_id)
+
+
+func _make_inventory_pill(id: String, text: String, color: Color, is_crafted: bool) -> PanelContainer:
+	var pill := PanelContainer.new()
+	pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pill.custom_minimum_size = Vector2(0, 21)
+	pill.add_theme_stylebox_override("panel", _soft_box(color, 8, 1))
+
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color("#3f372d"))
+	pill.add_child(label)
+
+	if is_crafted:
+		_crafted_labels[id] = label
+	else:
+		_resource_labels[id] = label
+	return pill
+
+
+func _build_toast() -> void:
+	var toast_panel := PanelContainer.new()
+	toast_panel.name = "ToastPanel"
+	toast_panel.anchor_left = 0.38
+	toast_panel.anchor_top = 0.705
+	toast_panel.anchor_right = 0.64
+	toast_panel.anchor_bottom = 0.752
+	toast_panel.add_theme_stylebox_override("panel", _soft_box(Color("#fffdf8"), 13, 1))
+	_root.add_child(toast_panel)
+
+	_toast_label = Label.new()
+	_toast_label.name = "Toast"
+	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_toast_label.add_theme_font_size_override("font_size", 18)
+	_toast_label.add_theme_color_override("font_color", Color("#2b2924"))
+	toast_panel.add_child(_toast_label)
+
+
+func _make_toggle(label: String, default_value: bool, signal_ref: Signal) -> Button:
+	var button := Button.new()
+	button.toggle_mode = true
+	button.button_pressed = default_value
+	button.custom_minimum_size = Vector2(0, 24)
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_color_override("font_color", Color("#373127"))
+	button.add_theme_color_override("font_hover_color", Color("#2d3b1d"))
+	button.add_theme_color_override("font_pressed_color", Color("#2d3b1d"))
+	button.add_theme_color_override("font_hover_pressed_color", Color("#2d3b1d"))
+	_update_toggle_text(button, label)
+	button.add_theme_stylebox_override("normal", _toggle_style(default_value))
+	button.add_theme_stylebox_override("pressed", _toggle_style(true))
+	button.add_theme_stylebox_override("hover", _toggle_style(true))
+	button.toggled.connect(func(is_on: bool) -> void:
+		_update_toggle_text(button, label)
+		button.add_theme_stylebox_override("normal", _toggle_style(is_on))
+		sound_requested.emit("ui_click")
+		signal_ref.emit(is_on)
+	)
+	return button
+
+
+func _on_tool_button_pressed(tool_name: String) -> void:
+	set_selected_tool(tool_name)
+	sound_requested.emit("tool_select")
+	tool_selected.emit(tool_name)
+
+
+func _on_item_selected(item_id: String) -> void:
+	set_selected_tool("place")
+	_set_cursor_item(item_id)
+	sound_requested.emit("ui_click")
+	item_selected.emit(item_id)
+
+
+func _update_toggle_text(button: Button, label: String) -> void:
+	button.text = "%s  %s" % [label, "ON" if button.button_pressed else "OFF"]
+
+
+func _format_action(action: String, phase: String = "idle") -> String:
+	if phase == "walking":
+		match action:
+			"harvest_crop":
+				return "Heading to crops"
+			"clear_brush":
+				return "Heading to brush"
+			"inspect_structure":
+				return "Checking a build"
+			"inspect_ready_crop":
+				return "Checking crops"
+			"inspect_soil":
+				return "Checking soil"
+			"build_fence_order":
+				return "Heading to order"
+			_:
+				return "Walking the farm"
+
+	match action:
+		"build_fence_order":
+			return "Building fence"
+		"harvest_crop":
+			return "Harvesting crop"
+		"clear_brush":
+			return "Clearing brush"
+		"inspect_structure":
+			return "Inspecting build"
+		"inspect_ready_crop":
+			return "Inspecting ready crops"
+		"inspect_soil":
+			return "Checking open soil"
+		"approve":
+			return "Approving your work"
+		"side_eye":
+			return "Judging the operation"
+		"rest":
+			return "Taking five"
+		"wander":
+			return "Patrolling the rows"
+		_:
+			return action.capitalize()
+
+
+func _build_cursor_ghost() -> void:
+	_cursor_ghost = PanelContainer.new()
+	_cursor_ghost.name = "CursorItemGhost"
+	_cursor_ghost.visible = false
+	_cursor_ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cursor_ghost.custom_minimum_size = Vector2(58, 48)
+	_cursor_ghost.add_theme_stylebox_override("panel", _cursor_ghost_style())
+	_root.add_child(_cursor_ghost)
+
+	_cursor_ghost_label = Label.new()
+	_cursor_ghost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cursor_ghost_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_cursor_ghost_label.add_theme_font_size_override("font_size", 12)
+	_cursor_ghost_label.add_theme_color_override("font_color", Color("#2f2a22"))
+	_cursor_ghost.add_child(_cursor_ghost_label)
+
+
+func _set_cursor_item(item_id: String) -> void:
+	_cursor_item_id = item_id
+	if _cursor_ghost == null or _cursor_ghost_label == null:
+		return
+
+	_cursor_ghost_label.text = "%s\n%s" % [_item_icon(item_id), _item_short_name(item_id)]
+	_cursor_ghost.visible = item_id != ""
+	_cursor_ghost.position = _root.get_local_mouse_position() + Vector2(18, 18)
+
+
+func _item_icon(item_id: String) -> String:
+	match item_id:
+		"order_build_fence":
+			return "FNC"
+		"order_clear_brush":
+			return "CLR"
+		"order_harvest_crop":
+			return "HRV"
+		"grass_block":
+			return "GRS"
+		"dirt_road":
+			return "RD"
+		"soil":
+			return "SOIL"
+		"corn_seed":
+			return "CRN"
+		"wheat_seed":
+			return "WHT"
+		"tall_grass":
+			return "TGR"
+		"flower_patch":
+			return "FLR"
+		"rock":
+			return "RCK"
+		"fence":
+			return "FNC"
+		"wooden_sign":
+			return "SGN"
+		"barn":
+			return "BRN"
+		"silo":
+			return "SLO"
+		"well":
+			return "WEL"
+		"pickaxe":
+			return "PCK"
+		"sickle":
+			return "SCK"
+	return "ITM"
+
+
+func _item_short_name(item_id: String) -> String:
+	match item_id:
+		"order_build_fence":
+			return "Crew"
+		"order_clear_brush":
+			return "Crew"
+		"order_harvest_crop":
+			return "Crew"
+		"grass_block":
+			return "Grass"
+		"dirt_road":
+			return "Road"
+		"corn_seed":
+			return "Corn"
+		"wheat_seed":
+			return "Wheat"
+		"tall_grass":
+			return "Grass"
+		"flower_patch":
+			return "Flower"
+		"wooden_sign":
+			return "Sign"
+		"pickaxe":
+			return "Break"
+		"sickle":
+			return "Cut"
+	return item_id.replace("_", " ").capitalize()
+
+
+func _panel_style(radius: int, border: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.992, 0.965, 0.94)
+	style.border_color = Color("#6e5b3e")
+	style.set_border_width_all(border)
+	style.set_corner_radius_all(radius)
+	style.shadow_color = Color(0, 0, 0, 0.15)
+	style.shadow_size = 12
+	style.shadow_offset = Vector2(0, 6)
+	return style
+
+
+func _crew_row_style(mood: float) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#fffaf0") if mood >= 45.0 else Color("#f7ece2")
+	style.border_color = Color("#d3c4aa") if mood >= 45.0 else Color("#d6a17b")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(11)
+	return style
+
+
+func _cursor_ghost_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.965, 0.82, 0.86)
+	style.border_color = Color("#9e7a2a")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(12)
+	style.shadow_color = Color(0, 0, 0, 0.14)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 4)
+	return style
+
+
+func _tool_button_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#eef4e4") if active else Color(1, 1, 1, 0)
+	style.border_color = Color("#7b914d") if active else Color(0, 0, 0, 0)
+	style.set_border_width_all(1 if active else 0)
+	style.set_corner_radius_all(12)
+	return style
+
+
+func _big_button_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#efca59") if active else Color("#fff0bd")
+	style.border_color = Color("#9e7a2a")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(11)
+	style.shadow_color = Color(0, 0, 0, 0.10)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(0, 2)
+	return style
+
+
+func _craft_button_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#e8f3da") if active else Color("#f2eee5")
+	style.border_color = Color("#84a05d") if active else Color("#c9bca6")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	return style
+
+
+func _remove_button_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#f7e6d9") if active else Color("#f4eee7")
+	style.border_color = Color("#b68466") if active else Color("#d0b8a4")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	return style
+
+
+func _crew_order_button_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#e2f1d8") if active else Color("#fffaf0")
+	style.border_color = Color("#769352") if active else Color("#d1bea0")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(9)
+	return style
+
+
+func _toggle_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#eef5e5") if active else Color("#f4efe5")
+	style.border_color = Color("#94a96b") if active else Color("#c9bca6")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	return style
+
+
+func _soft_box(color: Color, radius: int, border: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.border_color = Color("#7b694e")
+	style.set_border_width_all(border)
+	style.set_corner_radius_all(radius)
+	return style
