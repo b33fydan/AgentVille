@@ -104,11 +104,36 @@ func _test_scene_integration() -> void:
 
 	var game_ui = scene.get_node("GameUI")
 	var encounter_panel = game_ui.get("_encounter_panel")
+	for index in range(3):
+		scene.call("_on_player_action_logged", {
+			"actor": "player",
+			"tool": "place",
+			"action": "place",
+			"grid_pos": Vector2i(index, 0),
+			"item_id": "fence",
+			"success": false,
+			"message": "Cannot place that here.",
+			"value": 0,
+			"resources": {},
+			"crafted_cost": {}
+		})
+		await process_frame
+
+	if not bool(game_ui.get("_parley_prompt_active")):
+		_fail("Repeated failed actions did not pulse the Parley prompt.")
+		return
+	if str(scene.get("_queued_grievance_agent_id")) == "":
+		_fail("Repeated failed actions did not queue a grievance agent.")
+		return
+
 	scene.call("_on_adversarial_encounter_requested", "")
 	await process_frame
 
 	if encounter_panel == null or not bool(encounter_panel.visible):
 		_fail("Scene did not show the adversarial encounter panel.")
+		return
+	if bool(game_ui.get("_parley_prompt_active")):
+		_fail("Starting an encounter did not clear the Parley prompt.")
 		return
 
 	scene.call("_on_adversarial_response_selected", "own_mistake")
@@ -133,10 +158,39 @@ func _test_scene_integration() -> void:
 	if int(scene.get("money")) <= 42:
 		_fail("Resolved scene encounter did not apply the reward.")
 		return
+	var resources: Dictionary = scene.get("resources")
+	if int(resources.get("fiber", 0)) < 1:
+		_fail("Resolved scene encounter did not grant the resource bonus.")
+		return
+	var agent_manager = scene.get_node("FarmWorld/AgentManager")
+	var boosted := false
+	for snapshot in agent_manager.call("get_agent_snapshots"):
+		if float(snapshot.get("morale_boost", 0.0)) > 0.0:
+			boosted = true
+	if not boosted:
+		_fail("Resolved scene encounter did not apply the crew focus boost.")
+		return
 
 	var summary: Dictionary = log.call("build_day_summary", 1)
 	if int(summary.get("adversarial_session_count", 0)) < 1:
 		_fail("Day summary did not count adversarial sessions.")
+		return
+
+	scene.call("_apply_adversarial_result", {
+		"agent_id": "bert",
+		"agent_name": "Bert",
+		"outcome": "lost_patience",
+		"verdict": "Bert lost patience.",
+		"money_delta": -2,
+		"agent_mood_delta": -4.0,
+		"agent_irritation_delta": 14.0,
+		"resource_delta": {},
+		"crew_boost_seconds": 0.0,
+		"patience_tax_orders": 1
+	})
+	await process_frame
+	if int(scene.get("_patience_tax_orders")) < 1:
+		_fail("Lost patience consequence did not arm the next-order patience tax.")
 		return
 
 	scene.queue_free()

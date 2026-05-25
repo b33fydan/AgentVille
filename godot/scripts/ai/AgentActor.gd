@@ -44,6 +44,8 @@ var _reaction_shake_phase: float = 0.0
 var _active_decision: Dictionary = {}
 var _arrival_action_done: bool = false
 var _work_timer: float = 0.0
+var _morale_boost_timer: float = 0.0
+var _morale_speed_multiplier: float = 1.0
 
 
 func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
@@ -81,6 +83,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_morale_boost(delta)
 	_update_movement(delta)
 	_update_visual_motion(delta)
 
@@ -193,6 +196,7 @@ func get_snapshot() -> Dictionary:
 		"irritation": float(state.get("irritation", 0.0)),
 		"expression": str(state.get("expression", "neutral")),
 		"reaction_intensity": float(state.get("reaction_intensity", 0.0)),
+		"morale_boost": _morale_boost_timer,
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
 		"grid_pos": current_grid_pos,
@@ -216,6 +220,12 @@ func apply_adversarial_result(result: Dictionary) -> void:
 			state["expression"] = "neutral"
 	state["reaction_intensity"] = maxf(float(state.get("reaction_intensity", 0.0)), 0.82)
 	_update_expression_visuals()
+	state_changed.emit(get_snapshot())
+
+
+func apply_crew_boost(seconds: float, multiplier: float = 1.28) -> void:
+	_morale_boost_timer = maxf(_morale_boost_timer, seconds)
+	_morale_speed_multiplier = maxf(_morale_speed_multiplier, multiplier)
 	state_changed.emit(get_snapshot())
 
 
@@ -343,7 +353,7 @@ func _world_for(tile_pos: Vector2i) -> Vector3:
 
 func _update_movement(delta: float) -> void:
 	var before: Vector3 = position
-	position = position.move_toward(_target_position, move_speed * delta)
+	position = position.move_toward(_target_position, move_speed * _current_speed_multiplier() * delta)
 	if _is_at_target():
 		current_grid_pos = target_grid_pos
 	var movement: Vector3 = position - before
@@ -353,7 +363,7 @@ func _update_movement(delta: float) -> void:
 
 func _update_active_decision(delta: float) -> void:
 	if _work_timer > 0.0:
-		_work_timer -= delta
+		_work_timer -= delta * _current_speed_multiplier()
 		if _work_timer <= 0.0:
 			_complete_active_decision()
 		return
@@ -402,6 +412,20 @@ func _complete_active_decision() -> void:
 
 func _is_at_target() -> bool:
 	return position.distance_to(_target_position) <= ARRIVAL_DISTANCE
+
+
+func _update_morale_boost(delta: float) -> void:
+	if _morale_boost_timer <= 0.0:
+		return
+
+	_morale_boost_timer = maxf(0.0, _morale_boost_timer - delta)
+	if _morale_boost_timer <= 0.0:
+		_morale_speed_multiplier = 1.0
+		state_changed.emit(get_snapshot())
+
+
+func _current_speed_multiplier() -> float:
+	return _morale_speed_multiplier if _morale_boost_timer > 0.0 else 1.0
 
 
 func _set_phase(new_phase: String) -> void:

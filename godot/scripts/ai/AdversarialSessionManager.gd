@@ -109,8 +109,11 @@ func _end_session(outcome: String) -> Dictionary:
 	result["outcome"] = outcome
 	result["verdict"] = _verdict_for(outcome, result)
 	result["money_delta"] = _money_delta_for(outcome)
+	result["resource_delta"] = _resource_delta_for(outcome)
 	result["agent_mood_delta"] = _agent_mood_delta_for(outcome)
 	result["agent_irritation_delta"] = _agent_irritation_delta_for(outcome)
+	result["crew_boost_seconds"] = _crew_boost_seconds_for(outcome)
+	result["patience_tax_orders"] = _patience_tax_orders_for(outcome)
 	result["choices"] = []
 	_session = result.duplicate(true)
 	session_ended.emit(result.duplicate(true))
@@ -189,6 +192,13 @@ func _trait_resolution_delta(personality_trait: String, choice_id: String) -> fl
 
 
 func _build_grievance(agent_snapshot: Dictionary, context: Dictionary) -> Dictionary:
+	var queued_text := str(context.get("grievance_text", ""))
+	if queued_text != "":
+		return {
+			"text": queued_text,
+			"npc_goal": str(context.get("npc_goal", "get a concrete recovery plan"))
+		}
+
 	var personality_trait := str(agent_snapshot.get("trait", "steady"))
 	var top_failed_action := str(context.get("top_failed_action", "farm work")).replace("_", " ")
 	var recent_failures := int(context.get("recent_failures", 0))
@@ -305,6 +315,13 @@ func _money_delta_for(outcome: String) -> int:
 	return 0
 
 
+func _resource_delta_for(outcome: String) -> Dictionary:
+	match outcome:
+		"resolved":
+			return {"fiber": 1}
+	return {}
+
+
 func _agent_mood_delta_for(outcome: String) -> float:
 	match outcome:
 		"resolved":
@@ -329,6 +346,17 @@ func _agent_irritation_delta_for(outcome: String) -> float:
 		"walked_away":
 			return 5.0
 	return 0.0
+
+
+func _crew_boost_seconds_for(outcome: String) -> float:
+	match outcome:
+		"resolved":
+			return 9.0
+	return 0.0
+
+
+func _patience_tax_orders_for(outcome: String) -> int:
+	return 1 if outcome == "lost_patience" else 0
 
 
 func _count_recent_failures(events) -> int:

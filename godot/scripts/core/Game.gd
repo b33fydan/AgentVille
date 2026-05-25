@@ -65,6 +65,11 @@ var _agent_manager
 var _adversarial_session
 var _crew_priority_timer: float = 0.0
 var _next_work_order_number: int = 1
+var _queued_grievance_agent_id: String = ""
+var _queued_grievance_context: Dictionary = {}
+var _last_failure_grievance_day: int = 0
+var _last_failure_grievance_count: int = 0
+var _patience_tax_orders: int = 0
 
 
 func _ready() -> void:
@@ -260,13 +265,18 @@ func _on_adversarial_encounter_requested(agent_id: String = "") -> void:
 		sound_manager.play_stamp("ui_click")
 		return
 
-	var agent_snapshot := _select_adversarial_agent(agent_id)
+	var target_agent_id := agent_id
+	if target_agent_id == "" and _queued_grievance_agent_id != "":
+		target_agent_id = _queued_grievance_agent_id
+
+	var agent_snapshot := _select_adversarial_agent(target_agent_id)
 	if agent_snapshot.is_empty():
 		game_ui.show_message("No crew member is available for a grievance.")
 		sound_manager.play_stamp("error_soft")
 		return
 
 	var session: Dictionary = _adversarial_session.call("start_session", agent_snapshot, _build_adversarial_context())
+	_clear_adversarial_grievance()
 	game_ui.set_adversarial_session(session)
 	game_ui.add_field_log("%s raised a grievance." % str(session.get("agent_name", "Crew")))
 	sound_manager.play_stamp("ui_click")
@@ -340,7 +350,7 @@ func _build_adversarial_context() -> Dictionary:
 		"money": money,
 		"resources": resources.duplicate(true),
 		"crafted_items": crafted_items.duplicate(true)
-	}
+	}.merged(_queued_grievance_context, true)
 
 
 func _apply_adversarial_result(result: Dictionary) -> void:
@@ -357,6 +367,21 @@ func _apply_adversarial_result(result: Dictionary) -> void:
 		money = maxi(0, money + money_delta)
 		game_ui.set_money(money)
 
+	var resource_delta: Dictionary = payload.get("resource_delta", {})
+	var accepted_resources := _add_resources(resource_delta)
+	if not accepted_resources.is_empty():
+		game_ui.add_field_log("Parley bonus: +%s." % _format_resource_list(accepted_resources))
+
+	var crew_boost_seconds := float(payload.get("crew_boost_seconds", 0.0))
+	if crew_boost_seconds > 0.0 and _agent_manager:
+		_agent_manager.call("apply_crew_boost", crew_boost_seconds, 1.30)
+		game_ui.add_field_log("Crew focus sharpened for the next few jobs.")
+
+	var tax_orders := int(payload.get("patience_tax_orders", 0))
+	if tax_orders > 0:
+		_patience_tax_orders += tax_orders
+		game_ui.add_field_log("Crew patience tax armed for the next order.")
+
 	var verdict := str(payload.get("verdict", "The encounter ended."))
 	game_ui.add_field_log(verdict)
 	game_ui.show_message(_format_adversarial_result(payload))
@@ -364,6 +389,126 @@ func _apply_adversarial_result(result: Dictionary) -> void:
 		sound_manager.play_stamp("error_soft")
 	elif money_delta > 0:
 		sound_manager.play_stamp("coin_burst")
+
+
+func _maybe_queue_failure_grievance(event: Dictionary) -> void:
+	if bool(event.get("success", true)):
+		return
+	if _adversarial_session and bool(_adversarial_session.call("has_active_session")):
+		return
+	if _queued_grievance_agent_id != "":
+		return
+
+	var recent_failures := _count_recent_failed_player_actions(8)
+	if recent_failures < 3:
+		return
+	if grid_manager.day == _last_failure_grievance_day and recent_failures < _last_failure_grievance_count + 3:
+		return
+
+	var agent_snapshot := _select_adversarial_agent("")
+	if agent_snapshot.is_empty():
+		return
+
+	_last_failure_grievance_day = grid_manager.day
+	_last_failure_grievance_count = recent_failures
+	_queue_adversarial_grievance(
+		str(agent_snapshot.get("id", "")),
+		"%s noticed %s failed field calls." % [str(agent_snapshot.get("name", "Crew")), recent_failures],
+		{
+			"grievance_text": "Three field misses in quick succession made the crew put down the tools and stare.",
+			"npc_goal": "make the player admit the mess and choose one cleaner next step",
+			"recent_failures": recent_failures,
+			"top_failed_action": str(event.get("action", "work"))
+		}
+	)
+
+
+func _maybe_queue_day_grievance(summary: Dictionary) -> void:
+	if _queued_grievance_agent_id != "":
+		return
+	if _adversarial_session and bool(_adversarial_session.call("has_active_session")):
+		return
+
+	var vibe: Dictionary = summary.get("vibe", {})
+	var vibe_label := str(vibe.get("label", "mixed"))
+	var failed := int(summary.get("failed_player_actions", 0))
+	if vibe_label != "chaotic" and failed < 3:
+		return
+
+	var agent_snapshot := _select_adversarial_agent("")
+	if agent_snapshot.is_empty():
+		return
+
+	_queue_adversarial_grievance(
+		str(agent_snapshot.get("id", "")),
+		"%s wants a post-day Parley about the %s vibe." % [str(agent_snapshot.get("name", "Crew")), vibe_label],
+		{
+			"grievance_text": "The day ended with a %s vibe, and the crew wants that explained before tomorrow gets ideas." % vibe_label,
+			"npc_goal": "turn the day summary into one practical commitment",
+			"recent_failures": failed,
+			"top_failed_action": str(summary.get("top_action", "work")),
+			"grievance_day": int(summary.get("day", grid_manager.day))
+		}
+	)
+
+
+func _queue_adversarial_grievance(agent_id: String, reason: String, context: Dictionary = {}) -> void:
+	if agent_id == "":
+		return
+
+	_queued_grievance_agent_id = agent_id
+	_queued_grievance_context = context.duplicate(true)
+	game_ui.set_adversarial_prompt(true, reason)
+	game_ui.add_field_log(reason)
+	sound_manager.play_stamp("error_soft")
+
+
+func _clear_adversarial_grievance() -> void:
+	_queued_grievance_agent_id = ""
+	_queued_grievance_context = {}
+	game_ui.set_adversarial_prompt(false)
+
+
+func _count_recent_failed_player_actions(limit: int = 8) -> int:
+	if _event_log == null:
+		return 0
+
+	var recent_events: Array = _event_log.call("get_recent_events", limit)
+	var count := 0
+	for recent_event in recent_events:
+		if typeof(recent_event) != TYPE_DICTIONARY:
+			continue
+		if int(recent_event.get("day", grid_manager.day)) != grid_manager.day:
+			continue
+		if str(recent_event.get("type", "")) == "player_action" and not bool(recent_event.get("success", true)):
+			count += 1
+	return count
+
+
+func _apply_patience_tax(order: Dictionary) -> bool:
+	if _patience_tax_orders <= 0:
+		return true
+
+	var tax := 2
+	if money < tax:
+		game_ui.show_message("Crew patience tax needs %s coins first." % tax)
+		sound_manager.play_stamp("error_soft")
+		return false
+
+	_patience_tax_orders -= 1
+	money -= tax
+	game_ui.set_money(money)
+	game_ui.add_field_log("Paid %s coins in crew patience tax for %s." % [tax, str(order.get("label", "the order"))])
+	if _event_log:
+		_event_log.record_event("work_order", {
+			"day": grid_manager.day,
+			"order_id": str(order.get("id", "")),
+			"label": str(order.get("label", "")),
+			"status": "patience_tax",
+			"tax": tax,
+			"target_tile": order.get("target_tile", Vector2i.ZERO)
+		})
+	return true
 
 
 func _on_crew_order_targeted(action_id: String, grid_pos: Vector2i) -> void:
@@ -421,6 +566,7 @@ func _on_advance_day_requested() -> void:
 			"summary": summary
 		})
 		game_ui.add_field_log(_format_day_summary(summary))
+		_maybe_queue_day_grievance(summary)
 
 	grid_manager.advance_day()
 	game_ui.set_day(grid_manager.day)
@@ -448,6 +594,7 @@ func _on_player_action_logged(event: Dictionary) -> void:
 	_add_resources(payload.get("resources", {}))
 	_event_log.record_event("player_action", payload)
 	game_ui.add_field_log(_format_player_receipt(payload))
+	_maybe_queue_failure_grievance(payload)
 
 
 func _on_agent_world_action(event: Dictionary) -> void:
@@ -501,6 +648,9 @@ func _on_work_order_requested(order_id: String) -> void:
 	if not _can_order_target(order):
 		game_ui.show_message(_targeting_error_message(str(order.get("action", "build_fence"))))
 		sound_manager.play_stamp("error_soft")
+		return
+
+	if not _apply_patience_tax(order):
 		return
 
 	var action_id := str(order.get("action", "build_fence"))

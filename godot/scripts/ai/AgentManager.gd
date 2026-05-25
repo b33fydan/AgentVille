@@ -132,6 +132,15 @@ func apply_adversarial_result(result: Dictionary) -> void:
 		return
 
 
+func apply_crew_boost(seconds: float, multiplier: float = 1.28) -> void:
+	if seconds <= 0.0:
+		return
+
+	for agent in agents:
+		agent.call("apply_crew_boost", seconds, multiplier)
+	crew_updated.emit(get_agent_snapshots())
+
+
 func assign_work_order(order: Dictionary) -> bool:
 	if agents.is_empty():
 		return false

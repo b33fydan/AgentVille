@@ -38,6 +38,9 @@ var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
 var _work_order_list_stack: VBoxContainer
 var _active_work_order_tool: String = ""
+var _parley_button: Button
+var _parley_prompt_active: bool = false
+var _parley_pulse_phase: float = 0.0
 var _encounter_panel: PanelContainer
 var _encounter_title_label: Label
 var _encounter_meter: ProgressBar
@@ -54,7 +57,8 @@ func _ready() -> void:
 	show_message("Till soil, plant corn, grow it, then harvest.")
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_update_parley_pulse(delta)
 	if _cursor_ghost == null or not _cursor_ghost.visible:
 		return
 
@@ -290,6 +294,20 @@ func set_adversarial_session(session: Dictionary) -> void:
 		button.tooltip_text = str(choice.get("claim", ""))
 
 
+func set_adversarial_prompt(is_available: bool, reason: String = "") -> void:
+	_parley_prompt_active = is_available
+	_parley_pulse_phase = 0.0
+	if _parley_button == null:
+		return
+
+	_parley_button.text = "Parley!" if is_available else "Parley"
+	_parley_button.tooltip_text = reason if reason != "" else "Open the crew grievance meter"
+	_parley_button.modulate = Color.WHITE
+	_parley_button.add_theme_stylebox_override("normal", _parley_button_style(is_available, false))
+	_parley_button.add_theme_stylebox_override("hover", _parley_button_style(is_available, true))
+	_parley_button.add_theme_stylebox_override("pressed", _parley_button_style(is_available, true))
+
+
 func add_field_log(message: String) -> void:
 	if _field_log_stack == null:
 		return
@@ -481,21 +499,21 @@ func _build_crew_panel() -> void:
 	title.add_theme_color_override("font_color", Color("#8a806f"))
 	header.add_child(title)
 
-	var parley_button := Button.new()
-	parley_button.text = "Parley"
-	parley_button.tooltip_text = "Open the crew grievance meter"
-	parley_button.custom_minimum_size = Vector2(58, 22)
-	parley_button.focus_mode = Control.FOCUS_NONE
-	parley_button.add_theme_font_size_override("font_size", 11)
-	parley_button.add_theme_color_override("font_color", Color("#4b4337"))
-	parley_button.add_theme_stylebox_override("normal", _crew_order_button_style(false))
-	parley_button.add_theme_stylebox_override("hover", _crew_order_button_style(true))
-	parley_button.add_theme_stylebox_override("pressed", _crew_order_button_style(true))
-	parley_button.pressed.connect(func() -> void:
+	_parley_button = Button.new()
+	_parley_button.text = "Parley"
+	_parley_button.tooltip_text = "Open the crew grievance meter"
+	_parley_button.custom_minimum_size = Vector2(58, 22)
+	_parley_button.focus_mode = Control.FOCUS_NONE
+	_parley_button.add_theme_font_size_override("font_size", 11)
+	_parley_button.add_theme_color_override("font_color", Color("#4b4337"))
+	_parley_button.add_theme_stylebox_override("normal", _parley_button_style(false, false))
+	_parley_button.add_theme_stylebox_override("hover", _parley_button_style(false, true))
+	_parley_button.add_theme_stylebox_override("pressed", _parley_button_style(false, true))
+	_parley_button.pressed.connect(func() -> void:
 		sound_requested.emit("ui_click")
 		adversarial_encounter_requested.emit("")
 	)
-	header.add_child(parley_button)
+	header.add_child(_parley_button)
 
 	var status := Label.new()
 	status.text = "watching"
@@ -933,6 +951,15 @@ func _on_encounter_choice_pressed(index: int) -> void:
 	adversarial_response_selected.emit(choice_id)
 
 
+func _update_parley_pulse(delta: float) -> void:
+	if _parley_button == null or not _parley_prompt_active:
+		return
+
+	_parley_pulse_phase += delta * 5.5
+	var pulse := 0.5 + sin(_parley_pulse_phase) * 0.5
+	_parley_button.modulate = Color(1.0, 0.90 + pulse * 0.10, 0.82 + pulse * 0.18, 1.0)
+
+
 func _make_inventory_pill(id: String, text: String, color: Color, is_crafted: bool) -> PanelContainer:
 	var pill := PanelContainer.new()
 	pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1272,6 +1299,19 @@ func _encounter_choice_style(active: bool) -> StyleBoxFlat:
 	style.border_color = Color("#b87956") if active else Color("#d0aa8b")
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(10)
+	return style
+
+
+func _parley_button_style(prompted: bool, active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	if prompted:
+		style.bg_color = Color("#ffe4c8") if active else Color("#fff0d8")
+		style.border_color = Color("#b87956")
+	else:
+		style.bg_color = Color("#e2f1d8") if active else Color("#fffaf0")
+		style.border_color = Color("#769352") if active else Color("#d1bea0")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(9)
 	return style
 
 
