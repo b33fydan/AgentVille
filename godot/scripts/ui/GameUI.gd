@@ -192,6 +192,7 @@ func _update_work_order_row(order: Dictionary) -> void:
 	var has_required_item := bool(order.get("has_required_item", false))
 	var can_craft_item := bool(order.get("can_craft_item", false))
 	var can_progress := bool(order.get("can_progress", false))
+	var incentive_status := str(order.get("incentive_status_text", ""))
 	(row["label"] as Label).text = label
 	row["intent"] = "send"
 
@@ -234,6 +235,9 @@ func _update_work_order_row(order: Dictionary) -> void:
 					(row["status"] as Label).text = str(order.get("status_text", "Needs mats"))
 					(row["button"] as Button).text = "Ask"
 				(row["button"] as Button).disabled = false
+
+	if incentive_status != "":
+		(row["status"] as Label).text = incentive_status
 
 	var can_send := status == "ready" and can_progress and str(row.get("intent", "send")) == "send"
 	var can_clear := str(row.get("intent", "send")) == "clear" and not (row["button"] as Button).disabled

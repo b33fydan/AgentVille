@@ -1773,6 +1773,7 @@ func _work_order_snapshot(order_id: String) -> Dictionary:
 	order["has_required_item"] = required_item == "" or str(order.get("reserved_item", "")) == required_item or _available_crafted_item(required_item) > 0
 	order["can_craft_item"] = _can_craft_required_item_for_order(order)
 	order["can_progress"] = str(order.get("status", "ready")) == "ready" and _can_order_target(order)
+	order["incentive_status_text"] = _work_order_incentive_status_text(order)
 	if str(order.get("status", "ready")) == "ready" and not bool(order["can_progress"]):
 		order["status_text"] = "Target changed"
 	elif str(order.get("status", "ready")) == "ready" and action_id == "build_fence" and not bool(order["has_required_item"]) and not bool(order["can_craft_item"]):
@@ -1783,6 +1784,15 @@ func _work_order_snapshot(order_id: String) -> Dictionary:
 	elif str(order.get("status", "ready")) == "ready" and action_id != "build_fence":
 		order["status_text"] = "Ready"
 	return order
+
+
+func _work_order_incentive_status_text(order: Dictionary) -> String:
+	var incentive_delta: Dictionary = order.get("incentive_resource_delta", {})
+	if incentive_delta.is_empty():
+		return ""
+
+	var prefix := "Claimed" if bool(order.get("incentive_claimed", false)) else "Bonus"
+	return "%s +%s" % [prefix, _format_resource_list(incentive_delta)]
 
 
 func _crafting_demand_snapshot(demand_id: String) -> Dictionary:
