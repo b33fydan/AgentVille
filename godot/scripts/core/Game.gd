@@ -854,6 +854,9 @@ func _demand_status_text(demand: Dictionary) -> String:
 	var age_prefix := "%sd " % age_days if age_days > 0 else ""
 	var authored_order_id := str(demand.get("authored_order_id", ""))
 	if authored_order_id != "" and work_orders.has(authored_order_id) and int(work_orders[authored_order_id].get("escalation_count", 0)) > 0:
+		var incentive: Dictionary = work_orders[authored_order_id].get("incentive_resource_delta", {})
+		if not incentive.is_empty() and not bool(work_orders[authored_order_id].get("incentive_claimed", false)):
+			return "%s+%s" % [age_prefix, _format_resource_list(incentive)]
 		return "%sEscalated" % age_prefix
 	if authored_order_id != "":
 		return "%sOrder drafted" % age_prefix
@@ -1006,12 +1009,19 @@ func _escalate_npc_authored_order(order_id: String) -> bool:
 	order["escalated_day"] = grid_manager.day
 	order["status_text"] = "%s escalated" % author_name
 	order["last_escalation"] = "auto_send" if _can_order_target(order) and _agent_manager != null and bool(_agent_manager.call("has_available_agent")) else "waiting"
+	var incentive := _escalation_incentive_for_order(order)
+	if not incentive.is_empty():
+		order["incentive_label"] = str(incentive.get("label", "Crew bargain"))
+		order["incentive_resource_delta"] = incentive.get("resource_delta", {})
 	work_orders[order_id] = order
 	_refresh_work_orders()
 	_refresh_crafting_demands()
 	_record_work_order_event(order_id, "escalated")
 	var escalation_label := _work_order_label(str(order.get("action", "")), order.get("target_tile", Vector2i.ZERO))
 	game_ui.add_field_log("%s escalated %s." % [author_name, escalation_label])
+	var incentive_delta: Dictionary = order.get("incentive_resource_delta", {})
+	if not incentive_delta.is_empty():
+		game_ui.add_field_log("%s offered +%s if it gets done now." % [author_name, _format_resource_list(incentive_delta)])
 
 	if _agent_manager:
 		_agent_manager.call("apply_adversarial_result", {
@@ -1025,6 +1035,29 @@ func _escalate_npc_authored_order(order_id: String) -> bool:
 		return false
 
 	return _queue_escalated_work_order(order_id)
+
+
+func _escalation_incentive_for_order(order: Dictionary) -> Dictionary:
+	match str(order.get("author_agent_id", "")):
+		"bert":
+			return {
+				"label": "Bert's practical bargain",
+				"resource_delta": {"grain": 1}
+			}
+		"marigold":
+			return {
+				"label": "Marigold's goodwill bargain",
+				"resource_delta": {"grain": 1}
+			}
+		"chuck":
+			return {
+				"label": "Chuck's hurry-up bargain",
+				"resource_delta": {"fiber": 1}
+			}
+	return {
+		"label": "Crew bargain",
+		"resource_delta": {"fiber": 1}
+	}
 
 
 func _queue_escalated_work_order(order_id: String) -> bool:
@@ -1653,9 +1686,34 @@ func _update_work_order_from_agent_action(event: Dictionary) -> void:
 	order["status"] = "done" if success else "ready"
 	order.erase("status_text")
 	work_orders[order_id] = order
+	if success:
+		_claim_work_order_incentive(order_id)
 	_refresh_work_orders()
 
 	_record_work_order_event(order_id, str(order.get("status", "ready")))
+
+
+func _claim_work_order_incentive(order_id: String) -> void:
+	if not work_orders.has(order_id):
+		return
+
+	var order: Dictionary = work_orders[order_id]
+	if bool(order.get("incentive_claimed", false)):
+		return
+
+	var incentive_delta: Dictionary = order.get("incentive_resource_delta", {})
+	if incentive_delta.is_empty():
+		return
+
+	var accepted := _add_resources(incentive_delta)
+	if accepted.is_empty():
+		return
+
+	order["incentive_claimed"] = true
+	order["incentive_claimed_day"] = grid_manager.day
+	work_orders[order_id] = order
+	game_ui.add_field_log("%s paid: +%s." % [str(order.get("incentive_label", "Crew bargain")), _format_resource_list(accepted)])
+	_record_work_order_event(order_id, "incentive_claimed")
 
 
 func _record_work_order_event(order_id: String, status: String) -> void:
@@ -1675,7 +1733,10 @@ func _record_work_order_event(order_id: String, status: String) -> void:
 		"author_agent_name": str(order.get("author_agent_name", "")),
 		"escalation_count": int(order.get("escalation_count", 0)),
 		"escalated_day": int(order.get("escalated_day", 0)),
-		"last_escalation": str(order.get("last_escalation", ""))
+		"last_escalation": str(order.get("last_escalation", "")),
+		"incentive_label": str(order.get("incentive_label", "")),
+		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
+		"incentive_claimed": bool(order.get("incentive_claimed", false))
 	})
 
 
@@ -1695,7 +1756,10 @@ func _record_removed_work_order_event(order: Dictionary, status: String) -> void
 		"author_agent_name": str(order.get("author_agent_name", "")),
 		"escalation_count": int(order.get("escalation_count", 0)),
 		"escalated_day": int(order.get("escalated_day", 0)),
-		"last_escalation": str(order.get("last_escalation", ""))
+		"last_escalation": str(order.get("last_escalation", "")),
+		"incentive_label": str(order.get("incentive_label", "")),
+		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
+		"incentive_claimed": bool(order.get("incentive_claimed", false))
 	})
 
 

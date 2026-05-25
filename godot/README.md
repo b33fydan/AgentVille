@@ -33,6 +33,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Farm-work crew demands now pick real target tiles, show compact coordinates in the demand row, place distinct in-world demand markers, and only complete from work on the requested tile.
 - Aged targeted crew demands now let the NPC draft a linked work order for the same tile, so the player can send the crew to resolve the original social contract.
 - Ignored NPC-authored orders now escalate the next morning, adding author pressure and auto-sending the crew when someone is free.
+- Escalated NPC-authored orders now attach small bargain incentives, surface the resource offer in the demand row, and pay it once the order is completed.
 - Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys.
 - Zoom with the mouse wheel.
 
@@ -65,6 +66,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_demand_targeting.gd` exercises targeted demand tile selection, UI coordinates, demand markers, target focus, and tile-specific completion.
 - `tools/smoke_npc_authored_work_orders.gd` exercises aged targeted demands becoming NPC-authored work orders that complete the source demand through crew action.
 - `tools/smoke_npc_order_escalation.gd` exercises second-day escalation for ignored NPC-authored orders, including escalation receipts, author pressure, auto-send, and source-demand completion.
+- `tools/smoke_npc_escalation_bargains.gd` exercises escalated NPC-authored order incentives, compact demand-row bargain text, payout, and receipt logging.
 - `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, formatted day summaries, and NPC vibe verdicts.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
@@ -76,6 +78,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/capture_demand_targeting.gd` captures `artifacts/screenshots/agentville-demand-targeting.png`.
 - `tools/capture_npc_authored_work_order.gd` captures `artifacts/screenshots/agentville-npc-authored-work-order.png`.
 - `tools/capture_npc_order_escalation.gd` captures `artifacts/screenshots/agentville-npc-order-escalation.png`.
+- `tools/capture_npc_escalation_bargain.gd` captures `artifacts/screenshots/agentville-npc-escalation-bargain.png`.
 - `tools/capture_adversarial_reaction.gd` captures `artifacts/screenshots/agentville-adversarial-reaction.png`.
 - `tools/capture_adversarial_session.gd` captures `artifacts/screenshots/agentville-adversarial-session.png`.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
@@ -102,6 +105,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Targeted demand selection is deterministic and local too: action demands bind to live farm tiles and become visible world intent markers before later NPC-authored contracts get smarter.
 - NPC-authored work orders are the next local bridge: an ignored targeted demand can draft a crew order with source-demand metadata, and the existing agent action receipt completes both records.
 - Ignored authored orders now have deterministic escalation: a second missed morning records escalation metadata, sharpens the author irritation, and uses the existing crew queue to push the work forward.
+- Escalation bargains are deterministic too: the author attaches a tiny resource incentive to the linked order, the UI exposes the offer, and order completion records and pays the incentive once.
 - The first vibe scorer is also local and threshold-based. It creates structured labels that a future observer model or LSTM/classifier can consume later.
 - End-day summaries turn action history into compact receipts the crew can judge.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
