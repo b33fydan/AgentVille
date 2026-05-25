@@ -34,6 +34,8 @@ var _cursor_item_id: String = ""
 var _resource_labels: Dictionary = {}
 var _crafted_labels: Dictionary = {}
 var _craft_buttons: Dictionary = {}
+var _crafting_demand_rows: Dictionary = {}
+var _crafting_demand_list_stack: VBoxContainer
 var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
 var _work_order_list_stack: VBoxContainer
@@ -136,6 +138,24 @@ func set_inventory(resources: Dictionary, crafted_items: Dictionary) -> void:
 
 func set_work_order(order: Dictionary) -> void:
 	set_work_orders([order])
+
+
+func set_crafting_demands(demands: Array) -> void:
+	if _crafting_demand_list_stack == null:
+		return
+
+	for child in _crafting_demand_list_stack.get_children():
+		child.queue_free()
+	_crafting_demand_rows.clear()
+
+	if demands.is_empty():
+		_add_empty_crafting_demand_row(_crafting_demand_list_stack)
+		return
+
+	for demand in demands:
+		if typeof(demand) != TYPE_DICTIONARY:
+			continue
+		_add_crafting_demand_row(_crafting_demand_list_stack, demand)
 
 
 func set_work_orders(orders: Array) -> void:
@@ -313,7 +333,7 @@ func add_field_log(message: String) -> void:
 		return
 
 	_field_log_entries.push_front(message)
-	while _field_log_entries.size() > 3:
+	while _field_log_entries.size() > 2:
 		_field_log_entries.pop_back()
 
 	for child in _field_log_stack.get_children():
@@ -473,7 +493,7 @@ func _build_crew_panel() -> void:
 	panel.anchor_left = 0.79
 	panel.anchor_top = 0.075
 	panel.anchor_right = 0.98
-	panel.anchor_bottom = 0.545
+	panel.anchor_bottom = 0.505
 	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
 	_root.add_child(panel)
 	_register_ui_hit_region(panel)
@@ -629,7 +649,7 @@ func _build_settings_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "SettingsPanel"
 	panel.anchor_left = 0.79
-	panel.anchor_top = 0.555
+	panel.anchor_top = 0.515
 	panel.anchor_right = 0.98
 	panel.anchor_bottom = 0.99
 	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
@@ -677,6 +697,7 @@ func _build_settings_panel() -> void:
 
 	_build_inventory_strip(stack)
 	_build_craft_controls(stack)
+	_build_crafting_demand_controls(stack)
 	_build_work_order_controls(stack)
 
 	var mode_label := Label.new()
@@ -740,9 +761,38 @@ func _build_craft_controls(parent: VBoxContainer) -> void:
 	_craft_buttons["fence_kit"] = button
 
 
+func _build_crafting_demand_controls(parent: VBoxContainer) -> void:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 48)
+	card.add_theme_stylebox_override("panel", _soft_box(Color("#fff4e8"), 10, 1))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	card.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 2)
+	margin.add_child(stack)
+
+	var title := Label.new()
+	title.text = "CREW DEMANDS"
+	title.add_theme_font_size_override("font_size", 10)
+	title.add_theme_color_override("font_color", Color("#8a806f"))
+	stack.add_child(title)
+
+	_crafting_demand_list_stack = VBoxContainer.new()
+	_crafting_demand_list_stack.add_theme_constant_override("separation", 2)
+	stack.add_child(_crafting_demand_list_stack)
+	_add_empty_crafting_demand_row(_crafting_demand_list_stack)
+
+
 func _build_work_order_controls(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 106)
+	card.custom_minimum_size = Vector2(0, 98)
 	card.add_theme_stylebox_override("panel", _soft_box(Color("#fff7df"), 10, 1))
 	parent.add_child(card)
 
@@ -805,6 +855,42 @@ func _add_empty_work_order_row(parent: VBoxContainer) -> void:
 	label.add_theme_font_size_override("font_size", 10)
 	label.add_theme_color_override("font_color", Color("#8a806f"))
 	parent.add_child(label)
+
+
+func _add_empty_crafting_demand_row(parent: VBoxContainer) -> void:
+	var label := Label.new()
+	label.text = "No crew demands"
+	label.custom_minimum_size = Vector2(0, 18)
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", Color("#8a806f"))
+	parent.add_child(label)
+
+
+func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void:
+	var demand_id := str(demand.get("id", ""))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	parent.add_child(row)
+
+	var label := Label.new()
+	label.text = str(demand.get("label", "Crew Demand"))
+	label.custom_minimum_size = Vector2(106, 0)
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color("#3f372d"))
+	row.add_child(label)
+
+	var status := Label.new()
+	status.text = str(demand.get("status_text", "Needs kit"))
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status.add_theme_font_size_override("font_size", 10)
+	status.add_theme_color_override("font_color", Color("#746b5f"))
+	row.add_child(status)
+
+	_crafting_demand_rows[demand_id] = {
+		"label": label,
+		"status": status
+	}
 
 
 func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:

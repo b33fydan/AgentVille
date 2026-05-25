@@ -55,6 +55,8 @@ var crafted_items: Dictionary = {
 var reserved_crafted_items: Dictionary = {
 	"fence_kit": 0
 }
+var crafting_demands: Dictionary = {}
+var crafting_demand_ids: Array[String] = []
 var work_orders: Dictionary = {}
 var work_order_ids: Array[String] = []
 
@@ -65,6 +67,7 @@ var _agent_manager
 var _adversarial_session
 var _crew_priority_timer: float = 0.0
 var _next_work_order_number: int = 1
+var _next_crafting_demand_number: int = 1
 var _queued_grievance_agent_id: String = ""
 var _queued_grievance_context: Dictionary = {}
 var _last_failure_grievance_day: int = 0
@@ -382,6 +385,10 @@ func _apply_adversarial_result(result: Dictionary) -> void:
 		_patience_tax_orders += tax_orders
 		game_ui.add_field_log("Crew patience tax armed for the next order.")
 
+	var crafting_demand: Dictionary = payload.get("crafting_demand", {})
+	if not crafting_demand.is_empty():
+		_create_crafting_demand(crafting_demand, payload)
+
 	var verdict := str(payload.get("verdict", "The encounter ended."))
 	game_ui.add_field_log(verdict)
 	game_ui.show_message(_format_adversarial_result(payload))
@@ -509,6 +516,82 @@ func _apply_patience_tax(order: Dictionary) -> bool:
 			"target_tile": order.get("target_tile", Vector2i.ZERO)
 		})
 	return true
+
+
+func _create_crafting_demand(template: Dictionary, source_event: Dictionary) -> String:
+	var required_item := str(template.get("required_item", ""))
+	if required_item == "":
+		return ""
+
+	var demand_id := "demand_%03d" % _next_crafting_demand_number
+	_next_crafting_demand_number += 1
+	var demand := template.duplicate(true)
+	demand["id"] = demand_id
+	demand["status"] = "open"
+	demand["agent_id"] = str(source_event.get("agent_id", ""))
+	demand["agent_name"] = str(source_event.get("agent_name", "Crew"))
+	demand["created_day"] = grid_manager.day
+	demand["required_item"] = required_item
+	demand["amount"] = maxi(1, int(demand.get("amount", 1)))
+	demand["label"] = str(demand.get("label", "Deliver %s" % _pretty_crafted_name(required_item)))
+	demand["status_text"] = "Needs %s" % _pretty_crafted_name(required_item)
+
+	crafting_demands[demand_id] = demand
+	crafting_demand_ids.append(demand_id)
+	_refresh_crafting_demands()
+	game_ui.add_field_log("%s requested: %s." % [str(demand.get("agent_name", "Crew")), str(demand.get("label", "Crafting demand"))])
+	_record_crafting_demand_event(demand_id, "open")
+	return demand_id
+
+
+func _satisfy_open_crafting_demands(item_id: String, source: String) -> void:
+	if source != "player":
+		return
+
+	for demand_id in crafting_demand_ids:
+		var demand: Dictionary = crafting_demands.get(demand_id, {})
+		if str(demand.get("status", "")) != "open":
+			continue
+		if str(demand.get("required_item", "")) != item_id:
+			continue
+
+		var amount := maxi(1, int(demand.get("amount", 1)))
+		if _available_crafted_item(item_id) < amount:
+			continue
+
+		_consume_crafted_cost({item_id: amount})
+		demand["status"] = "done"
+		demand["status_text"] = "Delivered"
+		demand["completed_day"] = grid_manager.day
+		crafting_demands[demand_id] = demand
+		_refresh_crafting_demands()
+		_record_crafting_demand_event(demand_id, "done")
+		game_ui.add_field_log("%s delivered to %s." % [_pretty_crafted_name(item_id), str(demand.get("agent_name", "Crew"))])
+		if _agent_manager:
+			_agent_manager.call("apply_adversarial_result", {
+				"agent_id": str(demand.get("agent_id", "")),
+				"outcome": "resolved",
+				"agent_mood_delta": 3.0,
+				"agent_irritation_delta": -12.0
+			})
+		return
+
+
+func _record_crafting_demand_event(demand_id: String, status: String) -> void:
+	if _event_log == null or not crafting_demands.has(demand_id):
+		return
+
+	var demand: Dictionary = crafting_demands[demand_id]
+	_event_log.record_event("crafting_demand", {
+		"day": grid_manager.day,
+		"demand_id": demand_id,
+		"label": str(demand.get("label", "")),
+		"status": status,
+		"agent_id": str(demand.get("agent_id", "")),
+		"agent_name": str(demand.get("agent_name", "")),
+		"required_item": str(demand.get("required_item", "")),
+		"amount": int(demand.get("amount", 1))
+	})
 
 
 func _on_crew_order_targeted(action_id: String, grid_pos: Vector2i) -> void:
@@ -735,6 +818,7 @@ func _craft_recipe(recipe_id: String, source: String = "player") -> bool:
 	if source.begins_with("crew"):
 		receipt = "Crew prepped %s from %s." % [label, _format_cost(cost)]
 	game_ui.add_field_log(receipt)
+	_satisfy_open_crafting_demands(recipe_id, source)
 	if not source.ends_with("_quiet"):
 		game_ui.show_message(receipt)
 		sound_manager.play_stamp("place_soft")
@@ -927,7 +1011,12 @@ func _consume_crafted_cost(cost) -> Dictionary:
 
 func _refresh_inventory_and_orders() -> void:
 	game_ui.set_inventory(resources, _available_crafted_items_snapshot())
+	_refresh_crafting_demands()
 	_refresh_work_orders()
+
+
+func _refresh_crafting_demands() -> void:
+	game_ui.set_crafting_demands(_crafting_demand_snapshots())
 
 
 func _refresh_work_orders() -> void:
@@ -1176,6 +1265,28 @@ func _work_order_snapshot(order_id: String) -> Dictionary:
 	elif str(order.get("status", "ready")) == "ready" and action_id != "build_fence":
 		order["status_text"] = "Ready"
 	return order
+
+
+func _crafting_demand_snapshot(demand_id: String) -> Dictionary:
+	if not crafting_demands.has(demand_id):
+		return {}
+
+	var demand: Dictionary = crafting_demands[demand_id].duplicate(true)
+	var required_item := str(demand.get("required_item", ""))
+	var amount := maxi(1, int(demand.get("amount", 1)))
+	demand["has_required_item"] = required_item != "" and _available_crafted_item(required_item) >= amount
+	if str(demand.get("status", "")) == "open":
+		demand["status_text"] = "Ready" if bool(demand["has_required_item"]) else "Needs %s" % _pretty_crafted_name(required_item)
+	return demand
+
+
+func _crafting_demand_snapshots() -> Array:
+	var snapshots: Array = []
+	var visible_ids := crafting_demand_ids.duplicate()
+	visible_ids.reverse()
+	for demand_id in visible_ids.slice(0, 2):
+		snapshots.append(_crafting_demand_snapshot(demand_id))
+	return snapshots
 
 
 func _work_order_snapshots() -> Array:

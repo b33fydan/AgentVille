@@ -114,6 +114,7 @@ func _end_session(outcome: String) -> Dictionary:
 	result["agent_irritation_delta"] = _agent_irritation_delta_for(outcome)
 	result["crew_boost_seconds"] = _crew_boost_seconds_for(outcome)
 	result["patience_tax_orders"] = _patience_tax_orders_for(outcome)
+	result["crafting_demand"] = _crafting_demand_for(outcome, result)
 	result["choices"] = []
 	_session = result.duplicate(true)
 	session_ended.emit(result.duplicate(true))
@@ -338,7 +339,7 @@ func _agent_mood_delta_for(outcome: String) -> float:
 func _agent_irritation_delta_for(outcome: String) -> float:
 	match outcome:
 		"resolved":
-			return -18.0
+			return -8.0
 		"lost_patience":
 			return 14.0
 		"uneasy_truce":
@@ -357,6 +358,19 @@ func _crew_boost_seconds_for(outcome: String) -> float:
 
 func _patience_tax_orders_for(outcome: String) -> int:
 	return 1 if outcome == "lost_patience" else 0
+
+
+func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
+	if outcome != "resolved":
+		return {}
+
+	return {
+		"kind": "deliver_item",
+		"required_item": "fence_kit",
+		"amount": 1,
+		"label": "Deliver Fence Kit",
+		"reason": "%s wants proof that the recovery plan has materials behind it." % str(session.get("agent_name", "Crew"))
+	}
 
 
 func _count_recent_failures(events) -> int:
