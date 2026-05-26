@@ -128,9 +128,12 @@ func set_inventory(resources: Dictionary, crafted_items: Dictionary) -> void:
 		(_crafted_labels["fence_kit"] as Label).text = "KIT %s" % int(crafted_items.get("fence_kit", 0))
 	if _crafted_labels.has("seed_bundle"):
 		(_crafted_labels["seed_bundle"] as Label).text = "SBD %s" % int(crafted_items.get("seed_bundle", 0))
+	if _crafted_labels.has("rush_kit"):
+		(_crafted_labels["rush_kit"] as Label).text = "RSH %s" % int(crafted_items.get("rush_kit", 0))
 
 	_set_craft_button_state("fence_kit", int(resources.get("fiber", 0)) >= 2 and int(resources.get("grain", 0)) >= 1)
 	_set_craft_button_state("seed_bundle", int(resources.get("grain", 0)) >= 2)
+	_set_craft_button_state("rush_kit", int(resources.get("fiber", 0)) >= 1 and int(resources.get("stone", 0)) >= 1)
 
 
 func set_work_order(order: Dictionary) -> void:
@@ -673,7 +676,7 @@ func _build_settings_panel() -> void:
 	panel.add_child(margin)
 
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 3)
+	stack.add_theme_constant_override("separation", 2)
 	margin.add_child(stack)
 
 	var top_row := HBoxContainer.new()
@@ -749,20 +752,22 @@ func _build_inventory_strip(parent: VBoxContainer) -> void:
 	row.add_child(_make_inventory_pill("stone", "STN 0", Color("#e1e2d9"), false))
 	row.add_child(_make_inventory_pill("fence_kit", "KIT 0", Color("#e8f0ff"), true))
 	row.add_child(_make_inventory_pill("seed_bundle", "SBD 0", Color("#e8f6cf"), true))
+	row.add_child(_make_inventory_pill("rush_kit", "RSH 0", Color("#f0e5ff"), true))
 
 
 func _build_craft_controls(parent: VBoxContainer) -> void:
 	_add_craft_button(parent, "fence_kit", "Fence Kit  2 FBR + 1 GRN", "Crafts one fence kit from gathered fiber and grain")
 	_add_craft_button(parent, "seed_bundle", "Seed Bundle  2 GRN", "Crafts one seed bundle for crew supply demands")
+	_add_craft_button(parent, "rush_kit", "Rush Kit  1 FBR + 1 STN", "Crafts one rush kit for Chuck's obstacle-clearing demands")
 
 
 func _add_craft_button(parent: VBoxContainer, recipe_id: String, label: String, tooltip: String) -> void:
 	var button := Button.new()
 	button.text = label
 	button.tooltip_text = tooltip
-	button.custom_minimum_size = Vector2(0, 23)
+	button.custom_minimum_size = Vector2(0, 20)
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 12)
+	button.add_theme_font_size_override("font_size", 11)
 	button.add_theme_color_override("font_color", Color("#998e7d"))
 	button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
 	button.add_theme_stylebox_override("normal", _craft_button_style(false))
@@ -791,7 +796,7 @@ func _set_craft_button_state(recipe_id: String, can_craft: bool) -> void:
 
 func _build_crafting_demand_controls(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 48)
+	card.custom_minimum_size = Vector2(0, 44)
 	card.add_theme_stylebox_override("panel", _soft_box(Color("#fff4e8"), 10, 1))
 	parent.add_child(card)
 
@@ -820,7 +825,7 @@ func _build_crafting_demand_controls(parent: VBoxContainer) -> void:
 
 func _build_work_order_controls(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 98)
+	card.custom_minimum_size = Vector2(0, 92)
 	card.add_theme_stylebox_override("panel", _soft_box(Color("#fff7df"), 10, 1))
 	parent.add_child(card)
 

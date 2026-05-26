@@ -16,6 +16,13 @@ const RECIPES: Dictionary = {
 		"cost": {
 			"grain": 2
 		}
+	},
+	"rush_kit": {
+		"label": "Rush Kit",
+		"cost": {
+			"fiber": 1,
+			"stone": 1
+		}
 	}
 }
 const WORK_ORDER_ACTIONS: Dictionary = {
@@ -43,6 +50,7 @@ const WORK_ORDER_ACTIONS: Dictionary = {
 }
 const SPRING_HANDS_SECONDS := 12.0
 const FENCE_HANDS_SECONDS := 12.0
+const HUSTLE_HANDS_SECONDS := 12.0
 
 @onready var camera_controller = $CameraController
 @onready var farm_world: Node3D = $FarmWorld
@@ -59,11 +67,13 @@ var resources: Dictionary = {
 }
 var crafted_items: Dictionary = {
 	"fence_kit": 0,
-	"seed_bundle": 0
+	"seed_bundle": 0,
+	"rush_kit": 0
 }
 var reserved_crafted_items: Dictionary = {
 	"fence_kit": 0,
-	"seed_bundle": 0
+	"seed_bundle": 0,
+	"rush_kit": 0
 }
 var crafting_demands: Dictionary = {}
 var crafting_demand_ids: Array[String] = []
@@ -87,6 +97,8 @@ var _spring_hands_timer: float = 0.0
 var _spring_hands_charges: int = 0
 var _fence_hands_timer: float = 0.0
 var _fence_hands_charges: int = 0
+var _hustle_hands_timer: float = 0.0
+var _hustle_hands_charges: int = 0
 
 
 func _ready() -> void:
@@ -103,6 +115,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_update_spring_hands(delta)
 	_update_fence_hands(delta)
+	_update_hustle_hands(delta)
 	_crew_priority_timer -= delta
 	if _crew_priority_timer > 0.0:
 		return
@@ -830,6 +843,8 @@ func _apply_demand_completion_effects(demand: Dictionary) -> void:
 		_activate_spring_hands(demand)
 	elif str(demand.get("agent_id", "")) == "bert" and str(demand.get("required_item", "")) == "fence_kit":
 		_activate_fence_hands(demand)
+	elif str(demand.get("agent_id", "")) == "chuck" and str(demand.get("required_item", "")) == "rush_kit":
+		_activate_hustle_hands(demand)
 
 
 func _activate_spring_hands(demand: Dictionary) -> void:
@@ -870,6 +885,25 @@ func _activate_fence_hands(demand: Dictionary) -> void:
 	_try_use_fence_hands()
 
 
+func _activate_hustle_hands(demand: Dictionary) -> void:
+	_hustle_hands_timer = maxf(_hustle_hands_timer, HUSTLE_HANDS_SECONDS)
+	_hustle_hands_charges += 1
+	_refresh_crew_status()
+	game_ui.add_field_log("Hustle Hands active: Chuck will clear one obstacle.")
+	if _event_log:
+		_event_log.record_event("farm_perk", {
+			"day": grid_manager.day,
+			"perk_id": "hustle_hands",
+			"status": "applied",
+			"agent_id": str(demand.get("agent_id", "")),
+			"agent_name": str(demand.get("agent_name", "")),
+			"source_demand_id": str(demand.get("id", "")),
+			"charges": _hustle_hands_charges,
+			"duration_seconds": HUSTLE_HANDS_SECONDS
+		})
+	_try_use_hustle_hands()
+
+
 func _update_spring_hands(delta: float) -> void:
 	if _spring_hands_timer <= 0.0:
 		return
@@ -887,6 +921,16 @@ func _update_fence_hands(delta: float) -> void:
 	_fence_hands_timer = maxf(0.0, _fence_hands_timer - delta)
 	if _fence_hands_charges > 0:
 		_try_use_fence_hands()
+	_refresh_crew_status()
+
+
+func _update_hustle_hands(delta: float) -> void:
+	if _hustle_hands_timer <= 0.0:
+		return
+
+	_hustle_hands_timer = maxf(0.0, _hustle_hands_timer - delta)
+	if _hustle_hands_charges > 0:
+		_try_use_hustle_hands()
 	_refresh_crew_status()
 
 
@@ -929,6 +973,33 @@ func _try_use_fence_hands() -> bool:
 	return true
 
 
+func _try_use_hustle_hands() -> bool:
+	if _hustle_hands_timer <= 0.0 or _hustle_hands_charges <= 0 or grid_manager == null:
+		return false
+
+	var target_tile = _find_hustle_hands_tile()
+	if target_tile == null:
+		return false
+
+	var effect := "clear_brush"
+	var success := false
+	match str(target_tile.decor_id):
+		"rock":
+			effect = "clear_rock"
+			success = target_tile.break_with_pickaxe()
+		"tall_grass", "flower_patch":
+			success = target_tile.cut_with_sickle() != 0
+	if not success:
+		return false
+
+	_hustle_hands_charges -= 1
+	_record_hustle_hands_use(target_tile.grid_pos, effect)
+	var subject := "rock" if effect == "clear_rock" else "brush"
+	game_ui.add_field_log("Hustle Hands cleared %s at (%s,%s)." % [subject, target_tile.grid_pos.x, target_tile.grid_pos.y])
+	sound_manager.play_stamp("plant_pop")
+	return true
+
+
 func _find_spring_hands_seed_tile():
 	for x in range(grid_manager.width):
 		for z in range(grid_manager.height):
@@ -960,6 +1031,15 @@ func _find_fence_hands_tile():
 	return null
 
 
+func _find_hustle_hands_tile():
+	for x in range(grid_manager.width):
+		for z in range(grid_manager.height):
+			var tile = grid_manager.get_tile(Vector2i(x, z))
+			if tile != null and str(tile.decor_id) in ["rock", "tall_grass", "flower_patch"]:
+				return tile
+	return null
+
+
 func _record_spring_hands_use(target_tile: Vector2i, effect: String) -> void:
 	_refresh_crew_status()
 	if _event_log:
@@ -986,11 +1066,26 @@ func _record_fence_hands_use(target_tile: Vector2i) -> void:
 		})
 
 
+func _record_hustle_hands_use(target_tile: Vector2i, effect: String) -> void:
+	_refresh_crew_status()
+	if _event_log:
+		_event_log.record_event("farm_perk", {
+			"day": grid_manager.day,
+			"perk_id": "hustle_hands",
+			"status": "used",
+			"effect": effect,
+			"target_tile": target_tile,
+			"charges_remaining": _hustle_hands_charges
+		})
+
+
 func _refresh_crew_status() -> void:
 	if _spring_hands_timer > 0.0:
 		game_ui.set_crew_status("Spring Hands %ss" % ceili(_spring_hands_timer), true)
 	elif _fence_hands_timer > 0.0:
 		game_ui.set_crew_status("Fence Hands %ss" % ceili(_fence_hands_timer), true)
+	elif _hustle_hands_timer > 0.0:
+		game_ui.set_crew_status("Hustle Hands %ss" % ceili(_hustle_hands_timer), true)
 	else:
 		game_ui.set_crew_status("watching")
 
@@ -2137,7 +2232,7 @@ func _format_crafted_cost_list(cost) -> String:
 		return ""
 
 	var parts: Array[String] = []
-	for item_id in ["fence_kit", "seed_bundle"]:
+	for item_id in ["fence_kit", "seed_bundle", "rush_kit"]:
 		var amount := int(cost.get(item_id, 0))
 		if amount > 0:
 			parts.append("%s %s" % [amount, _pretty_crafted_name(item_id)])
@@ -2165,6 +2260,8 @@ func _pretty_crafted_name(item_id: String) -> String:
 			return "Fence Kit"
 		"seed_bundle":
 			return "Seed Bundle"
+		"rush_kit":
+			return "Rush Kit"
 	return item_id.replace("_", " ").capitalize()
 
 

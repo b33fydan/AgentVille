@@ -17,7 +17,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Harvest full corn or wheat to earn coins.
 - The visible NPC crew now walks to small jobs: harvesting ready crops, clearing brush, and inspecting farm pieces.
 - Player and NPC work now feeds a tiny stash: brush gives Fiber, harvests give Grain, and rock breaking gives Stone.
-- The right panel has crafting recipes for Fence Kits and Seed Bundles.
+- The right panel has crafting recipes for Fence Kits, Seed Bundles, and Rush Kits.
 - Placing fences now consumes Fence Kits.
 - The right panel's crew-order controls let the player mark a tile for Fence, Clear, or Harvest work.
 - Marked crew jobs show small in-world order pins until the job is complete.
@@ -31,6 +31,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Resolved Parley sessions now create compact crew crafting demands; crafting and delivering the requested supply, such as Bert's Fence Kit or Marigold's Seed Bundle, completes the contract and cools the NPC down.
 - Delivering Bert's Fence Kit now activates Fence Hands, a short crew perk that places one practical fence on an open grass tile.
 - Delivering Marigold's Seed Bundle now activates Spring Hands, a short crew perk that plants wheat on a prepared tilled tile or nudges a crop one growth stage.
+- Delivering Chuck's Rush Kit now activates Hustle Hands, a short crew perk that clears one rock, tall grass, or flower patch.
 - Crew demands now vary between delivery and farm-work contracts, age across days, raise NPC pressure when ignored, and award small NPC-specific perks when completed.
 - Farm-work crew demands now pick real target tiles, show compact coordinates in the demand row, place distinct in-world demand markers, and only complete from work on the requested tile.
 - Aged targeted crew demands now let the NPC draft a linked work order for the same tile, so the player can send the crew to resolve the original social contract.
@@ -67,6 +68,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_npc_supply_recipes.gd` exercises agent-specific supply demands, the Seed Bundle recipe, delivery consumption, UI registration, and receipts.
 - `tools/smoke_fence_hands_perk.gd` exercises Bert's Fence Kit payoff, crew status display, Fence Hands placement, and farm-perk receipts.
 - `tools/smoke_spring_hands_perk.gd` exercises Marigold's Seed Bundle payoff, crew status display, Spring Hands planting, and farm-perk receipts.
+- `tools/smoke_hustle_hands_perk.gd` exercises Chuck's Rush Kit payoff, Stone/Fiber crafting, Hustle Hands clearing, and farm-perk receipts.
 - `tools/smoke_demand_variety.gd` exercises demand type selection, demand aging, pressure receipts, action completion, and NPC-specific perks.
 - `tools/smoke_demand_targeting.gd` exercises targeted demand tile selection, UI coordinates, demand markers, target focus, and tile-specific completion.
 - `tools/smoke_npc_authored_work_orders.gd` exercises aged targeted demands becoming NPC-authored work orders that complete the source demand through crew action.
@@ -88,6 +90,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/capture_npc_supply_recipe.gd` captures `artifacts/screenshots/agentville-npc-supply-recipe.png`.
 - `tools/capture_fence_hands_perk.gd` captures `artifacts/screenshots/agentville-fence-hands-perk.png`.
 - `tools/capture_spring_hands_perk.gd` captures `artifacts/screenshots/agentville-spring-hands-perk.png`.
+- `tools/capture_hustle_hands_perk.gd` captures `artifacts/screenshots/agentville-hustle-hands-perk.png`.
 - `tools/capture_adversarial_reaction.gd` captures `artifacts/screenshots/agentville-adversarial-reaction.png`.
 - `tools/capture_adversarial_session.gd` captures `artifacts/screenshots/agentville-adversarial-session.png`.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
@@ -112,6 +115,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Crafting demands are the first contract bridge from social friction back into production: a resolved grievance can request NPC-flavored supplies, and player crafting satisfies the demand without API calls.
 - Bert's Fence Kit has a deterministic farm payoff too: Fence Hands briefly appears in the crew header, places one open-tile fence, and records `farm_perk` receipts.
 - Marigold's Seed Bundle now has a deterministic farm payoff: Spring Hands briefly appears in the crew header, plants one prepared tilled tile or grows one crop, and records `farm_perk` receipts.
+- Chuck's Rush Kit gives Stone a deterministic use: Hustle Hands briefly appears in the crew header, clears one obstacle, and records `farm_perk` receipts.
 - Demand variety is still deterministic and local: Parley context chooses delivery, brush-clearing, crop-harvest, or fence-building contracts; aging open contracts adds pressure, while completion applies small personality-flavored perks.
 - Targeted demand selection is deterministic and local too: action demands bind to live farm tiles and become visible world intent markers before later NPC-authored contracts get smarter.
 - NPC-authored work orders are the next local bridge: an ignored targeted demand can draft a crew order with source-demand metadata, and the existing agent action receipt completes both records.
