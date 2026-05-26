@@ -41,6 +41,7 @@ var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
 var _work_order_list_stack: VBoxContainer
 var _active_work_order_tool: String = ""
+var _crew_status_label: Label
 var _parley_button: Button
 var _parley_prompt_active: bool = false
 var _parley_pulse_phase: float = 0.0
@@ -328,6 +329,14 @@ func set_adversarial_prompt(is_available: bool, reason: String = "") -> void:
 	_parley_button.add_theme_stylebox_override("pressed", _parley_button_style(is_available, true))
 
 
+func set_crew_status(text: String, highlighted: bool = false) -> void:
+	if _crew_status_label == null:
+		return
+
+	_crew_status_label.text = text
+	_crew_status_label.add_theme_color_override("font_color", Color("#5d8a36") if highlighted else Color("#9b7433"))
+
+
 func add_field_log(message: String) -> void:
 	if _field_log_stack == null:
 		return
@@ -535,13 +544,13 @@ func _build_crew_panel() -> void:
 	)
 	header.add_child(_parley_button)
 
-	var status := Label.new()
-	status.text = "watching"
-	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status.add_theme_font_size_override("font_size", 12)
-	status.add_theme_color_override("font_color", Color("#9b7433"))
-	header.add_child(status)
+	_crew_status_label = Label.new()
+	_crew_status_label.text = "watching"
+	_crew_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_crew_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_crew_status_label.add_theme_font_size_override("font_size", 12)
+	_crew_status_label.add_theme_color_override("font_color", Color("#9b7433"))
+	header.add_child(_crew_status_label)
 
 	_add_crew_row(stack, "bert", "Bert", "grizzled", Color("#5c7f9f"))
 	_add_crew_row(stack, "marigold", "Marigold", "hopeful", Color("#7faf62"))

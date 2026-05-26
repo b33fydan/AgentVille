@@ -29,6 +29,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Repeated failed actions or chaotic day summaries can queue a crew grievance and pulse the Parley button.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
 - Resolved Parley sessions now create compact crew crafting demands; crafting and delivering the requested supply, such as Bert's Fence Kit or Marigold's Seed Bundle, completes the contract and cools the NPC down.
+- Delivering Marigold's Seed Bundle now activates Spring Hands, a short crew perk that plants wheat on a prepared tilled tile or nudges a crop one growth stage.
 - Crew demands now vary between delivery and farm-work contracts, age across days, raise NPC pressure when ignored, and award small NPC-specific perks when completed.
 - Farm-work crew demands now pick real target tiles, show compact coordinates in the demand row, place distinct in-world demand markers, and only complete from work on the requested tile.
 - Aged targeted crew demands now let the NPC draft a linked work order for the same tile, so the player can send the crew to resolve the original social contract.
@@ -63,6 +64,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_adversarial_session.gd` exercises bounded NPC grievance sessions, scene UI wiring, result receipts, and rewards.
 - `tools/smoke_crafting_demands.gd` exercises Parley-created crafting demands, player delivery, demand receipts, and NPC cooldown.
 - `tools/smoke_npc_supply_recipes.gd` exercises agent-specific supply demands, the Seed Bundle recipe, delivery consumption, UI registration, and receipts.
+- `tools/smoke_spring_hands_perk.gd` exercises Marigold's Seed Bundle payoff, crew status display, Spring Hands planting, and farm-perk receipts.
 - `tools/smoke_demand_variety.gd` exercises demand type selection, demand aging, pressure receipts, action completion, and NPC-specific perks.
 - `tools/smoke_demand_targeting.gd` exercises targeted demand tile selection, UI coordinates, demand markers, target focus, and tile-specific completion.
 - `tools/smoke_npc_authored_work_orders.gd` exercises aged targeted demands becoming NPC-authored work orders that complete the source demand through crew action.
@@ -82,6 +84,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/capture_npc_order_escalation.gd` captures `artifacts/screenshots/agentville-npc-order-escalation.png`.
 - `tools/capture_npc_escalation_bargain.gd` captures `artifacts/screenshots/agentville-npc-escalation-bargain.png`.
 - `tools/capture_npc_supply_recipe.gd` captures `artifacts/screenshots/agentville-npc-supply-recipe.png`.
+- `tools/capture_spring_hands_perk.gd` captures `artifacts/screenshots/agentville-spring-hands-perk.png`.
 - `tools/capture_adversarial_reaction.gd` captures `artifacts/screenshots/agentville-adversarial-reaction.png`.
 - `tools/capture_adversarial_session.gd` captures `artifacts/screenshots/agentville-adversarial-session.png`.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
@@ -104,6 +107,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - The first bounded adversarial encounter harness is also local and menu-driven. It records session result receipts, but it does not call a live model.
 - Encounter triggers and consequences are deterministic: repeated misses or chaotic summaries queue the grievance, while resolved/lost sessions feed compact rewards, boosts, irritation changes, and next-order tax receipts.
 - Crafting demands are the first contract bridge from social friction back into production: a resolved grievance can request NPC-flavored supplies, and player crafting satisfies the demand without API calls.
+- Marigold's Seed Bundle now has a deterministic farm payoff: Spring Hands briefly appears in the crew header, plants one prepared tilled tile or grows one crop, and records `farm_perk` receipts.
 - Demand variety is still deterministic and local: Parley context chooses delivery, brush-clearing, crop-harvest, or fence-building contracts; aging open contracts adds pressure, while completion applies small personality-flavored perks.
 - Targeted demand selection is deterministic and local too: action demands bind to live farm tiles and become visible world intent markers before later NPC-authored contracts get smarter.
 - NPC-authored work orders are the next local bridge: an ignored targeted demand can draft a crew order with source-demand metadata, and the existing agent action receipt completes both records.

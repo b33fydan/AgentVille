@@ -41,6 +41,7 @@ const WORK_ORDER_ACTIONS: Dictionary = {
 		"required_item": ""
 	}
 }
+const SPRING_HANDS_SECONDS := 12.0
 
 @onready var camera_controller = $CameraController
 @onready var farm_world: Node3D = $FarmWorld
@@ -81,6 +82,8 @@ var _queued_grievance_context: Dictionary = {}
 var _last_failure_grievance_day: int = 0
 var _last_failure_grievance_count: int = 0
 var _patience_tax_orders: int = 0
+var _spring_hands_timer: float = 0.0
+var _spring_hands_charges: int = 0
 
 
 func _ready() -> void:
@@ -95,6 +98,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_spring_hands(delta)
 	_crew_priority_timer -= delta
 	if _crew_priority_timer > 0.0:
 		return
@@ -817,6 +821,99 @@ func _apply_demand_completion_effects(demand: Dictionary) -> void:
 	if boost_seconds > 0.0 and _agent_manager:
 		_agent_manager.call("apply_crew_boost", boost_seconds, float(perk.get("speed_multiplier", 1.16)))
 		game_ui.add_field_log(str(perk.get("label", "Crew focus improved.")))
+
+	if str(demand.get("agent_id", "")) == "marigold" and str(demand.get("required_item", "")) == "seed_bundle":
+		_activate_spring_hands(demand)
+
+
+func _activate_spring_hands(demand: Dictionary) -> void:
+	_spring_hands_timer = maxf(_spring_hands_timer, SPRING_HANDS_SECONDS)
+	_spring_hands_charges += 1
+	_refresh_crew_status()
+	game_ui.add_field_log("Spring Hands active: Marigold will seed one prepared tile.")
+	if _event_log:
+		_event_log.record_event("farm_perk", {
+			"day": grid_manager.day,
+			"perk_id": "spring_hands",
+			"status": "applied",
+			"agent_id": str(demand.get("agent_id", "")),
+			"agent_name": str(demand.get("agent_name", "")),
+			"source_demand_id": str(demand.get("id", "")),
+			"charges": _spring_hands_charges,
+			"duration_seconds": SPRING_HANDS_SECONDS
+		})
+	_try_use_spring_hands()
+
+
+func _update_spring_hands(delta: float) -> void:
+	if _spring_hands_timer <= 0.0:
+		return
+
+	_spring_hands_timer = maxf(0.0, _spring_hands_timer - delta)
+	if _spring_hands_charges > 0:
+		_try_use_spring_hands()
+	_refresh_crew_status()
+
+
+func _try_use_spring_hands() -> bool:
+	if _spring_hands_timer <= 0.0 or _spring_hands_charges <= 0 or grid_manager == null:
+		return false
+
+	var target_tile = _find_spring_hands_seed_tile()
+	if target_tile != null and target_tile.plant_wheat():
+		_spring_hands_charges -= 1
+		_record_spring_hands_use(target_tile.grid_pos, "plant_wheat")
+		game_ui.add_field_log("Spring Hands planted wheat at (%s,%s)." % [target_tile.grid_pos.x, target_tile.grid_pos.y])
+		sound_manager.play_stamp("plant_pop")
+		return true
+
+	target_tile = _find_spring_hands_growth_tile()
+	if target_tile != null and target_tile.grow_crop():
+		_spring_hands_charges -= 1
+		_record_spring_hands_use(target_tile.grid_pos, "grow_crop")
+		game_ui.add_field_log("Spring Hands nudged a crop at (%s,%s)." % [target_tile.grid_pos.x, target_tile.grid_pos.y])
+		sound_manager.play_stamp("plant_pop")
+		return true
+
+	return false
+
+
+func _find_spring_hands_seed_tile():
+	for x in range(grid_manager.width):
+		for z in range(grid_manager.height):
+			var tile = grid_manager.get_tile(Vector2i(x, z))
+			if tile != null and tile.is_tilled and tile.crop == null and str(tile.structure_id) == "":
+				return tile
+	return null
+
+
+func _find_spring_hands_growth_tile():
+	for x in range(grid_manager.width):
+		for z in range(grid_manager.height):
+			var tile = grid_manager.get_tile(Vector2i(x, z))
+			if tile != null and tile.crop != null and not tile.crop.is_ready():
+				return tile
+	return null
+
+
+func _record_spring_hands_use(target_tile: Vector2i, effect: String) -> void:
+	_refresh_crew_status()
+	if _event_log:
+		_event_log.record_event("farm_perk", {
+			"day": grid_manager.day,
+			"perk_id": "spring_hands",
+			"status": "used",
+			"effect": effect,
+			"target_tile": target_tile,
+			"charges_remaining": _spring_hands_charges
+		})
+
+
+func _refresh_crew_status() -> void:
+	if _spring_hands_timer > 0.0:
+		game_ui.set_crew_status("Spring Hands %ss" % ceili(_spring_hands_timer), true)
+	else:
+		game_ui.set_crew_status("watching")
 
 
 func _record_crafting_demand_event(demand_id: String, status: String) -> void:
