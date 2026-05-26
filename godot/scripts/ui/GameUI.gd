@@ -920,6 +920,15 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 	status.add_theme_color_override("font_color", Color("#746b5f"))
 	row.add_child(status)
 
+	var reward := Label.new()
+	reward.text = str(demand.get("reward_text", ""))
+	reward.visible = reward.text != ""
+	reward.custom_minimum_size = Vector2(70, 0)
+	reward.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	reward.add_theme_font_size_override("font_size", 9)
+	reward.add_theme_color_override("font_color", Color("#5f7f39"))
+	row.add_child(reward)
+
 	var target_button: Button = null
 	if typeof(demand.get("target_tile", null)) == TYPE_VECTOR2I:
 		target_button = Button.new()
@@ -941,6 +950,7 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 	_crafting_demand_rows[demand_id] = {
 		"label": label,
 		"status": status,
+		"reward": reward,
 		"button": target_button
 	}
 

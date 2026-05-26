@@ -624,6 +624,7 @@ func _create_crafting_demand(template: Dictionary, source_event: Dictionary) -> 
 	demand["label"] = str(demand.get("label", _default_demand_label(demand)))
 	_assign_demand_target(demand)
 	demand["status_text"] = _demand_status_text(demand)
+	demand["reward_text"] = _demand_reward_text(demand)
 	var perk := _perk_for_demand(demand)
 	demand["perk_id"] = str(perk.get("id", ""))
 	demand["perk_label"] = str(perk.get("label", ""))
@@ -1154,6 +1155,21 @@ func _demand_status_text(demand: Dictionary) -> String:
 		"build_fence":
 			return "%sNeeds fence" % age_prefix
 	return "%sOpen" % age_prefix
+
+
+func _demand_reward_text(demand: Dictionary) -> String:
+	if str(demand.get("kind", "deliver_item")) != "deliver_item":
+		return ""
+
+	var agent_id := str(demand.get("agent_id", ""))
+	var required_item := str(demand.get("required_item", ""))
+	if agent_id == "bert" and required_item == "fence_kit":
+		return "Fence Hands"
+	if agent_id == "marigold" and required_item == "seed_bundle":
+		return "Spring Hands"
+	if agent_id == "chuck" and required_item == "rush_kit":
+		return "Hustle Hands"
+	return ""
 
 
 func _perk_for_demand(demand: Dictionary) -> Dictionary:
@@ -2083,6 +2099,7 @@ func _crafting_demand_snapshot(demand_id: String) -> Dictionary:
 	var required_item := str(demand.get("required_item", ""))
 	var amount := maxi(1, int(demand.get("amount", 1)))
 	demand["has_required_item"] = required_item != "" and _available_crafted_item(required_item) >= amount
+	demand["reward_text"] = _demand_reward_text(demand)
 	if str(demand.get("status", "")) == "open":
 		demand["status_text"] = _demand_status_text(demand)
 	return demand
