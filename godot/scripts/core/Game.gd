@@ -1147,6 +1147,8 @@ func _demand_status_text(demand: Dictionary) -> String:
 			var amount := maxi(1, int(demand.get("amount", 1)))
 			if required_item != "" and _available_crafted_item(required_item) >= amount:
 				return "%sReady" % age_prefix
+			if required_item != "" and _can_craft_required_item_for_demand(demand):
+				return "%sCan craft" % age_prefix
 			return "%sNeeds %s" % [age_prefix, _pretty_crafted_name(required_item)]
 		"clear_brush":
 			return "%sNeeds brush" % age_prefix
@@ -1892,6 +1894,27 @@ func _can_craft_required_item_for_order(order: Dictionary) -> bool:
 	return _can_afford(RECIPES[required_item].get("cost", {}))
 
 
+func _can_craft_required_item_for_demand(demand: Dictionary) -> bool:
+	var required_item := str(demand.get("required_item", ""))
+	if not RECIPES.has(required_item):
+		return false
+
+	var amount := maxi(1, int(demand.get("amount", 1)))
+	var needed := maxi(0, amount - _available_crafted_item(required_item))
+	if needed <= 0:
+		return false
+	return _can_afford(_scaled_recipe_cost(required_item, needed))
+
+
+func _scaled_recipe_cost(recipe_id: String, count: int) -> Dictionary:
+	var recipe: Dictionary = RECIPES.get(recipe_id, {})
+	var base_cost: Dictionary = recipe.get("cost", {})
+	var scaled_cost: Dictionary = {}
+	for resource_id in base_cost.keys():
+		scaled_cost[resource_id] = int(base_cost[resource_id]) * count
+	return scaled_cost
+
+
 func _can_build_order_target(order: Dictionary) -> bool:
 	var target_tile: Vector2i = order.get("target_tile", Vector2i.ZERO)
 	var tile = grid_manager.get_tile(target_tile)
@@ -2099,6 +2122,7 @@ func _crafting_demand_snapshot(demand_id: String) -> Dictionary:
 	var required_item := str(demand.get("required_item", ""))
 	var amount := maxi(1, int(demand.get("amount", 1)))
 	demand["has_required_item"] = required_item != "" and _available_crafted_item(required_item) >= amount
+	demand["can_craft_required_item"] = required_item != "" and _can_craft_required_item_for_demand(demand)
 	demand["reward_text"] = _demand_reward_text(demand)
 	if str(demand.get("status", "")) == "open":
 		demand["status_text"] = _demand_status_text(demand)
