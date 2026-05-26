@@ -42,6 +42,7 @@ const WORK_ORDER_ACTIONS: Dictionary = {
 	}
 }
 const SPRING_HANDS_SECONDS := 12.0
+const FENCE_HANDS_SECONDS := 12.0
 
 @onready var camera_controller = $CameraController
 @onready var farm_world: Node3D = $FarmWorld
@@ -84,6 +85,8 @@ var _last_failure_grievance_count: int = 0
 var _patience_tax_orders: int = 0
 var _spring_hands_timer: float = 0.0
 var _spring_hands_charges: int = 0
+var _fence_hands_timer: float = 0.0
+var _fence_hands_charges: int = 0
 
 
 func _ready() -> void:
@@ -99,6 +102,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_spring_hands(delta)
+	_update_fence_hands(delta)
 	_crew_priority_timer -= delta
 	if _crew_priority_timer > 0.0:
 		return
@@ -824,6 +828,8 @@ func _apply_demand_completion_effects(demand: Dictionary) -> void:
 
 	if str(demand.get("agent_id", "")) == "marigold" and str(demand.get("required_item", "")) == "seed_bundle":
 		_activate_spring_hands(demand)
+	elif str(demand.get("agent_id", "")) == "bert" and str(demand.get("required_item", "")) == "fence_kit":
+		_activate_fence_hands(demand)
 
 
 func _activate_spring_hands(demand: Dictionary) -> void:
@@ -845,6 +851,25 @@ func _activate_spring_hands(demand: Dictionary) -> void:
 	_try_use_spring_hands()
 
 
+func _activate_fence_hands(demand: Dictionary) -> void:
+	_fence_hands_timer = maxf(_fence_hands_timer, FENCE_HANDS_SECONDS)
+	_fence_hands_charges += 1
+	_refresh_crew_status()
+	game_ui.add_field_log("Fence Hands active: Bert will set one practical fence.")
+	if _event_log:
+		_event_log.record_event("farm_perk", {
+			"day": grid_manager.day,
+			"perk_id": "fence_hands",
+			"status": "applied",
+			"agent_id": str(demand.get("agent_id", "")),
+			"agent_name": str(demand.get("agent_name", "")),
+			"source_demand_id": str(demand.get("id", "")),
+			"charges": _fence_hands_charges,
+			"duration_seconds": FENCE_HANDS_SECONDS
+		})
+	_try_use_fence_hands()
+
+
 func _update_spring_hands(delta: float) -> void:
 	if _spring_hands_timer <= 0.0:
 		return
@@ -852,6 +877,16 @@ func _update_spring_hands(delta: float) -> void:
 	_spring_hands_timer = maxf(0.0, _spring_hands_timer - delta)
 	if _spring_hands_charges > 0:
 		_try_use_spring_hands()
+	_refresh_crew_status()
+
+
+func _update_fence_hands(delta: float) -> void:
+	if _fence_hands_timer <= 0.0:
+		return
+
+	_fence_hands_timer = maxf(0.0, _fence_hands_timer - delta)
+	if _fence_hands_charges > 0:
+		_try_use_fence_hands()
 	_refresh_crew_status()
 
 
@@ -878,6 +913,22 @@ func _try_use_spring_hands() -> bool:
 	return false
 
 
+func _try_use_fence_hands() -> bool:
+	if _fence_hands_timer <= 0.0 or _fence_hands_charges <= 0 or grid_manager == null:
+		return false
+
+	var target_tile = _find_fence_hands_tile()
+	if target_tile == null or not target_tile.place_item("fence"):
+		return false
+
+	_fence_hands_charges -= 1
+	_record_fence_hands_use(target_tile.grid_pos)
+	game_ui.add_field_log("Fence Hands placed fence at (%s,%s)." % [target_tile.grid_pos.x, target_tile.grid_pos.y])
+	sound_manager.play_stamp("place_soft")
+	sound_manager.play_stamp("plant_pop")
+	return true
+
+
 func _find_spring_hands_seed_tile():
 	for x in range(grid_manager.width):
 		for z in range(grid_manager.height):
@@ -896,6 +947,19 @@ func _find_spring_hands_growth_tile():
 	return null
 
 
+func _find_fence_hands_tile():
+	for x in range(grid_manager.width):
+		for z in range(grid_manager.height):
+			var tile = grid_manager.get_tile(Vector2i(x, z))
+			if tile == null:
+				continue
+			if str(tile.terrain) == "dirt_path" or str(tile.decor_id) != "" or str(tile.structure_id) != "" or tile.crop != null:
+				continue
+			if tile.can_apply_item("fence"):
+				return tile
+	return null
+
+
 func _record_spring_hands_use(target_tile: Vector2i, effect: String) -> void:
 	_refresh_crew_status()
 	if _event_log:
@@ -909,9 +973,24 @@ func _record_spring_hands_use(target_tile: Vector2i, effect: String) -> void:
 		})
 
 
+func _record_fence_hands_use(target_tile: Vector2i) -> void:
+	_refresh_crew_status()
+	if _event_log:
+		_event_log.record_event("farm_perk", {
+			"day": grid_manager.day,
+			"perk_id": "fence_hands",
+			"status": "used",
+			"effect": "place_fence",
+			"target_tile": target_tile,
+			"charges_remaining": _fence_hands_charges
+		})
+
+
 func _refresh_crew_status() -> void:
 	if _spring_hands_timer > 0.0:
 		game_ui.set_crew_status("Spring Hands %ss" % ceili(_spring_hands_timer), true)
+	elif _fence_hands_timer > 0.0:
+		game_ui.set_crew_status("Fence Hands %ss" % ceili(_fence_hands_timer), true)
 	else:
 		game_ui.set_crew_status("watching")
 
