@@ -367,6 +367,10 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 	var context: Dictionary = session.get("context", {})
 	var demand_hint := str(context.get("demand_hint", "deliver_fence_kit"))
 	match demand_hint:
+		"deliver_agent_supply":
+			return _demand_template(_agent_supply_demand_kind(session), session)
+		"deliver_seed_bundle":
+			return _demand_template("deliver_seed_bundle", session)
 		"clear_brush":
 			return _demand_template("clear_brush", session)
 		"harvest_crop":
@@ -374,6 +378,13 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 		"build_fence":
 			return _demand_template("build_fence", session)
 	return _demand_template("deliver_fence_kit", session)
+
+
+func _agent_supply_demand_kind(session: Dictionary) -> String:
+	match str(session.get("agent_id", "")):
+		"marigold":
+			return "deliver_seed_bundle"
+	return "deliver_fence_kit"
 
 
 func _demand_template(demand_kind: String, session: Dictionary) -> Dictionary:
@@ -402,6 +413,14 @@ func _demand_template(demand_kind: String, session: Dictionary) -> Dictionary:
 				"amount": 1,
 				"label": "Build Fence",
 				"reason": "%s wants the kit to become an actual boundary." % agent_name
+			}
+		"deliver_seed_bundle":
+			return {
+				"kind": "deliver_item",
+				"required_item": "seed_bundle",
+				"amount": 1,
+				"label": "Deliver Seed Bundle",
+				"reason": "%s wants seed stock before optimism becomes a budget category." % agent_name
 			}
 	return {
 		"kind": "deliver_item",

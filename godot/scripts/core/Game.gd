@@ -10,6 +10,12 @@ const RECIPES: Dictionary = {
 			"fiber": 2,
 			"grain": 1
 		}
+	},
+	"seed_bundle": {
+		"label": "Seed Bundle",
+		"cost": {
+			"grain": 2
+		}
 	}
 }
 const WORK_ORDER_ACTIONS: Dictionary = {
@@ -50,10 +56,12 @@ var resources: Dictionary = {
 	"stone": 0
 }
 var crafted_items: Dictionary = {
-	"fence_kit": 0
+	"fence_kit": 0,
+	"seed_bundle": 0
 }
 var reserved_crafted_items: Dictionary = {
-	"fence_kit": 0
+	"fence_kit": 0,
+	"seed_bundle": 0
 }
 var crafting_demands: Dictionary = {}
 var crafting_demand_ids: Array[String] = []
@@ -380,7 +388,8 @@ func _build_adversarial_context() -> Dictionary:
 		"open_work_orders": work_order_ids.size(),
 		"money": money,
 		"resources": resources.duplicate(true),
-		"crafted_items": crafted_items.duplicate(true)
+		"crafted_items": crafted_items.duplicate(true),
+		"demand_hint": "deliver_agent_supply"
 	}.merged(_queued_grievance_context, true)
 
 
@@ -1952,7 +1961,7 @@ func _format_crafted_cost_list(cost) -> String:
 		return ""
 
 	var parts: Array[String] = []
-	for item_id in ["fence_kit"]:
+	for item_id in ["fence_kit", "seed_bundle"]:
 		var amount := int(cost.get(item_id, 0))
 		if amount > 0:
 			parts.append("%s %s" % [amount, _pretty_crafted_name(item_id)])
@@ -1978,6 +1987,8 @@ func _pretty_crafted_name(item_id: String) -> String:
 	match item_id:
 		"fence_kit":
 			return "Fence Kit"
+		"seed_bundle":
+			return "Seed Bundle"
 	return item_id.replace("_", " ").capitalize()
 
 

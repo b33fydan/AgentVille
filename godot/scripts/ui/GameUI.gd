@@ -125,16 +125,11 @@ func set_inventory(resources: Dictionary, crafted_items: Dictionary) -> void:
 		(_resource_labels["stone"] as Label).text = "STN %s" % int(resources.get("stone", 0))
 	if _crafted_labels.has("fence_kit"):
 		(_crafted_labels["fence_kit"] as Label).text = "KIT %s" % int(crafted_items.get("fence_kit", 0))
+	if _crafted_labels.has("seed_bundle"):
+		(_crafted_labels["seed_bundle"] as Label).text = "SBD %s" % int(crafted_items.get("seed_bundle", 0))
 
-	if _craft_buttons.has("fence_kit"):
-		var button := _craft_buttons["fence_kit"] as Button
-		var can_craft := int(resources.get("fiber", 0)) >= 2 and int(resources.get("grain", 0)) >= 1
-		button.disabled = not can_craft
-		button.add_theme_stylebox_override("normal", _craft_button_style(can_craft))
-		button.add_theme_stylebox_override("hover", _craft_button_style(true))
-		button.add_theme_stylebox_override("pressed", _craft_button_style(true))
-		button.add_theme_color_override("font_color", Color("#2d3b1d") if can_craft else Color("#998e7d"))
-		button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+	_set_craft_button_state("fence_kit", int(resources.get("fiber", 0)) >= 2 and int(resources.get("grain", 0)) >= 1)
+	_set_craft_button_state("seed_bundle", int(resources.get("grain", 0)) >= 2)
 
 
 func set_work_order(order: Dictionary) -> void:
@@ -744,15 +739,21 @@ func _build_inventory_strip(parent: VBoxContainer) -> void:
 	row.add_child(_make_inventory_pill("grain", "GRN 0", Color("#fff1bd"), false))
 	row.add_child(_make_inventory_pill("stone", "STN 0", Color("#e1e2d9"), false))
 	row.add_child(_make_inventory_pill("fence_kit", "KIT 0", Color("#e8f0ff"), true))
+	row.add_child(_make_inventory_pill("seed_bundle", "SBD 0", Color("#e8f6cf"), true))
 
 
 func _build_craft_controls(parent: VBoxContainer) -> void:
+	_add_craft_button(parent, "fence_kit", "Fence Kit  2 FBR + 1 GRN", "Crafts one fence kit from gathered fiber and grain")
+	_add_craft_button(parent, "seed_bundle", "Seed Bundle  2 GRN", "Crafts one seed bundle for crew supply demands")
+
+
+func _add_craft_button(parent: VBoxContainer, recipe_id: String, label: String, tooltip: String) -> void:
 	var button := Button.new()
-	button.text = "Craft Fence Kit  2 FBR + 1 GRN"
-	button.tooltip_text = "Crafts one fence kit from gathered fiber and grain"
-	button.custom_minimum_size = Vector2(0, 24)
+	button.text = label
+	button.tooltip_text = tooltip
+	button.custom_minimum_size = Vector2(0, 23)
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_font_size_override("font_size", 12)
 	button.add_theme_color_override("font_color", Color("#998e7d"))
 	button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
 	button.add_theme_stylebox_override("normal", _craft_button_style(false))
@@ -760,10 +761,23 @@ func _build_craft_controls(parent: VBoxContainer) -> void:
 	button.add_theme_stylebox_override("pressed", _craft_button_style(true))
 	button.pressed.connect(func() -> void:
 		sound_requested.emit("ui_click")
-		craft_requested.emit("fence_kit")
+		craft_requested.emit(recipe_id)
 	)
 	parent.add_child(button)
-	_craft_buttons["fence_kit"] = button
+	_craft_buttons[recipe_id] = button
+
+
+func _set_craft_button_state(recipe_id: String, can_craft: bool) -> void:
+	if not _craft_buttons.has(recipe_id):
+		return
+
+	var button := _craft_buttons[recipe_id] as Button
+	button.disabled = not can_craft
+	button.add_theme_stylebox_override("normal", _craft_button_style(can_craft))
+	button.add_theme_stylebox_override("hover", _craft_button_style(true))
+	button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+	button.add_theme_color_override("font_color", Color("#2d3b1d") if can_craft else Color("#998e7d"))
+	button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
 
 
 func _build_crafting_demand_controls(parent: VBoxContainer) -> void:
