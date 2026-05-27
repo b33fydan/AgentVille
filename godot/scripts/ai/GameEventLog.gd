@@ -81,9 +81,15 @@ func build_day_summary(day: int) -> Dictionary:
 				var recipe_id := str(event.get("recipe_id", "recipe"))
 				summary["crafted_items"][recipe_id] = int(summary["crafted_items"].get(recipe_id, 0)) + 1
 				summary["craft_count"] += 1
+				if _is_player_craft_source(str(event.get("source", ""))):
+					_count_successful_player_action(summary, "craft")
 			"work_order":
 				var status := str(event.get("status", "unknown"))
 				summary["work_order_events"][status] = int(summary["work_order_events"].get(status, 0)) + 1
+			"crafting_demand":
+				var status := str(event.get("status", "unknown"))
+				if status == "done" and str(event.get("kind", "")) == "deliver_item":
+					_count_successful_player_action(summary, "deliver_supply")
 			"adversarial_session":
 				var outcome := str(event.get("outcome", "unknown"))
 				summary["adversarial_sessions"][outcome] = int(summary["adversarial_sessions"].get(outcome, 0)) + 1
@@ -103,6 +109,16 @@ func build_day_summary(day: int) -> Dictionary:
 	summary["vibe"] = _vibe_scorer.score_summary(summary)
 
 	return summary
+
+
+func _is_player_craft_source(source: String) -> bool:
+	return source == "" or source.begins_with("player")
+
+
+func _count_successful_player_action(summary: Dictionary, action: String) -> void:
+	summary["player_actions"][action] = int(summary["player_actions"].get(action, 0)) + 1
+	summary["total_player_actions"] += 1
+	summary["successful_player_actions"] += 1
 
 
 func _add_resource_summary(summary: Dictionary, gains) -> void:
