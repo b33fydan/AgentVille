@@ -223,6 +223,18 @@ func apply_adversarial_result(result: Dictionary) -> void:
 	state_changed.emit(get_snapshot())
 
 
+func acknowledge_supply_delivery(item_label: String, payoff_label: String = "") -> void:
+	state["mood"] = clampf(float(state.get("mood", 50.0)) + 1.6, 0.0, 100.0)
+	state["irritation"] = clampf(float(state.get("irritation", 0.0)) - 4.0, 0.0, 100.0)
+	state["expression"] = "pleased"
+	state["reaction_intensity"] = maxf(float(state.get("reaction_intensity", 0.0)), 0.72)
+	_update_expression_visuals()
+	var line := _supply_acknowledgement_line(item_label, payoff_label)
+	if line != "":
+		comment_generated.emit("%s: \"%s\"" % [display_name, line])
+	state_changed.emit(get_snapshot())
+
+
 func apply_crew_boost(seconds: float, multiplier: float = 1.28) -> void:
 	_morale_boost_timer = maxf(_morale_boost_timer, seconds)
 	_morale_speed_multiplier = maxf(_morale_speed_multiplier, multiplier)
@@ -585,6 +597,18 @@ func _work_comment(action_name: String, value: int, subject: String) -> String:
 				"chaotic":
 					return "Fence deployed. The map has opinions now."
 	return ""
+
+
+func _supply_acknowledgement_line(item_label: String, payoff_label: String) -> String:
+	var suffix := " %s ready." % payoff_label if payoff_label != "" else ""
+	match personality_trait:
+		"grizzled":
+			return "%s received. Practical. Appreciated.%s" % [item_label, suffix]
+		"hopeful":
+			return "%s received. I can work with this.%s" % [item_label, suffix]
+		"chaotic":
+			return "%s received. Fine, that is useful.%s" % [item_label, suffix]
+	return "%s received.%s" % [item_label, suffix]
 
 
 func _update_visual_motion(delta: float) -> void:

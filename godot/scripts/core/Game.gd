@@ -847,6 +847,23 @@ func _apply_demand_completion_effects(demand: Dictionary) -> void:
 		_activate_fence_hands(demand)
 	elif str(demand.get("agent_id", "")) == "chuck" and str(demand.get("required_item", "")) == "rush_kit":
 		_activate_hustle_hands(demand)
+	_acknowledge_supply_delivery(demand)
+
+
+func _acknowledge_supply_delivery(demand: Dictionary) -> void:
+	if str(demand.get("kind", "")) != "deliver_item":
+		return
+
+	var agent_id := str(demand.get("agent_id", ""))
+	var agent_name := str(demand.get("agent_name", "Crew"))
+	var item_label := _pretty_crafted_name(str(demand.get("required_item", "")))
+	var payoff_label := str(demand.get("reward_text", ""))
+	if payoff_label == "":
+		payoff_label = _demand_reward_text(demand)
+	var payoff_text := " %s ready." % payoff_label if payoff_label != "" else ""
+	game_ui.add_field_log("%s accepted %s.%s" % [agent_name, item_label, payoff_text])
+	if _agent_manager:
+		_agent_manager.call("acknowledge_supply_delivery", agent_id, item_label, payoff_label)
 
 
 func _activate_spring_hands(demand: Dictionary) -> void:

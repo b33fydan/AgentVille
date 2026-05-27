@@ -69,6 +69,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_fence_hands_perk.gd` exercises Bert's Fence Kit payoff, crew status display, Fence Hands placement, and farm-perk receipts.
 - `tools/smoke_spring_hands_perk.gd` exercises Marigold's Seed Bundle payoff, crew status display, Spring Hands planting, and farm-perk receipts.
 - `tools/smoke_hustle_hands_perk.gd` exercises Chuck's Rush Kit payoff, Stone/Fiber crafting, Hustle Hands clearing, and farm-perk receipts.
+- `tools/smoke_supply_acknowledgement.gd` exercises agent-specific pleased reactions, comments, and visible Field Log receipts when supply help is delivered.
 - `tools/smoke_demand_reward_preview.gd` exercises compact demand-row payoff previews for Fence Hands, Spring Hands, and Hustle Hands before delivery.
 - `tools/smoke_demand_craftable_status.gd` exercises crew demand rows switching from missing supply to `Can craft` when recipe ingredients are available.
 - `tools/smoke_demand_row_actions.gd` exercises demand-row `Prep` and `Give` actions that craft or deliver supply payoffs directly.

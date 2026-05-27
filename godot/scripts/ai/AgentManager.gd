@@ -132,6 +132,18 @@ func apply_adversarial_result(result: Dictionary) -> void:
 		return
 
 
+func acknowledge_supply_delivery(agent_id: String, item_label: String, payoff_label: String = "") -> void:
+	if agent_id == "":
+		return
+
+	for agent in agents:
+		if str(agent.get("agent_id")) != agent_id:
+			continue
+		agent.call("acknowledge_supply_delivery", item_label, payoff_label)
+		crew_updated.emit(get_agent_snapshots())
+		return
+
+
 func apply_crew_boost(seconds: float, multiplier: float = 1.28) -> void:
 	if seconds <= 0.0:
 		return
