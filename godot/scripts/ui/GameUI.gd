@@ -279,11 +279,20 @@ func set_agent_snapshots(snapshots: Array) -> void:
 		var irritation := float(snapshot.get("irritation", 0.0))
 		var expression := str(snapshot.get("expression", "neutral"))
 		var action := _format_reaction_action(expression, _format_action(str(snapshot.get("action", "idle")), str(snapshot.get("phase", "idle"))))
+		var helped_today := int(snapshot.get("helped_today", 0))
+		var recent_help_label := str(snapshot.get("recent_help_label", ""))
 		(row["mood"] as ProgressBar).value = mood
 		(row["energy"] as ProgressBar).value = energy
 		var action_label := row["action"] as Label
 		action_label.text = action
 		action_label.add_theme_color_override("font_color", Color("#9a4936") if irritation >= 55.0 else (Color("#7f6335") if irritation >= 28.0 else Color("#5e5548")))
+		var social_label := row["social"] as Label
+		if helped_today > 0:
+			social_label.visible = true
+			social_label.text = _format_social_signal(helped_today, recent_help_label)
+		else:
+			social_label.visible = false
+			social_label.text = ""
 		(row["mood_value"] as Label).text = "%s" % roundi(mood)
 		(row["card"] as PanelContainer).add_theme_stylebox_override("panel", _crew_row_style(mood))
 
@@ -618,6 +627,13 @@ func _add_crew_row(parent: VBoxContainer, agent_id: String, agent_name: String, 
 	action_label.add_theme_color_override("font_color", Color("#5e5548"))
 	stack.add_child(action_label)
 
+	var social_label := Label.new()
+	social_label.text = ""
+	social_label.visible = false
+	social_label.add_theme_font_size_override("font_size", 10)
+	social_label.add_theme_color_override("font_color", Color("#5f7f39"))
+	stack.add_child(social_label)
+
 	var bars := HBoxContainer.new()
 	bars.add_theme_constant_override("separation", 6)
 	stack.add_child(bars)
@@ -641,6 +657,7 @@ func _add_crew_row(parent: VBoxContainer, agent_id: String, agent_name: String, 
 		"mood": mood_bar,
 		"energy": energy_bar,
 		"action": action_label,
+		"social": social_label,
 		"mood_value": mood_value
 	}
 
@@ -1241,6 +1258,13 @@ func _format_reaction_action(expression: String, fallback: String) -> String:
 		"pleased":
 			return "^_^ Pleased"
 	return fallback
+
+
+func _format_social_signal(helped_today: int, recent_help_label: String) -> String:
+	var suffix := ": %s" % recent_help_label if recent_help_label != "" else ""
+	if helped_today > 1:
+		return "Helped today x%s%s" % [helped_today, suffix]
+	return "Helped today%s" % suffix
 
 
 func _format_action(action: String, phase: String = "idle") -> String:

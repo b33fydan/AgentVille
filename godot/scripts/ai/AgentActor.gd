@@ -70,6 +70,8 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"irritation": float(config.get("irritation", 0.0)),
 		"expression": "neutral",
 		"reaction_intensity": 0.0,
+		"helped_today": 0,
+		"recent_help_label": "",
 		"current_action": "idle",
 		"current_phase": "idle"
 	}
@@ -101,7 +103,10 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 
 	if str(event.get("type", "")) == "day_advanced":
 		state["energy"] = minf(100.0, float(state.get("energy", 60.0)) + 24.0)
+		state["helped_today"] = 0
+		state["recent_help_label"] = ""
 		_decision_timer = minf(_decision_timer, 0.8)
+		state_changed.emit(get_snapshot())
 		return
 
 	var reaction: Dictionary = reaction_model.score_event(state, event, focus)
@@ -196,6 +201,8 @@ func get_snapshot() -> Dictionary:
 		"irritation": float(state.get("irritation", 0.0)),
 		"expression": str(state.get("expression", "neutral")),
 		"reaction_intensity": float(state.get("reaction_intensity", 0.0)),
+		"helped_today": int(state.get("helped_today", 0)),
+		"recent_help_label": str(state.get("recent_help_label", "")),
 		"morale_boost": _morale_boost_timer,
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
@@ -228,6 +235,8 @@ func acknowledge_supply_delivery(item_label: String, payoff_label: String = "") 
 	state["irritation"] = clampf(float(state.get("irritation", 0.0)) - 4.0, 0.0, 100.0)
 	state["expression"] = "pleased"
 	state["reaction_intensity"] = maxf(float(state.get("reaction_intensity", 0.0)), 0.72)
+	state["helped_today"] = int(state.get("helped_today", 0)) + 1
+	state["recent_help_label"] = item_label
 	_update_expression_visuals()
 	var line := _supply_acknowledgement_line(item_label, payoff_label)
 	if line != "":
