@@ -43,6 +43,9 @@ func build_day_summary(day: int) -> Dictionary:
 		"crafted_items": {},
 		"craft_count": 0,
 		"work_order_events": {},
+		"helped_agents": {},
+		"completed_agent_demands": 0,
+		"supply_delivery_count": 0,
 		"adversarial_sessions": {},
 		"adversarial_session_count": 0,
 		"resolved_adversarial_sessions": 0,
@@ -88,8 +91,12 @@ func build_day_summary(day: int) -> Dictionary:
 				summary["work_order_events"][status] = int(summary["work_order_events"].get(status, 0)) + 1
 			"crafting_demand":
 				var status := str(event.get("status", "unknown"))
-				if status == "done" and str(event.get("kind", "")) == "deliver_item":
-					_count_successful_player_action(summary, "deliver_supply")
+				if status == "done":
+					summary["completed_agent_demands"] += 1
+					_add_helped_agent_summary(summary, event)
+					if str(event.get("kind", "")) == "deliver_item":
+						summary["supply_delivery_count"] += 1
+						_count_successful_player_action(summary, "deliver_supply")
 			"adversarial_session":
 				var outcome := str(event.get("outcome", "unknown"))
 				summary["adversarial_sessions"][outcome] = int(summary["adversarial_sessions"].get(outcome, 0)) + 1
@@ -119,6 +126,25 @@ func _count_successful_player_action(summary: Dictionary, action: String) -> voi
 	summary["player_actions"][action] = int(summary["player_actions"].get(action, 0)) + 1
 	summary["total_player_actions"] += 1
 	summary["successful_player_actions"] += 1
+
+
+func _add_helped_agent_summary(summary: Dictionary, event: Dictionary) -> void:
+	var agent_id := str(event.get("agent_id", ""))
+	if agent_id == "":
+		return
+
+	var helped_agents: Dictionary = summary["helped_agents"]
+	var receipt: Dictionary = helped_agents.get(agent_id, {
+		"name": str(event.get("agent_name", "Crew")),
+		"completed_demands": 0,
+		"supply_deliveries": 0
+	})
+	receipt["name"] = str(event.get("agent_name", receipt.get("name", "Crew")))
+	receipt["completed_demands"] = int(receipt.get("completed_demands", 0)) + 1
+	if str(event.get("kind", "")) == "deliver_item":
+		receipt["supply_deliveries"] = int(receipt.get("supply_deliveries", 0)) + 1
+	helped_agents[agent_id] = receipt
+	summary["helped_agents"] = helped_agents
 
 
 func _add_resource_summary(summary: Dictionary, gains) -> void:

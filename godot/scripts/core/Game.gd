@@ -2262,6 +2262,7 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var player_actions: Dictionary = summary.get("player_actions", {})
 	var supply_deliveries := int(player_actions.get("deliver_supply", 0))
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
+	var helped_agents: Dictionary = summary.get("helped_agents", {})
 	var top_action := str(summary.get("top_action", "none"))
 	var vibe: Dictionary = summary.get("vibe", {})
 	var vibe_label := str(vibe.get("label", "mixed"))
@@ -2281,6 +2282,9 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", %s craft%s" % [craft_count, "" if craft_count == 1 else "s"]
 	if supply_deliveries > 0:
 		line += ", %s supply%s delivered" % [supply_deliveries, "" if supply_deliveries == 1 else "s"]
+	var helped_text := _format_helped_agent_names(helped_agents)
+	if helped_text != "":
+		line += ", helped %s" % helped_text
 	if not resources_gained.is_empty():
 		line += ", gathered %s" % _format_resource_list(resources_gained)
 	if top_action != "none":
@@ -2337,6 +2341,29 @@ func _format_crafted_cost_suffix(cost) -> String:
 	if text == "":
 		return ""
 	return " -%s" % text
+
+
+func _format_helped_agent_names(helped_agents: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in helped_agents.keys():
+		var receipt: Dictionary = helped_agents.get(agent_id, {})
+		var name := str(receipt.get("name", str(agent_id).capitalize()))
+		if name != "" and not names.has(name):
+			names.append(name)
+	names.sort()
+	return _join_names(names)
+
+
+func _join_names(names: Array[String]) -> String:
+	if names.is_empty():
+		return ""
+	if names.size() == 1:
+		return names[0]
+	if names.size() == 2:
+		return "%s and %s" % [names[0], names[1]]
+	var last := names[names.size() - 1]
+	var head := names.slice(0, names.size() - 1)
+	return "%s, and %s" % [", ".join(head), last]
 
 
 func _format_resource_list(gains) -> String:

@@ -10,6 +10,7 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	var agent_harvest_value := int(summary.get("agent_harvest_value", 0))
 	var craft_count := int(summary.get("craft_count", 0))
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
+	var helped_agents: Dictionary = summary.get("helped_agents", {})
 	var reasons: Array[String] = []
 	var score := 50
 	var label := "quiet"
@@ -34,6 +35,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	if craft_count > 0:
 		score += craft_count * 4
 		reasons.append("%s crafting actions" % craft_count)
+	if not helped_agents.is_empty():
+		score += mini(12, helped_agents.size() * 4 + int(summary.get("completed_agent_demands", 0)) * 2)
+		reasons.append("helped %s" % _format_helped_agent_names(helped_agents))
 	if failed > 0:
 		reasons.append("%s missed actions" % failed)
 
@@ -65,6 +69,29 @@ func _result(label: String, score: int, reasons: Array[String]) -> Dictionary:
 		"reasons": reasons,
 		"tone": _tone_for(label)
 	}
+
+
+func _format_helped_agent_names(helped_agents: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in helped_agents.keys():
+		var receipt: Dictionary = helped_agents.get(agent_id, {})
+		var name := str(receipt.get("name", str(agent_id).capitalize()))
+		if name != "" and not names.has(name):
+			names.append(name)
+	names.sort()
+	return _join_names(names)
+
+
+func _join_names(names: Array[String]) -> String:
+	if names.is_empty():
+		return "crew"
+	if names.size() == 1:
+		return names[0]
+	if names.size() == 2:
+		return "%s and %s" % [names[0], names[1]]
+	var last := names[names.size() - 1]
+	var head := names.slice(0, names.size() - 1)
+	return "%s, and %s" % [", ".join(head), last]
 
 
 func _tone_for(label: String) -> String:

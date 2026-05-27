@@ -25,6 +25,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Marked fence orders can use an existing kit, craft one from stash resources, or gather missing Fiber/Grain first.
 - NPCs now have a first local adversarial reaction layer: repeated failed player actions can trigger side-eye, annoyance, warmer face tint, shake, and sarcastic local dialogue.
 - End-day summaries now include a local player vibe label such as chaotic, productive, careful, or neglectful.
+- End-day summaries now remember which NPCs were helped through completed crew demands.
 - The crew panel's Parley button opens the first bounded grievance encounter with a patience meter and local menu responses.
 - Repeated failed actions or chaotic day summaries can queue a crew grievance and pulse the Parley button.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
@@ -82,6 +83,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_order_bargain_row.gd` exercises compact `Bonus` and `Claimed` bargain states in the crew-order row.
 - `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, formatted day summaries, and NPC vibe verdicts.
 - `tools/smoke_supply_help_vibe.gd` exercises demand-row `Prep` and `Give` supply help counting as player work in day vibe summaries.
+- `tools/smoke_social_receipts.gd` exercises helped-agent receipts and end-day summary callouts after supply delivery.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
@@ -129,6 +131,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Escalation bargains are deterministic too: the author attaches a tiny resource incentive to the linked order, the UI exposes the offer in demand and order rows, and order completion records and pays the incentive once.
 - The first vibe scorer is also local and threshold-based. It creates structured labels that a future observer model or LSTM/classifier can consume later.
 - End-day summaries turn action history into compact receipts the crew can judge.
+- Social receipts remember which crew members the player helped, so future local or model-driven observers can reason from named relationships instead of raw counts alone.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
 
 For now, LSTM/ML is intentionally out of the runtime loop. The current seam is the decision model: replace or wrap `UtilityAgentDecisionModel.gd` when the game has enough action history to justify learned intent prediction.
