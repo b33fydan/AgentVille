@@ -1115,7 +1115,7 @@ func _build_adversarial_panel() -> void:
 	var choices := HBoxContainer.new()
 	choices.add_theme_constant_override("separation", 7)
 	stack.add_child(choices)
-	for index in range(3):
+	for index in range(4):
 		var button := Button.new()
 		button.text = "Choice"
 		button.custom_minimum_size = Vector2(0, 30)

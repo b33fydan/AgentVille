@@ -52,6 +52,7 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 		"patience_meter": starting_patience,
 		"social_credit_bonus": social_credit_bonus,
 		"social_credit_label": social_credit_label,
+		"social_credit_used": false,
 		"resolution_meter": 0.0,
 		"turn_count": 0,
 		"max_turns": MAX_TURNS,
@@ -62,7 +63,7 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 		"npc_line": _opening_line(agent_name, personality_trait, grievance_text),
 		"context": context.duplicate(true)
 	}
-	_session["choices"] = _build_choices(personality_trait, starting_patience)
+	_session["choices"] = _build_choices_for_session()
 	session_started.emit(get_session_snapshot())
 	return get_session_snapshot()
 
@@ -81,6 +82,8 @@ func choose_response(choice_id: String) -> Dictionary:
 	var resolution_delta := float(choice.get("resolution_delta", 0.0)) + _trait_resolution_delta(personality_trait, choice_id)
 	var patience := clampf(float(_session.get("patience_meter", 0.0)) + patience_delta, 0.0, 100.0)
 	var resolution := clampf(float(_session.get("resolution_meter", 0.0)) + resolution_delta, 0.0, 100.0)
+	if choice_id == "call_favor":
+		_session["social_credit_used"] = true
 	var claims: Array = _session.get("claims", [])
 	claims.append({
 		"turn": turn_count,
@@ -95,8 +98,8 @@ func choose_response(choice_id: String) -> Dictionary:
 	_session["patience_meter"] = patience
 	_session["resolution_meter"] = resolution
 	_session["last_choice_id"] = choice_id
-	_session["npc_line"] = _response_line(personality_trait, choice_id, patience, resolution)
-	_session["choices"] = _build_choices(personality_trait, patience)
+	_session["npc_line"] = _response_line(personality_trait, choice_id, patience, resolution, choice)
+	_session["choices"] = _build_choices_for_session()
 
 	if resolution >= 72.0:
 		return _end_session("resolved")
@@ -129,15 +132,24 @@ func _end_session(outcome: String) -> Dictionary:
 
 
 func _choice_for(choice_id: String) -> Dictionary:
-	for choice in _build_choices(str(_session.get("trait", "steady")), float(_session.get("patience_meter", 50.0))):
+	for choice in _session.get("choices", []):
 		if str(choice.get("id", "")) == choice_id:
 			return choice
 	return {}
 
 
-func _build_choices(_personality_trait: String, patience: float) -> Array[Dictionary]:
+func _build_choices_for_session() -> Array[Dictionary]:
+	return _build_choices(
+		str(_session.get("trait", "steady")),
+		float(_session.get("patience_meter", 50.0)),
+		float(_session.get("social_credit_bonus", 0.0)) > 0.0 and not bool(_session.get("social_credit_used", false)),
+		str(_session.get("social_credit_label", ""))
+	)
+
+
+func _build_choices(_personality_trait: String, patience: float, include_call_favor: bool = false, social_credit_label: String = "") -> Array[Dictionary]:
 	var tense := patience < 36.0
-	return [
+	var choices: Array[Dictionary] = [
 		{
 			"id": "own_mistake",
 			"label": "Own it",
@@ -163,6 +175,17 @@ func _build_choices(_personality_trait: String, patience: float) -> Array[Dictio
 			"claim": "Suggests the crew is overreacting."
 		}
 	]
+	if include_call_favor:
+		choices.append({
+			"id": "call_favor",
+			"label": "Call favor",
+			"stance": "social_credit",
+			"patience_delta": 12.0,
+			"resolution_delta": 46.0,
+			"claim": _call_favor_claim(social_credit_label),
+			"social_credit_label": social_credit_label
+		})
+	return choices
 
 
 func _trait_patience_delta(personality_trait: String, choice_id: String) -> float:
@@ -197,6 +220,11 @@ func _trait_resolution_delta(personality_trait: String, choice_id: String) -> fl
 		"chaotic":
 			return 4.0 if choice_id == "deflect" else 0.0
 	return 0.0
+
+
+func _call_favor_claim(social_credit_label: String) -> String:
+	var help_label := _social_credit_help_label(social_credit_label)
+	return "Reminds the crew that %s should count for something." % help_label
 
 
 func _build_grievance(agent_snapshot: Dictionary, context: Dictionary) -> Dictionary:
@@ -260,9 +288,7 @@ func _social_credit_label(agent_snapshot: Dictionary, context: Dictionary) -> St
 
 
 func _social_credit_opening_note(personality_trait: String, social_credit_label: String) -> String:
-	var help_label := social_credit_label.replace("Helped today: ", "")
-	if help_label == "Helped today":
-		help_label = "the crew"
+	var help_label := _social_credit_help_label(social_credit_label)
 	match personality_trait:
 		"grizzled":
 			return "You did help with %s today, so this starts less badly." % help_label
@@ -271,6 +297,13 @@ func _social_credit_opening_note(personality_trait: String, social_credit_label:
 		"chaotic":
 			return "You did help with %s today, so the complaint has a tiny cushion." % help_label
 	return "You did help with %s today, so this starts calmer." % help_label
+
+
+func _social_credit_help_label(social_credit_label: String) -> String:
+	var help_label := social_credit_label.replace("Helped today: ", "")
+	if help_label == "Helped today" or help_label == "":
+		return "the crew"
+	return help_label
 
 
 func _opening_line(agent_name: String, personality_trait: String, grievance: String) -> String:
@@ -284,7 +317,17 @@ func _opening_line(agent_name: String, personality_trait: String, grievance: Str
 	return "%s: \"%s\"" % [agent_name, grievance]
 
 
-func _response_line(personality_trait: String, choice_id: String, patience: float, resolution: float) -> String:
+func _response_line(personality_trait: String, choice_id: String, patience: float, resolution: float, choice: Dictionary = {}) -> String:
+	if choice_id == "call_favor":
+		var help_label := _social_credit_help_label(str(choice.get("social_credit_label", "")))
+		match personality_trait:
+			"grizzled":
+				return "Fair. %s counts. Do not make me regret accounting for it." % help_label
+			"hopeful":
+				return "Fair. %s does count for something. Keep going." % help_label
+			"chaotic":
+				return "Fine. %s is admissible evidence in friendship court." % help_label
+
 	if resolution >= 72.0:
 		match personality_trait:
 			"grizzled":
