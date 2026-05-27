@@ -31,8 +31,13 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 	var personality_trait := str(agent_snapshot.get("trait", "steady"))
 	var irritation := float(agent_snapshot.get("irritation", 0.0))
 	var recent_failures := int(context.get("recent_failures", _count_recent_failures(context.get("recent_events", []))))
-	var starting_patience := clampf(76.0 - irritation * 0.36 - float(recent_failures * 4), 32.0, 88.0)
+	var social_credit_bonus := _social_credit_patience_bonus(agent_snapshot, context)
+	var social_credit_label := _social_credit_label(agent_snapshot, context)
+	var starting_patience := clampf(76.0 - irritation * 0.36 - float(recent_failures * 4) + social_credit_bonus, 32.0, 94.0)
 	var grievance := _build_grievance(agent_snapshot, context)
+	var grievance_text := str(grievance.get("text", "The crew wants a word."))
+	if social_credit_label != "":
+		grievance_text = "%s %s" % [_social_credit_opening_note(personality_trait, social_credit_label), grievance_text]
 	var session_id := "arg_%03d" % _next_session_number
 	_next_session_number += 1
 
@@ -45,14 +50,16 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 		"agent_name": agent_name,
 		"trait": personality_trait,
 		"patience_meter": starting_patience,
+		"social_credit_bonus": social_credit_bonus,
+		"social_credit_label": social_credit_label,
 		"resolution_meter": 0.0,
 		"turn_count": 0,
 		"max_turns": MAX_TURNS,
 		"claims": [],
 		"npc_goal": str(grievance.get("npc_goal", "get the farm back under control")),
 		"player_goal": "settle the grievance before patience runs out",
-		"grievance": str(grievance.get("text", "The crew wants a word.")),
-		"npc_line": _opening_line(agent_name, personality_trait, str(grievance.get("text", ""))),
+		"grievance": grievance_text,
+		"npc_line": _opening_line(agent_name, personality_trait, grievance_text),
 		"context": context.duplicate(true)
 	}
 	_session["choices"] = _build_choices(personality_trait, starting_patience)
@@ -233,6 +240,37 @@ func _build_grievance(agent_snapshot: Dictionary, context: Dictionary) -> Dictio
 		"text": "The crew wants to review today's farm management choices.",
 		"npc_goal": "test whether the player has an actual plan"
 	}
+
+
+func _social_credit_patience_bonus(agent_snapshot: Dictionary, context: Dictionary) -> float:
+	var helped_today := int(agent_snapshot.get("helped_today", context.get("helped_today", 0)))
+	if helped_today <= 0:
+		return 0.0
+	return minf(14.0, 8.0 + float(helped_today - 1) * 3.0)
+
+
+func _social_credit_label(agent_snapshot: Dictionary, context: Dictionary) -> String:
+	if _social_credit_patience_bonus(agent_snapshot, context) <= 0.0:
+		return ""
+
+	var help_label := str(agent_snapshot.get("recent_help_label", context.get("recent_help_label", "")))
+	if help_label == "":
+		return "Helped today"
+	return "Helped today: %s" % help_label
+
+
+func _social_credit_opening_note(personality_trait: String, social_credit_label: String) -> String:
+	var help_label := social_credit_label.replace("Helped today: ", "")
+	if help_label == "Helped today":
+		help_label = "the crew"
+	match personality_trait:
+		"grizzled":
+			return "You did help with %s today, so this starts less badly." % help_label
+		"hopeful":
+			return "You did help with %s today, so I am starting warmer." % help_label
+		"chaotic":
+			return "You did help with %s today, so the complaint has a tiny cushion." % help_label
+	return "You did help with %s today, so this starts calmer." % help_label
 
 
 func _opening_line(agent_name: String, personality_trait: String, grievance: String) -> String:
