@@ -211,6 +211,8 @@ func _summary_comment(summary: Dictionary) -> String:
 	var vibe_label := str(vibe.get("label", "mixed"))
 	var vibe_reasons: Array = vibe.get("reasons", [])
 	var first_reason := str(vibe_reasons[0]) if not vibe_reasons.is_empty() else "the day happened"
+	var helped_agents: Dictionary = summary.get("helped_agents", {})
+	var helped_names := _format_helped_agent_names(helped_agents)
 
 	if total == 0:
 		match personality:
@@ -220,6 +222,15 @@ func _summary_comment(summary: Dictionary) -> String:
 				return "%s: \"Quiet day. Tomorrow can still earn its keep. Please let it.\"" % name
 			"chaotic":
 				return "%s: \"No farm work? Bold performance art.\"" % name
+
+	if helped_names != "":
+		match personality:
+			"grizzled":
+				return "%s: \"Helped %s today. Practical debts paid, for once.\"" % [name, helped_names]
+			"hopeful":
+				return "%s: \"Helped %s today. That kind of care lands.\"" % [name, helped_names]
+			"chaotic":
+				return "%s: \"Helped %s today. Friendship paperwork filed.\"" % [name, helped_names]
 
 	if vibe_label == "chaotic":
 		match personality:
@@ -276,3 +287,26 @@ func _summary_comment(summary: Dictionary) -> String:
 				return "%s: \"Crew harvested %s coins. Autonomous vegetables beware.\"" % [name, agent_harvest_value]
 
 	return "%s: \"Mostly %s today. I am writing that down.\"" % [name, top_action]
+
+
+func _format_helped_agent_names(helped_agents: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in helped_agents.keys():
+		var receipt: Dictionary = helped_agents.get(agent_id, {})
+		var helped_name := str(receipt.get("name", str(agent_id).capitalize()))
+		if helped_name != "" and not names.has(helped_name):
+			names.append(helped_name)
+	names.sort()
+	return _join_names(names)
+
+
+func _join_names(names: Array[String]) -> String:
+	if names.is_empty():
+		return ""
+	if names.size() == 1:
+		return names[0]
+	if names.size() == 2:
+		return "%s and %s" % [names[0], names[1]]
+	var last := names[names.size() - 1]
+	var head := names.slice(0, names.size() - 1)
+	return "%s, and %s" % [", ".join(head), last]
