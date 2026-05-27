@@ -310,7 +310,8 @@ func set_adversarial_session(session: Dictionary) -> void:
 	var agent_name := str(session.get("agent_name", "Crew"))
 	_encounter_title_label.text = "%s'S GRIEVANCE" % agent_name.to_upper()
 	_encounter_meter.value = float(session.get("patience_meter", 0.0))
-	_encounter_goal_label.text = "Patience %s | Turns %s" % [roundi(float(session.get("patience_meter", 0.0))), int(session.get("max_turns", 3)) - int(session.get("turn_count", 0))]
+	_encounter_goal_label.text = _format_encounter_goal(session)
+	_encounter_goal_label.tooltip_text = str(session.get("social_credit_label", ""))
 	_encounter_line_label.text = str(session.get("npc_line", ""))
 	_encounter_choices = session.get("choices", [])
 
@@ -1265,6 +1266,15 @@ func _format_social_signal(helped_today: int, recent_help_label: String) -> Stri
 	if helped_today > 1:
 		return "Helped today x%s%s" % [helped_today, suffix]
 	return "Helped today%s" % suffix
+
+
+func _format_encounter_goal(session: Dictionary) -> String:
+	var patience := roundi(float(session.get("patience_meter", 0.0)))
+	var turns := int(session.get("max_turns", 3)) - int(session.get("turn_count", 0))
+	var social_credit_bonus := roundi(float(session.get("social_credit_bonus", 0.0)))
+	if social_credit_bonus > 0:
+		return "Patience %s | Favor +%s | Turns %s" % [patience, social_credit_bonus, turns]
+	return "Patience %s | Turns %s" % [patience, turns]
 
 
 func _format_action(action: String, phase: String = "idle") -> String:

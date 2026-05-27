@@ -29,6 +29,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Crew rows now show a same-day helped signal after a delivered supply, then clear it the next morning.
 - NPC end-day verdicts now acknowledge helped crew members by name before falling back to generic action summaries.
 - Same-day help now gives that NPC a small Parley social-credit patience bump and appears in the opening grievance line.
+- The Parley panel now surfaces that social-credit cushion beside the patience meter as a visible favor bonus.
 - The crew panel's Parley button opens the first bounded grievance encounter with a patience meter and local menu responses.
 - Repeated failed actions or chaotic day summaries can queue a crew grievance and pulse the Parley button.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
@@ -90,6 +91,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_crew_social_signal.gd` exercises crew-row helped-today signals and next-morning clearing.
 - `tools/smoke_social_verdicts.gd` exercises NPC day-end verdicts that name helped crew members.
 - `tools/smoke_parley_social_credit.gd` exercises same-day help softening the helped NPC's next Parley patience meter.
+- `tools/smoke_parley_social_credit_ui.gd` exercises visible Parley favor bonus text after helping an NPC.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
@@ -141,6 +143,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Crew snapshots now surface a compact same-day social signal, keeping the relationship receipt visible while the player is still making choices.
 - NPC verdicts can now speak from those social receipts, turning completed demands into named relationship feedback.
 - Bounded Parley sessions can consume same-day social credit too, turning a completed favor into a visible patience cushion without adding live model calls.
+- The encounter UI exposes that cushion as `Favor +N`, keeping social consequences readable during the argument.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
 
 For now, LSTM/ML is intentionally out of the runtime loop. The current seam is the decision model: replace or wrap `UtilityAgentDecisionModel.gd` when the game has enough action history to justify learned intent prediction.
