@@ -2239,8 +2239,11 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var failed := int(summary.get("failed_player_actions", 0))
 	var harvest_value := int(summary.get("harvest_value", 0))
 	var agent_harvest_value := int(summary.get("agent_harvest_value", 0))
+	var craft_count := int(summary.get("craft_count", 0))
 	var adversarial_session_count := int(summary.get("adversarial_session_count", 0))
 	var resolved_adversarial_sessions := int(summary.get("resolved_adversarial_sessions", 0))
+	var player_actions: Dictionary = summary.get("player_actions", {})
+	var supply_deliveries := int(player_actions.get("deliver_supply", 0))
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
 	var top_action := str(summary.get("top_action", "none"))
 	var vibe: Dictionary = summary.get("vibe", {})
@@ -2257,6 +2260,10 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", crew added %s" % agent_harvest_value
 	if adversarial_session_count > 0:
 		line += ", settled %s/%s grievances" % [resolved_adversarial_sessions, adversarial_session_count]
+	if craft_count > 0:
+		line += ", %s craft%s" % [craft_count, "" if craft_count == 1 else "s"]
+	if supply_deliveries > 0:
+		line += ", %s supply%s delivered" % [supply_deliveries, "" if supply_deliveries == 1 else "s"]
 	if not resources_gained.is_empty():
 		line += ", gathered %s" % _format_resource_list(resources_gained)
 	if top_action != "none":

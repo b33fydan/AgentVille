@@ -55,6 +55,10 @@ func _test_prep_counts_as_player_help() -> void:
 	if str(summary.get("vibe", {}).get("label", "")) == "neglectful":
 		_fail("Prep supply help was still scored as neglectful.")
 		return
+	var formatted := str(scene.call("_format_day_summary", summary))
+	if not formatted.contains("1 supply delivered"):
+		_fail("Prep supply help was not called out in the formatted day summary.")
+		return
 
 	scene.queue_free()
 	await process_frame
@@ -104,6 +108,10 @@ func _test_give_counts_as_player_help() -> void:
 		return
 	if str(summary.get("vibe", {}).get("label", "")) == "neglectful":
 		_fail("Give-only supply help was still scored as neglectful.")
+		return
+	var formatted := str(scene.call("_format_day_summary", summary))
+	if not formatted.contains("1 supply delivered"):
+		_fail("Give-only supply help was not called out in the formatted day summary.")
 		return
 
 	scene.queue_free()
