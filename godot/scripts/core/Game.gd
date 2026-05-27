@@ -1950,6 +1950,18 @@ func _can_craft_required_item_for_demand(demand: Dictionary) -> bool:
 	return _can_afford(_scaled_recipe_cost(required_item, needed))
 
 
+func _missing_resources_for_demand(demand: Dictionary) -> Dictionary:
+	var required_item := str(demand.get("required_item", ""))
+	if not RECIPES.has(required_item):
+		return {}
+
+	var amount := maxi(1, int(demand.get("amount", 1)))
+	var needed := maxi(0, amount - _available_crafted_item(required_item))
+	if needed <= 0:
+		return {}
+	return _missing_resources(_scaled_recipe_cost(required_item, needed))
+
+
 func _scaled_recipe_cost(recipe_id: String, count: int) -> Dictionary:
 	var recipe: Dictionary = RECIPES.get(recipe_id, {})
 	var base_cost: Dictionary = recipe.get("cost", {})
@@ -2167,6 +2179,9 @@ func _crafting_demand_snapshot(demand_id: String) -> Dictionary:
 	var amount := maxi(1, int(demand.get("amount", 1)))
 	demand["has_required_item"] = required_item != "" and _available_crafted_item(required_item) >= amount
 	demand["can_craft_required_item"] = required_item != "" and _can_craft_required_item_for_demand(demand)
+	var missing_resources := _missing_resources_for_demand(demand)
+	demand["missing_resources"] = missing_resources
+	demand["missing_resource_text"] = _format_resource_list(missing_resources)
 	demand["reward_text"] = _demand_reward_text(demand)
 	if str(demand.get("status", "")) == "open":
 		demand["status_text"] = _demand_status_text(demand)

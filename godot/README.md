@@ -72,6 +72,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_demand_reward_preview.gd` exercises compact demand-row payoff previews for Fence Hands, Spring Hands, and Hustle Hands before delivery.
 - `tools/smoke_demand_craftable_status.gd` exercises crew demand rows switching from missing supply to `Can craft` when recipe ingredients are available.
 - `tools/smoke_demand_row_actions.gd` exercises demand-row `Prep` and `Give` actions that craft or deliver supply payoffs directly.
+- `tools/smoke_demand_missing_tooltips.gd` exercises disabled demand-row `Wait` tooltips that name the missing recipe ingredients.
 - `tools/smoke_demand_variety.gd` exercises demand type selection, demand aging, pressure receipts, action completion, and NPC-specific perks.
 - `tools/smoke_demand_targeting.gd` exercises targeted demand tile selection, UI coordinates, demand markers, target focus, and tile-specific completion.
 - `tools/smoke_npc_authored_work_orders.gd` exercises aged targeted demands becoming NPC-authored work orders that complete the source demand through crew action.

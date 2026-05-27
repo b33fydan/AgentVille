@@ -952,6 +952,7 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 		var can_give := bool(demand.get("has_required_item", false))
 		var can_prep := bool(demand.get("can_craft_required_item", false))
 		var can_act := demand_status == "open" and (can_give or can_prep)
+		var missing_text := str(demand.get("missing_resource_text", ""))
 		action_button = Button.new()
 		if demand_status != "open":
 			action_button.text = "Done"
@@ -964,7 +965,8 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 			action_button.tooltip_text = "Prepare and deliver supply"
 		else:
 			action_button.text = "Wait"
-			action_button.tooltip_text = "Missing supply ingredients"
+			action_button.tooltip_text = "Needs %s" % missing_text if missing_text != "" else "Missing supply ingredients"
+			status.tooltip_text = action_button.tooltip_text
 		action_button.custom_minimum_size = Vector2(44, 19)
 		action_button.focus_mode = Control.FOCUS_NONE
 		action_button.disabled = not can_act
