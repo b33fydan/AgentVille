@@ -15,6 +15,7 @@ signal work_order_tool_selected(action_id: String)
 signal adversarial_encounter_requested(agent_id: String)
 signal adversarial_response_selected(choice_id: String)
 signal crafting_demand_target_requested(demand_id: String)
+signal crafting_demand_requested(demand_id: String)
 
 const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
 
@@ -929,29 +930,61 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 	reward.add_theme_color_override("font_color", Color("#5f7f39"))
 	row.add_child(reward)
 
-	var target_button: Button = null
+	var action_button: Button = null
 	if typeof(demand.get("target_tile", null)) == TYPE_VECTOR2I:
-		target_button = Button.new()
-		target_button.text = "Go"
-		target_button.tooltip_text = "Focus demand target"
-		target_button.custom_minimum_size = Vector2(36, 19)
-		target_button.focus_mode = Control.FOCUS_NONE
-		target_button.add_theme_font_size_override("font_size", 10)
-		target_button.add_theme_color_override("font_color", Color("#5d4938"))
-		target_button.add_theme_stylebox_override("normal", _craft_button_style(true))
-		target_button.add_theme_stylebox_override("hover", _craft_button_style(true))
-		target_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
-		target_button.pressed.connect(func() -> void:
+		action_button = Button.new()
+		action_button.text = "Go"
+		action_button.tooltip_text = "Focus demand target"
+		action_button.custom_minimum_size = Vector2(36, 19)
+		action_button.focus_mode = Control.FOCUS_NONE
+		action_button.add_theme_font_size_override("font_size", 10)
+		action_button.add_theme_color_override("font_color", Color("#5d4938"))
+		action_button.add_theme_stylebox_override("normal", _craft_button_style(true))
+		action_button.add_theme_stylebox_override("hover", _craft_button_style(true))
+		action_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+		action_button.pressed.connect(func() -> void:
 			sound_requested.emit("ui_click")
 			crafting_demand_target_requested.emit(demand_id)
 		)
-		row.add_child(target_button)
+		row.add_child(action_button)
+	elif str(demand.get("kind", "deliver_item")) == "deliver_item":
+		var demand_status := str(demand.get("status", "open"))
+		var can_give := bool(demand.get("has_required_item", false))
+		var can_prep := bool(demand.get("can_craft_required_item", false))
+		var can_act := demand_status == "open" and (can_give or can_prep)
+		action_button = Button.new()
+		if demand_status != "open":
+			action_button.text = "Done"
+			action_button.tooltip_text = "Demand handled"
+		elif can_give:
+			action_button.text = "Give"
+			action_button.tooltip_text = "Deliver supply"
+		elif can_prep:
+			action_button.text = "Prep"
+			action_button.tooltip_text = "Prepare and deliver supply"
+		else:
+			action_button.text = "Wait"
+			action_button.tooltip_text = "Missing supply ingredients"
+		action_button.custom_minimum_size = Vector2(44, 19)
+		action_button.focus_mode = Control.FOCUS_NONE
+		action_button.disabled = not can_act
+		action_button.add_theme_font_size_override("font_size", 10)
+		action_button.add_theme_color_override("font_color", Color("#2d3b1d") if can_act else Color("#8c8274"))
+		action_button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+		action_button.add_theme_stylebox_override("normal", _craft_button_style(can_act))
+		action_button.add_theme_stylebox_override("hover", _craft_button_style(true))
+		action_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+		action_button.pressed.connect(func() -> void:
+			sound_requested.emit("ui_click")
+			crafting_demand_requested.emit(demand_id)
+		)
+		row.add_child(action_button)
 
 	_crafting_demand_rows[demand_id] = {
 		"label": label,
 		"status": status,
 		"reward": reward,
-		"button": target_button
+		"button": action_button
 	}
 
 

@@ -147,6 +147,7 @@ func _connect_systems() -> void:
 	game_ui.adversarial_encounter_requested.connect(_on_adversarial_encounter_requested)
 	game_ui.adversarial_response_selected.connect(_on_adversarial_response_selected)
 	game_ui.crafting_demand_target_requested.connect(_on_crafting_demand_target_requested)
+	game_ui.crafting_demand_requested.connect(_on_crafting_demand_requested)
 
 	if _agent_manager:
 		_agent_manager.agent_comment.connect(game_ui.show_message)
@@ -1459,6 +1460,49 @@ func _on_agent_world_action(event: Dictionary) -> void:
 
 func _on_craft_requested(recipe_id: String) -> void:
 	_craft_recipe(recipe_id, "player")
+
+
+func _on_crafting_demand_requested(demand_id: String) -> void:
+	if not crafting_demands.has(demand_id):
+		game_ui.show_message("Unknown crew demand.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var demand: Dictionary = crafting_demands[demand_id]
+	if str(demand.get("status", "")) != "open":
+		game_ui.show_message("%s is already handled." % str(demand.get("label", "Crew demand")))
+		return
+	if str(demand.get("kind", "deliver_item")) != "deliver_item":
+		game_ui.show_message("That demand needs field work.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var required_item := str(demand.get("required_item", ""))
+	var amount := maxi(1, int(demand.get("amount", 1)))
+	if required_item == "":
+		game_ui.show_message("That demand is missing a supply.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var missing_count := maxi(0, amount - _available_crafted_item(required_item))
+	if missing_count > 0:
+		if not _can_craft_required_item_for_demand(demand):
+			game_ui.show_message("%s needs more ingredients." % _pretty_crafted_name(required_item))
+			sound_manager.play_stamp("error_soft")
+			return
+
+		for _index in range(missing_count):
+			if not _craft_recipe(required_item, "player_demand_quiet"):
+				return
+
+	if _available_crafted_item(required_item) < amount:
+		game_ui.show_message("%s is still short." % _pretty_crafted_name(required_item))
+		sound_manager.play_stamp("error_soft")
+		return
+
+	_consume_crafted_cost({required_item: amount})
+	_complete_crafting_demand(demand_id, "%s delivered to %s." % [_pretty_crafted_name(required_item), str(demand.get("agent_name", "Crew"))])
+	game_ui.show_message("Delivered %s to %s." % [_pretty_crafted_name(required_item), str(demand.get("agent_name", "Crew"))])
 
 
 func _on_work_order_requested(order_id: String) -> void:
