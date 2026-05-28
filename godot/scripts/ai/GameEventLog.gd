@@ -49,6 +49,8 @@ func build_day_summary(day: int) -> Dictionary:
 		"adversarial_sessions": {},
 		"adversarial_session_count": 0,
 		"resolved_adversarial_sessions": 0,
+		"called_favors": 0,
+		"favored_agents": {},
 		"total_player_actions": 0,
 		"top_action": "none",
 		"notable_events": [],
@@ -103,6 +105,9 @@ func build_day_summary(day: int) -> Dictionary:
 				summary["adversarial_session_count"] += 1
 				if outcome in ["resolved", "uneasy_truce"]:
 					summary["resolved_adversarial_sessions"] += 1
+				if bool(event.get("social_credit_used", false)):
+					summary["called_favors"] += 1
+					_add_called_favor_summary(summary, event)
 				summary["notable_events"].append(event)
 
 	var top_action := "none"
@@ -145,6 +150,31 @@ func _add_helped_agent_summary(summary: Dictionary, event: Dictionary) -> void:
 		receipt["supply_deliveries"] = int(receipt.get("supply_deliveries", 0)) + 1
 	helped_agents[agent_id] = receipt
 	summary["helped_agents"] = helped_agents
+
+
+func _add_called_favor_summary(summary: Dictionary, event: Dictionary) -> void:
+	var agent_id := str(event.get("agent_id", ""))
+	if agent_id == "":
+		return
+
+	var favored_agents: Dictionary = summary["favored_agents"]
+	var receipt: Dictionary = favored_agents.get(agent_id, {
+		"name": str(event.get("agent_name", "Crew")),
+		"called_favors": 0,
+		"last_favor_label": ""
+	})
+	receipt["name"] = str(event.get("agent_name", receipt.get("name", "Crew")))
+	receipt["called_favors"] = int(receipt.get("called_favors", 0)) + 1
+	receipt["last_favor_label"] = _favor_help_label(str(event.get("social_credit_label", "")))
+	favored_agents[agent_id] = receipt
+	summary["favored_agents"] = favored_agents
+
+
+func _favor_help_label(social_credit_label: String) -> String:
+	var help_label := social_credit_label.replace("Helped today: ", "")
+	if help_label == "" or help_label == "Helped today":
+		return "the crew"
+	return help_label
 
 
 func _add_resource_summary(summary: Dictionary, gains) -> void:

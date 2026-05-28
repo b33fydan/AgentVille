@@ -32,6 +32,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - The Parley panel now surfaces that social-credit cushion beside the patience meter as a visible favor bonus.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, clears the crew-row signal, and prevents same-day reuse.
+- Called Parley favors now become day-summary receipts, including which NPC's favor was spent.
 - The crew panel's Parley button opens the first bounded grievance encounter with a patience meter and local menu responses.
 - Repeated failed actions or chaotic day summaries can queue a crew grievance and pulse the Parley button.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
@@ -96,6 +97,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_parley_social_credit_ui.gd` exercises visible Parley favor bonus text after helping an NPC.
 - `tools/smoke_parley_call_favor.gd` exercises the one-use `Call favor` Parley response and fourth encounter button.
 - `tools/smoke_parley_favor_spend.gd` exercises spent favor clearing crew-row social credit and preventing same-day reuse.
+- `tools/smoke_parley_favor_receipts.gd` exercises called-favor day-summary receipts and formatted summary text.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
@@ -150,6 +152,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - The encounter UI exposes that cushion as `Favor +N`, keeping social consequences readable during the argument.
 - Social credit is now playable during Parley through a one-use favor call that advances repair while recording the remembered supply.
 - Spent social credit clears from the target crew snapshot after the Parley result, so future local observers see it as used instead of banked.
+- Called favors now land in the day summary as named relationship receipts, giving future verdict and UI layers a clean hook for spent goodwill.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
 
 For now, LSTM/ML is intentionally out of the runtime loop. The current seam is the decision model: replace or wrap `UtilityAgentDecisionModel.gd` when the game has enough action history to justify learned intent prediction.

@@ -2259,10 +2259,12 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var craft_count := int(summary.get("craft_count", 0))
 	var adversarial_session_count := int(summary.get("adversarial_session_count", 0))
 	var resolved_adversarial_sessions := int(summary.get("resolved_adversarial_sessions", 0))
+	var called_favors := int(summary.get("called_favors", 0))
 	var player_actions: Dictionary = summary.get("player_actions", {})
 	var supply_deliveries := int(player_actions.get("deliver_supply", 0))
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
 	var helped_agents: Dictionary = summary.get("helped_agents", {})
+	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var top_action := str(summary.get("top_action", "none"))
 	var vibe: Dictionary = summary.get("vibe", {})
 	var vibe_label := str(vibe.get("label", "mixed"))
@@ -2278,6 +2280,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", crew added %s" % agent_harvest_value
 	if adversarial_session_count > 0:
 		line += ", settled %s/%s grievances" % [resolved_adversarial_sessions, adversarial_session_count]
+	if called_favors > 0:
+		line += ", called %s" % _format_called_favor_names(favored_agents)
 	if craft_count > 0:
 		line += ", %s craft%s" % [craft_count, "" if craft_count == 1 else "s"]
 	if supply_deliveries > 0:
@@ -2351,6 +2355,25 @@ func _format_helped_agent_names(helped_agents: Dictionary) -> String:
 		if name != "" and not names.has(name):
 			names.append(name)
 	names.sort()
+	return _join_names(names)
+
+
+func _format_called_favor_names(favored_agents: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in favored_agents.keys():
+		var receipt: Dictionary = favored_agents.get(agent_id, {})
+		var name := str(receipt.get("name", str(agent_id).capitalize()))
+		if name == "":
+			continue
+		var count := int(receipt.get("called_favors", 0))
+		var label := "%s's favor" % name
+		if count > 1:
+			label += " x%s" % count
+		if not names.has(label):
+			names.append(label)
+	names.sort()
+	if names.is_empty():
+		return "a favor"
 	return _join_names(names)
 
 
