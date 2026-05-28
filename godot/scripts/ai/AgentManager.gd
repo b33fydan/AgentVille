@@ -213,6 +213,8 @@ func _summary_comment(summary: Dictionary) -> String:
 	var first_reason := str(vibe_reasons[0]) if not vibe_reasons.is_empty() else "the day happened"
 	var helped_agents: Dictionary = summary.get("helped_agents", {})
 	var helped_names := _format_helped_agent_names(helped_agents)
+	var favored_agents: Dictionary = summary.get("favored_agents", {})
+	var favor_names := _format_called_favor_names(favored_agents)
 
 	if total == 0:
 		match personality:
@@ -222,6 +224,15 @@ func _summary_comment(summary: Dictionary) -> String:
 				return "%s: \"Quiet day. Tomorrow can still earn its keep. Please let it.\"" % name
 			"chaotic":
 				return "%s: \"No farm work? Bold performance art.\"" % name
+
+	if favor_names != "":
+		match personality:
+			"grizzled":
+				return "%s: \"Called %s today. Goodwill spent cleanly, which beats pretending it was infinite.\"" % [name, favor_names]
+			"hopeful":
+				return "%s: \"Called %s today. A spent favor can still be honest relationship work.\"" % [name, favor_names]
+			"chaotic":
+				return "%s: \"Called %s today. Friendship coupon redeemed; paperwork sparkly.\"" % [name, favor_names]
 
 	if helped_names != "":
 		match personality:
@@ -296,6 +307,23 @@ func _format_helped_agent_names(helped_agents: Dictionary) -> String:
 		var helped_name := str(receipt.get("name", str(agent_id).capitalize()))
 		if helped_name != "" and not names.has(helped_name):
 			names.append(helped_name)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_called_favor_names(favored_agents: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in favored_agents.keys():
+		var receipt: Dictionary = favored_agents.get(agent_id, {})
+		var favored_name := str(receipt.get("name", str(agent_id).capitalize()))
+		if favored_name == "":
+			continue
+		var count := int(receipt.get("called_favors", 0))
+		var label := "%s's favor" % favored_name
+		if count > 1:
+			label += " x%s" % count
+		if not names.has(label):
+			names.append(label)
 	names.sort()
 	return _join_names(names)
 
