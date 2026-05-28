@@ -39,6 +39,7 @@ var _craft_buttons: Dictionary = {}
 var _crafting_demand_rows: Dictionary = {}
 var _crafting_demand_list_stack: VBoxContainer
 var _crew_pending_demand_labels: Dictionary = {}
+var _crew_pending_demand_signal_states: Dictionary = {}
 var _crew_pending_demand_target_ids: Dictionary = {}
 var _crew_snapshots_by_id: Dictionary = {}
 var _work_order_rows: Dictionary = {}
@@ -149,6 +150,7 @@ func set_crafting_demands(demands: Array) -> void:
 		return
 
 	_crew_pending_demand_labels = _pending_demand_labels_from(demands)
+	_crew_pending_demand_signal_states = _pending_demand_signal_states_from(demands)
 	_crew_pending_demand_target_ids = _pending_demand_target_ids_from(demands)
 	for child in _crafting_demand_list_stack.get_children():
 		child.queue_free()
@@ -1279,7 +1281,9 @@ func _format_spent_favor_signal(favor_spent_today: int, recent_spent_favor_label
 	return "Favor spent%s" % suffix
 
 
-func _format_pending_demand_signal(demand_label: String) -> String:
+func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants") -> String:
+	if signal_state == "queued":
+		return "Queued: %s" % demand_label
 	return "Wants: %s" % demand_label
 
 
@@ -1295,6 +1299,20 @@ func _pending_demand_labels_from(demands: Array) -> Dictionary:
 			continue
 		labels[agent_id] = str(demand.get("label", "Crew Demand"))
 	return labels
+
+
+func _pending_demand_signal_states_from(demands: Array) -> Dictionary:
+	var states := {}
+	for demand in demands:
+		if typeof(demand) != TYPE_DICTIONARY:
+			continue
+		if str(demand.get("status", "")) != "open":
+			continue
+		var agent_id := str(demand.get("agent_id", ""))
+		if agent_id == "" or states.has(agent_id):
+			continue
+		states[agent_id] = "queued" if str(demand.get("authored_order_id", "")) != "" else "wants"
+	return states
 
 
 func _pending_demand_target_ids_from(demands: Array) -> Dictionary:
@@ -1330,6 +1348,7 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var favor_spent_today := int(snapshot.get("favor_spent_today", 0))
 	var recent_spent_favor_label := str(snapshot.get("recent_spent_favor_label", ""))
 	var pending_demand_label := str(_crew_pending_demand_labels.get(agent_id, ""))
+	var pending_demand_signal_state := str(_crew_pending_demand_signal_states.get(agent_id, "wants"))
 	var pending_demand_target_id := str(_crew_pending_demand_target_ids.get(agent_id, ""))
 	var social_label := row["social"] as Label
 	if helped_today > 0:
@@ -1342,7 +1361,7 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 		_configure_crew_social_target(social_label, "")
 	elif pending_demand_label != "":
 		social_label.visible = true
-		social_label.text = _format_pending_demand_signal(pending_demand_label)
+		social_label.text = _format_pending_demand_signal(pending_demand_label, pending_demand_signal_state)
 		_configure_crew_social_target(social_label, pending_demand_target_id)
 	else:
 		social_label.visible = false

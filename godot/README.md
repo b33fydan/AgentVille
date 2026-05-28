@@ -48,6 +48,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Completing field-work crew demands now gives that NPC same-day social credit, just like delivering a requested supply.
 - Crew rows now surface open NPC demands as `Wants` signals until help or spent-favor state takes priority.
 - Targeted crew-row `Wants` signals can be clicked to focus the camera on the requested farm tile.
+- Crew-row demand signals switch from `Wants` to `Queued` once the NPC drafts a linked work order.
 - Aged targeted crew demands now let the NPC draft a linked work order for the same tile, so the player can send the crew to resolve the original social contract.
 - Ignored NPC-authored orders now escalate the next morning, adding author pressure and auto-sending the crew when someone is free.
 - Escalated NPC-authored orders now attach small bargain incentives, surface the resource offer in both demand and order rows, and pay it once the order is completed.
@@ -93,6 +94,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_field_demand_social_credit.gd` exercises field-work demand completion feeding crew-row social credit and same-day Parley favors.
 - `tools/smoke_crew_demand_signal.gd` exercises open demand signals in crew rows and their transition into helped social credit.
 - `tools/smoke_crew_demand_signal_focus.gd` exercises clicking a targeted crew-row `Wants` signal to focus its farm tile.
+- `tools/smoke_crew_demand_order_signal.gd` exercises aged targeted demand signals switching from `Wants` to queued work-board state.
 - `tools/smoke_npc_authored_work_orders.gd` exercises aged targeted demands becoming NPC-authored work orders that complete the source demand through crew action.
 - `tools/smoke_npc_order_escalation.gd` exercises second-day escalation for ignored NPC-authored orders, including escalation receipts, author pressure, auto-send, and source-demand completion.
 - `tools/smoke_npc_escalation_bargains.gd` exercises escalated NPC-authored order incentives, compact demand-row bargain text, payout, and receipt logging.
@@ -154,6 +156,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Completed action demands now feed the same social-credit memory as supply demands, so doing an NPC's requested field work can soften that NPC's next Parley.
 - Open demand signals now share the crew-row social surface, so the local observer loop is visible before and after the player helps.
 - Targeted open demand signals are actionable from the crew row, tightening the loop between social complaint and farm location.
+- Drafted NPC-authored orders now update that same crew-row social surface, making the request feel moved onto the work board instead of stuck as raw complaint text.
 - NPC-authored work orders are the next local bridge: an ignored targeted demand can draft a crew order with source-demand metadata, and the existing agent action receipt completes both records.
 - Ignored authored orders now have deterministic escalation: a second missed morning records escalation metadata, sharpens the author irritation, and uses the existing crew queue to push the work forward.
 - Escalation bargains are deterministic too: the author attaches a tiny resource incentive to the linked order, the UI exposes the offer in demand and order rows, and order completion records and pays the incentive once.
