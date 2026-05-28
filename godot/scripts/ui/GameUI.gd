@@ -38,6 +38,8 @@ var _crafted_labels: Dictionary = {}
 var _craft_buttons: Dictionary = {}
 var _crafting_demand_rows: Dictionary = {}
 var _crafting_demand_list_stack: VBoxContainer
+var _crew_pending_demand_labels: Dictionary = {}
+var _crew_snapshots_by_id: Dictionary = {}
 var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
 var _work_order_list_stack: VBoxContainer
@@ -145,18 +147,21 @@ func set_crafting_demands(demands: Array) -> void:
 	if _crafting_demand_list_stack == null:
 		return
 
+	_crew_pending_demand_labels = _pending_demand_labels_from(demands)
 	for child in _crafting_demand_list_stack.get_children():
 		child.queue_free()
 	_crafting_demand_rows.clear()
 
 	if demands.is_empty():
 		_add_empty_crafting_demand_row(_crafting_demand_list_stack)
+		_refresh_crew_social_signals()
 		return
 
 	for demand in demands:
 		if typeof(demand) != TYPE_DICTIONARY:
 			continue
 		_add_crafting_demand_row(_crafting_demand_list_stack, demand)
+	_refresh_crew_social_signals()
 
 
 func set_work_orders(orders: Array) -> void:
@@ -273,31 +278,19 @@ func set_agent_snapshots(snapshots: Array) -> void:
 		if not _crew_rows.has(agent_id):
 			continue
 
+		_crew_snapshots_by_id[agent_id] = snapshot.duplicate(true)
 		var row: Dictionary = _crew_rows[agent_id]
 		var mood := float(snapshot.get("mood", 0.0))
 		var energy := float(snapshot.get("energy", 0.0))
 		var irritation := float(snapshot.get("irritation", 0.0))
 		var expression := str(snapshot.get("expression", "neutral"))
 		var action := _format_reaction_action(expression, _format_action(str(snapshot.get("action", "idle")), str(snapshot.get("phase", "idle"))))
-		var helped_today := int(snapshot.get("helped_today", 0))
-		var recent_help_label := str(snapshot.get("recent_help_label", ""))
-		var favor_spent_today := int(snapshot.get("favor_spent_today", 0))
-		var recent_spent_favor_label := str(snapshot.get("recent_spent_favor_label", ""))
 		(row["mood"] as ProgressBar).value = mood
 		(row["energy"] as ProgressBar).value = energy
 		var action_label := row["action"] as Label
 		action_label.text = action
 		action_label.add_theme_color_override("font_color", Color("#9a4936") if irritation >= 55.0 else (Color("#7f6335") if irritation >= 28.0 else Color("#5e5548")))
-		var social_label := row["social"] as Label
-		if helped_today > 0:
-			social_label.visible = true
-			social_label.text = _format_social_signal(helped_today, recent_help_label)
-		elif favor_spent_today > 0:
-			social_label.visible = true
-			social_label.text = _format_spent_favor_signal(favor_spent_today, recent_spent_favor_label)
-		else:
-			social_label.visible = false
-			social_label.text = ""
+		_apply_crew_social_signal(row, snapshot)
 		(row["mood_value"] as Label).text = "%s" % roundi(mood)
 		(row["card"] as PanelContainer).add_theme_stylebox_override("panel", _crew_row_style(mood))
 
@@ -1278,6 +1271,53 @@ func _format_spent_favor_signal(favor_spent_today: int, recent_spent_favor_label
 	if favor_spent_today > 1:
 		return "Favor spent x%s%s" % [favor_spent_today, suffix]
 	return "Favor spent%s" % suffix
+
+
+func _format_pending_demand_signal(demand_label: String) -> String:
+	return "Wants: %s" % demand_label
+
+
+func _pending_demand_labels_from(demands: Array) -> Dictionary:
+	var labels := {}
+	for demand in demands:
+		if typeof(demand) != TYPE_DICTIONARY:
+			continue
+		if str(demand.get("status", "")) != "open":
+			continue
+		var agent_id := str(demand.get("agent_id", ""))
+		if agent_id == "" or labels.has(agent_id):
+			continue
+		labels[agent_id] = str(demand.get("label", "Crew Demand"))
+	return labels
+
+
+func _refresh_crew_social_signals() -> void:
+	for agent_id in _crew_rows.keys():
+		var row: Dictionary = _crew_rows[agent_id]
+		var snapshot: Dictionary = _crew_snapshots_by_id.get(str(agent_id), {"id": str(agent_id)})
+		_apply_crew_social_signal(row, snapshot)
+
+
+func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
+	var agent_id := str(snapshot.get("id", ""))
+	var helped_today := int(snapshot.get("helped_today", 0))
+	var recent_help_label := str(snapshot.get("recent_help_label", ""))
+	var favor_spent_today := int(snapshot.get("favor_spent_today", 0))
+	var recent_spent_favor_label := str(snapshot.get("recent_spent_favor_label", ""))
+	var pending_demand_label := str(_crew_pending_demand_labels.get(agent_id, ""))
+	var social_label := row["social"] as Label
+	if helped_today > 0:
+		social_label.visible = true
+		social_label.text = _format_social_signal(helped_today, recent_help_label)
+	elif favor_spent_today > 0:
+		social_label.visible = true
+		social_label.text = _format_spent_favor_signal(favor_spent_today, recent_spent_favor_label)
+	elif pending_demand_label != "":
+		social_label.visible = true
+		social_label.text = _format_pending_demand_signal(pending_demand_label)
+	else:
+		social_label.visible = false
+		social_label.text = ""
 
 
 func _format_encounter_goal(session: Dictionary) -> String:

@@ -86,7 +86,7 @@ func _run() -> void:
 	if str(snapshot.get("recent_spent_favor_label", "")) != "":
 		_fail("Next morning did not clear Marigold's spent favor label.")
 		return
-	if social_label.visible:
+	if social_label.visible and social_label.text.contains("Favor spent"):
 		_fail("Crew row kept showing a spent favor after the next morning.")
 		return
 
