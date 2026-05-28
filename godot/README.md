@@ -31,7 +31,8 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Same-day help now gives that NPC a small Parley social-credit patience bump and appears in the opening grievance line.
 - The Parley panel now surfaces that social-credit cushion beside the patience meter as a visible favor bonus.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
-- Calling a Parley favor spends that NPC's same-day help credit, clears the crew-row signal, and prevents same-day reuse.
+- Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
+- Crew rows now keep spent favor markers visible until the next morning, making used social credit readable after Parley closes.
 - Called Parley favors now become day-summary receipts, including which NPC's favor was spent.
 - NPC end-day verdicts now prioritize spent favor receipts over generic helped-agent callouts.
 - The local vibe scorer now includes called Parley favors as named relationship reasons.
@@ -99,6 +100,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_parley_social_credit_ui.gd` exercises visible Parley favor bonus text after helping an NPC.
 - `tools/smoke_parley_call_favor.gd` exercises the one-use `Call favor` Parley response and fourth encounter button.
 - `tools/smoke_parley_favor_spend.gd` exercises spent favor clearing crew-row social credit and preventing same-day reuse.
+- `tools/smoke_parley_favor_spent_signal.gd` exercises visible spent-favor crew-row markers and next-morning clearing.
 - `tools/smoke_parley_favor_receipts.gd` exercises called-favor day-summary receipts and formatted summary text.
 - `tools/smoke_parley_favor_verdicts.gd` exercises NPC end-day verdicts that name a spent Parley favor.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
@@ -154,7 +156,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Bounded Parley sessions can consume same-day social credit too, turning a completed favor into a visible patience cushion without adding live model calls.
 - The encounter UI exposes that cushion as `Favor +N`, keeping social consequences readable during the argument.
 - Social credit is now playable during Parley through a one-use favor call that advances repair while recording the remembered supply.
-- Spent social credit clears from the target crew snapshot after the Parley result, so future local observers see it as used instead of banked.
+- Spent social credit clears the banked help and adds a spent-favor marker to the target crew snapshot, so future local observers see it as used instead of banked.
 - Called favors now land in the day summary as named relationship receipts, giving future verdict and UI layers a clean hook for spent goodwill.
 - NPC summary comments now read those spent-goodwill receipts first, so favor use feels socially noticed instead of hidden behind generic help.
 - The threshold-based vibe scorer also reads spent-goodwill receipts, so future observer prompts can inherit named social context from local scoring.

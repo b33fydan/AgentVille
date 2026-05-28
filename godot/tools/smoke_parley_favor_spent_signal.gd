@@ -21,7 +21,7 @@ func _run() -> void:
 		"required_item": "seed_bundle",
 		"amount": 1,
 		"label": "Deliver Seed Bundle",
-		"reason": "Marigold should spend the favor when it is called."
+		"reason": "Marigold should show spent favor feedback after Parley."
 	}, {
 		"agent_id": "marigold",
 		"agent_name": "Marigold"
@@ -49,7 +49,7 @@ func _run() -> void:
 
 	var own_it_button := _encounter_button(scene, "Own it")
 	if own_it_button == null:
-		_fail("Parley did not keep normal repair choices after Call favor.")
+		_fail("Parley did not keep a normal repair response after Call favor.")
 		return
 	own_it_button.pressed.emit()
 	await process_frame
@@ -57,11 +57,11 @@ func _run() -> void:
 
 	var agent_manager = scene.get_node("FarmWorld/AgentManager")
 	var snapshot := _agent_snapshot(agent_manager, "marigold")
-	if int(snapshot.get("helped_today", -1)) != 0:
-		_fail("Calling a favor did not spend Marigold's same-day helped credit.")
+	if int(snapshot.get("favor_spent_today", 0)) != 1:
+		_fail("Calling a favor did not mark Marigold's favor as spent today.")
 		return
-	if str(snapshot.get("recent_help_label", "")) != "":
-		_fail("Calling a favor did not clear Marigold's recent help label.")
+	if str(snapshot.get("recent_spent_favor_label", "")) != "Seed Bundle":
+		_fail("Spent favor snapshot did not keep the Seed Bundle label.")
 		return
 
 	var social_label := _crew_social_label(scene, "marigold")
@@ -69,16 +69,25 @@ func _run() -> void:
 		_fail("Crew row did not expose Marigold's social label.")
 		return
 	if not social_label.visible:
-		_fail("Marigold crew row did not keep a visible spent favor signal.")
+		_fail("Crew row did not show Marigold's spent favor signal.")
 		return
 	if not social_label.text.contains("Favor spent") or not social_label.text.contains("Seed Bundle"):
-		_fail("Marigold crew row did not show the spent Seed Bundle favor.")
+		_fail("Crew row spent favor signal did not name the Seed Bundle.")
 		return
 
-	scene.call("_on_adversarial_encounter_requested", "marigold")
+	scene.call("_on_advance_day_requested")
 	await process_frame
-	if _encounter_button(scene, "Call favor") != null:
-		_fail("Spent favor was available again in the next Parley.")
+	await process_frame
+
+	snapshot = _agent_snapshot(agent_manager, "marigold")
+	if int(snapshot.get("favor_spent_today", -1)) != 0:
+		_fail("Next morning did not clear Marigold's spent favor count.")
+		return
+	if str(snapshot.get("recent_spent_favor_label", "")) != "":
+		_fail("Next morning did not clear Marigold's spent favor label.")
+		return
+	if social_label.visible:
+		_fail("Crew row kept showing a spent favor after the next morning.")
 		return
 
 	scene.queue_free()

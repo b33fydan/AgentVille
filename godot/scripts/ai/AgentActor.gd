@@ -72,6 +72,8 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"reaction_intensity": 0.0,
 		"helped_today": 0,
 		"recent_help_label": "",
+		"favor_spent_today": 0,
+		"recent_spent_favor_label": "",
 		"current_action": "idle",
 		"current_phase": "idle"
 	}
@@ -105,6 +107,8 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 		state["energy"] = minf(100.0, float(state.get("energy", 60.0)) + 24.0)
 		state["helped_today"] = 0
 		state["recent_help_label"] = ""
+		state["favor_spent_today"] = 0
+		state["recent_spent_favor_label"] = ""
 		_decision_timer = minf(_decision_timer, 0.8)
 		state_changed.emit(get_snapshot())
 		return
@@ -203,6 +207,8 @@ func get_snapshot() -> Dictionary:
 		"reaction_intensity": float(state.get("reaction_intensity", 0.0)),
 		"helped_today": int(state.get("helped_today", 0)),
 		"recent_help_label": str(state.get("recent_help_label", "")),
+		"favor_spent_today": int(state.get("favor_spent_today", 0)),
+		"recent_spent_favor_label": str(state.get("recent_spent_favor_label", "")),
 		"morale_boost": _morale_boost_timer,
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
@@ -227,10 +233,22 @@ func apply_adversarial_result(result: Dictionary) -> void:
 			state["expression"] = "neutral"
 	state["reaction_intensity"] = maxf(float(state.get("reaction_intensity", 0.0)), 0.82)
 	if bool(result.get("social_credit_used", false)):
+		var spent_label := _spent_favor_label(str(result.get("social_credit_label", "")))
+		if spent_label == "":
+			spent_label = str(state.get("recent_help_label", ""))
+		state["favor_spent_today"] = int(state.get("favor_spent_today", 0)) + 1
+		state["recent_spent_favor_label"] = spent_label
 		state["helped_today"] = 0
 		state["recent_help_label"] = ""
 	_update_expression_visuals()
 	state_changed.emit(get_snapshot())
+
+
+func _spent_favor_label(social_credit_label: String) -> String:
+	var help_label := social_credit_label.replace("Helped today: ", "")
+	if help_label == "" or help_label == "Helped today":
+		return ""
+	return help_label
 
 
 func acknowledge_supply_delivery(item_label: String, payoff_label: String = "") -> void:

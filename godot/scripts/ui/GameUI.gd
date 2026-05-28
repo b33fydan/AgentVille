@@ -281,6 +281,8 @@ func set_agent_snapshots(snapshots: Array) -> void:
 		var action := _format_reaction_action(expression, _format_action(str(snapshot.get("action", "idle")), str(snapshot.get("phase", "idle"))))
 		var helped_today := int(snapshot.get("helped_today", 0))
 		var recent_help_label := str(snapshot.get("recent_help_label", ""))
+		var favor_spent_today := int(snapshot.get("favor_spent_today", 0))
+		var recent_spent_favor_label := str(snapshot.get("recent_spent_favor_label", ""))
 		(row["mood"] as ProgressBar).value = mood
 		(row["energy"] as ProgressBar).value = energy
 		var action_label := row["action"] as Label
@@ -290,6 +292,9 @@ func set_agent_snapshots(snapshots: Array) -> void:
 		if helped_today > 0:
 			social_label.visible = true
 			social_label.text = _format_social_signal(helped_today, recent_help_label)
+		elif favor_spent_today > 0:
+			social_label.visible = true
+			social_label.text = _format_spent_favor_signal(favor_spent_today, recent_spent_favor_label)
 		else:
 			social_label.visible = false
 			social_label.text = ""
@@ -1266,6 +1271,13 @@ func _format_social_signal(helped_today: int, recent_help_label: String) -> Stri
 	if helped_today > 1:
 		return "Helped today x%s%s" % [helped_today, suffix]
 	return "Helped today%s" % suffix
+
+
+func _format_spent_favor_signal(favor_spent_today: int, recent_spent_favor_label: String) -> String:
+	var suffix := ": %s" % recent_spent_favor_label if recent_spent_favor_label != "" else ""
+	if favor_spent_today > 1:
+		return "Favor spent x%s%s" % [favor_spent_today, suffix]
+	return "Favor spent%s" % suffix
 
 
 func _format_encounter_goal(session: Dictionary) -> String:
