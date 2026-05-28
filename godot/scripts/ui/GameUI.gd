@@ -39,6 +39,7 @@ var _craft_buttons: Dictionary = {}
 var _crafting_demand_rows: Dictionary = {}
 var _crafting_demand_list_stack: VBoxContainer
 var _crew_pending_demand_labels: Dictionary = {}
+var _crew_pending_demand_target_ids: Dictionary = {}
 var _crew_snapshots_by_id: Dictionary = {}
 var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
@@ -148,6 +149,7 @@ func set_crafting_demands(demands: Array) -> void:
 		return
 
 	_crew_pending_demand_labels = _pending_demand_labels_from(demands)
+	_crew_pending_demand_target_ids = _pending_demand_target_ids_from(demands)
 	for child in _crafting_demand_list_stack.get_children():
 		child.queue_free()
 	_crafting_demand_rows.clear()
@@ -629,8 +631,12 @@ func _add_crew_row(parent: VBoxContainer, agent_id: String, agent_name: String, 
 	var social_label := Label.new()
 	social_label.text = ""
 	social_label.visible = false
+	social_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	social_label.add_theme_font_size_override("font_size", 10)
 	social_label.add_theme_color_override("font_color", Color("#5f7f39"))
+	social_label.gui_input.connect(func(event: InputEvent) -> void:
+		_on_crew_social_signal_input(agent_id, event)
+	)
 	stack.add_child(social_label)
 
 	var bars := HBoxContainer.new()
@@ -1291,6 +1297,25 @@ func _pending_demand_labels_from(demands: Array) -> Dictionary:
 	return labels
 
 
+func _pending_demand_target_ids_from(demands: Array) -> Dictionary:
+	var target_ids := {}
+	var seen_agents := {}
+	for demand in demands:
+		if typeof(demand) != TYPE_DICTIONARY:
+			continue
+		if str(demand.get("status", "")) != "open":
+			continue
+		var agent_id := str(demand.get("agent_id", ""))
+		if agent_id == "" or seen_agents.has(agent_id):
+			continue
+		seen_agents[agent_id] = true
+		if typeof(demand.get("target_tile", null)) == TYPE_VECTOR2I:
+			var demand_id := str(demand.get("id", ""))
+			if demand_id != "":
+				target_ids[agent_id] = demand_id
+	return target_ids
+
+
 func _refresh_crew_social_signals() -> void:
 	for agent_id in _crew_rows.keys():
 		var row: Dictionary = _crew_rows[agent_id]
@@ -1305,19 +1330,58 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var favor_spent_today := int(snapshot.get("favor_spent_today", 0))
 	var recent_spent_favor_label := str(snapshot.get("recent_spent_favor_label", ""))
 	var pending_demand_label := str(_crew_pending_demand_labels.get(agent_id, ""))
+	var pending_demand_target_id := str(_crew_pending_demand_target_ids.get(agent_id, ""))
 	var social_label := row["social"] as Label
 	if helped_today > 0:
 		social_label.visible = true
 		social_label.text = _format_social_signal(helped_today, recent_help_label)
+		_configure_crew_social_target(social_label, "")
 	elif favor_spent_today > 0:
 		social_label.visible = true
 		social_label.text = _format_spent_favor_signal(favor_spent_today, recent_spent_favor_label)
+		_configure_crew_social_target(social_label, "")
 	elif pending_demand_label != "":
 		social_label.visible = true
 		social_label.text = _format_pending_demand_signal(pending_demand_label)
+		_configure_crew_social_target(social_label, pending_demand_target_id)
 	else:
 		social_label.visible = false
 		social_label.text = ""
+		_configure_crew_social_target(social_label, "")
+
+
+func _configure_crew_social_target(social_label: Label, demand_id: String) -> void:
+	social_label.set_meta("crew_demand_id", demand_id)
+	if demand_id == "":
+		social_label.tooltip_text = ""
+		social_label.mouse_default_cursor_shape = Control.CURSOR_ARROW
+		social_label.mouse_filter = Control.MOUSE_FILTER_PASS
+		return
+	social_label.tooltip_text = "Focus demand target"
+	social_label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	social_label.mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+func _on_crew_social_signal_input(agent_id: String, event: InputEvent) -> void:
+	if not event is InputEventMouseButton:
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var row: Dictionary = _crew_rows.get(agent_id, {})
+	if not row.has("social"):
+		return
+	var social_label := row["social"] as Label
+	if social_label == null or not social_label.visible:
+		return
+	var demand_id := str(social_label.get_meta("crew_demand_id", ""))
+	if demand_id == "":
+		return
+	sound_requested.emit("ui_click")
+	crafting_demand_target_requested.emit(demand_id)
+	var viewport := get_viewport()
+	if viewport != null:
+		viewport.set_input_as_handled()
 
 
 func _format_encounter_goal(session: Dictionary) -> String:
