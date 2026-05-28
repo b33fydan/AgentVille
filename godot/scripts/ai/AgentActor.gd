@@ -226,6 +226,9 @@ func apply_adversarial_result(result: Dictionary) -> void:
 		_:
 			state["expression"] = "neutral"
 	state["reaction_intensity"] = maxf(float(state.get("reaction_intensity", 0.0)), 0.82)
+	if bool(result.get("social_credit_used", false)):
+		state["helped_today"] = 0
+		state["recent_help_label"] = ""
 	_update_expression_visuals()
 	state_changed.emit(get_snapshot())
 
