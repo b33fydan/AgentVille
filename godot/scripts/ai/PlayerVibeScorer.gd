@@ -11,6 +11,7 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	var craft_count := int(summary.get("craft_count", 0))
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
 	var helped_agents: Dictionary = summary.get("helped_agents", {})
+	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var reasons: Array[String] = []
 	var score := 50
 	var label := "quiet"
@@ -38,6 +39,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	if not helped_agents.is_empty():
 		score += mini(12, helped_agents.size() * 4 + int(summary.get("completed_agent_demands", 0)) * 2)
 		reasons.append("helped %s" % _format_helped_agent_names(helped_agents))
+	if not favored_agents.is_empty():
+		score += mini(8, favored_agents.size() * 4 + int(summary.get("called_favors", 0)) * 2)
+		reasons.append("called %s" % _format_called_favor_names(favored_agents))
 	if failed > 0:
 		reasons.append("%s missed actions" % failed)
 
@@ -78,6 +82,23 @@ func _format_helped_agent_names(helped_agents: Dictionary) -> String:
 		var name := str(receipt.get("name", str(agent_id).capitalize()))
 		if name != "" and not names.has(name):
 			names.append(name)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_called_favor_names(favored_agents: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in favored_agents.keys():
+		var receipt: Dictionary = favored_agents.get(agent_id, {})
+		var name := str(receipt.get("name", str(agent_id).capitalize()))
+		if name == "":
+			continue
+		var count := int(receipt.get("called_favors", 0))
+		var label := "%s's favor" % name
+		if count > 1:
+			label += " x%s" % count
+		if not names.has(label):
+			names.append(label)
 	names.sort()
 	return _join_names(names)
 

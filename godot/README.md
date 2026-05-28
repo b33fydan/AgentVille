@@ -34,6 +34,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Calling a Parley favor spends that NPC's same-day help credit, clears the crew-row signal, and prevents same-day reuse.
 - Called Parley favors now become day-summary receipts, including which NPC's favor was spent.
 - NPC end-day verdicts now prioritize spent favor receipts over generic helped-agent callouts.
+- The local vibe scorer now includes called Parley favors as named relationship reasons.
 - The crew panel's Parley button opens the first bounded grievance encounter with a patience meter and local menu responses.
 - Repeated failed actions or chaotic day summaries can queue a crew grievance and pulse the Parley button.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
@@ -89,7 +90,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_npc_order_escalation.gd` exercises second-day escalation for ignored NPC-authored orders, including escalation receipts, author pressure, auto-send, and source-demand completion.
 - `tools/smoke_npc_escalation_bargains.gd` exercises escalated NPC-authored order incentives, compact demand-row bargain text, payout, and receipt logging.
 - `tools/smoke_order_bargain_row.gd` exercises compact `Bonus` and `Claimed` bargain states in the crew-order row.
-- `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, formatted day summaries, and NPC vibe verdicts.
+- `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, called-favor vibe reasons, formatted day summaries, and NPC vibe verdicts.
 - `tools/smoke_supply_help_vibe.gd` exercises demand-row `Prep` and `Give` supply help counting as player work in day vibe summaries.
 - `tools/smoke_social_receipts.gd` exercises helped-agent receipts and end-day summary callouts after supply delivery.
 - `tools/smoke_crew_social_signal.gd` exercises crew-row helped-today signals and next-morning clearing.
@@ -156,6 +157,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Spent social credit clears from the target crew snapshot after the Parley result, so future local observers see it as used instead of banked.
 - Called favors now land in the day summary as named relationship receipts, giving future verdict and UI layers a clean hook for spent goodwill.
 - NPC summary comments now read those spent-goodwill receipts first, so favor use feels socially noticed instead of hidden behind generic help.
+- The threshold-based vibe scorer also reads spent-goodwill receipts, so future observer prompts can inherit named social context from local scoring.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
 
 For now, LSTM/ML is intentionally out of the runtime loop. The current seam is the decision model: replace or wrap `UtilityAgentDecisionModel.gd` when the game has enough action history to justify learned intent prediction.

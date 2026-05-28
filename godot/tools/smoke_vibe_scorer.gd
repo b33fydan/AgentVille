@@ -55,6 +55,30 @@ func _run() -> void:
 		_fail("Craft action was not counted in day summary.")
 		return
 
+	var favor_log := Node.new()
+	favor_log.set_script(GameEventLogScript)
+	root.add_child(favor_log)
+	favor_log.call("record_event", "player_action", {
+		"day": 3,
+		"action": "deliver_supply",
+		"success": true,
+		"value": 0,
+		"resources": {}
+	})
+	favor_log.call("record_event", "adversarial_session", {
+		"day": 3,
+		"agent_id": "marigold",
+		"agent_name": "Marigold",
+		"outcome": "resolved",
+		"social_credit_used": true,
+		"social_credit_label": "Helped today: Seed Bundle"
+	})
+	var favor_summary: Dictionary = favor_log.call("build_day_summary", 3)
+	var favor_vibe: Dictionary = favor_summary.get("vibe", {})
+	if not _reasons_contain(favor_vibe.get("reasons", []), "called Marigold's favor"):
+		_fail("Called Parley favor was not included in vibe reasons.")
+		return
+
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	await process_frame
@@ -77,3 +101,12 @@ func _run() -> void:
 func _fail(message: String) -> void:
 	push_error(message)
 	quit(1)
+
+
+func _reasons_contain(reasons, needle: String) -> bool:
+	if typeof(reasons) != TYPE_ARRAY:
+		return false
+	for reason in reasons:
+		if str(reason).contains(needle):
+			return true
+	return false
