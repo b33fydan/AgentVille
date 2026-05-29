@@ -313,6 +313,9 @@ func _on_crafting_demand_target_requested(demand_id: String) -> void:
 		camera_controller.call("focus_world_position", tile.global_position, 6.8)
 	if tile.has_method("pulse_demand_marker"):
 		tile.call("pulse_demand_marker")
+	var authored_order_id := str(demand.get("authored_order_id", ""))
+	if authored_order_id != "" and work_orders.has(authored_order_id) and tile.has_method("pulse_order_marker"):
+		tile.call("pulse_order_marker")
 	game_ui.show_message("%s wants %s." % [str(demand.get("agent_name", "Crew")), str(demand.get("label", "that target"))])
 	sound_manager.play_stamp("ui_click")
 

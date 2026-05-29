@@ -106,6 +106,15 @@ func pulse_demand_marker() -> void:
 	tween.tween_property(_demand_marker_root, "scale", Vector3.ONE, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
+func pulse_order_marker() -> void:
+	if _order_marker_root == null or not _order_marker_root.visible:
+		return
+
+	var tween := create_tween()
+	_order_marker_root.scale = Vector3.ONE * 1.18
+	tween.tween_property(_order_marker_root, "scale", Vector3.ONE, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
 func set_terrain(new_terrain: String) -> bool:
 	terrain = new_terrain
 	is_tilled = new_terrain == "soil"
