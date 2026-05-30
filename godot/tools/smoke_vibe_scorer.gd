@@ -79,6 +79,26 @@ func _run() -> void:
 		_fail("Called Parley favor was not included in vibe reasons.")
 		return
 
+	var memory_log := Node.new()
+	memory_log.set_script(GameEventLogScript)
+	root.add_child(memory_log)
+	memory_log.call("record_event", "adversarial_session", {
+		"day": 4,
+		"agent_id": "marigold",
+		"agent_name": "Marigold",
+		"outcome": "resolved",
+		"social_credit_used": false,
+		"remembered_help_label": "Seed Bundle"
+	})
+	var memory_summary: Dictionary = memory_log.call("build_day_summary", 4)
+	var memory_vibe: Dictionary = memory_summary.get("vibe", {})
+	if str(memory_vibe.get("label", "")) == "neglectful":
+		_fail("Remembered Parley context was scored as pure neglect.")
+		return
+	if not _reasons_contain(memory_vibe.get("reasons", []), "remembered Marigold's Seed Bundle"):
+		_fail("Remembered Parley context was not included in vibe reasons.")
+		return
+
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	await process_frame

@@ -74,6 +74,10 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"recent_help_label": "",
 		"favor_spent_today": 0,
 		"recent_spent_favor_label": "",
+		"remembered_help_label": "",
+		"remembered_help_days": 0,
+		"memory_discussed_today": 0,
+		"recent_discussed_memory_label": "",
 		"current_action": "idle",
 		"current_phase": "idle"
 	}
@@ -104,11 +108,14 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 	memory.remember_event(event)
 
 	if str(event.get("type", "")) == "day_advanced":
+		_roll_daily_social_credit_into_memory()
 		state["energy"] = minf(100.0, float(state.get("energy", 60.0)) + 24.0)
 		state["helped_today"] = 0
 		state["recent_help_label"] = ""
 		state["favor_spent_today"] = 0
 		state["recent_spent_favor_label"] = ""
+		state["memory_discussed_today"] = 0
+		state["recent_discussed_memory_label"] = ""
 		_decision_timer = minf(_decision_timer, 0.8)
 		state_changed.emit(get_snapshot())
 		return
@@ -209,12 +216,39 @@ func get_snapshot() -> Dictionary:
 		"recent_help_label": str(state.get("recent_help_label", "")),
 		"favor_spent_today": int(state.get("favor_spent_today", 0)),
 		"recent_spent_favor_label": str(state.get("recent_spent_favor_label", "")),
+		"remembered_help_label": str(state.get("remembered_help_label", "")),
+		"remembered_help_days": int(state.get("remembered_help_days", 0)),
+		"memory_discussed_today": int(state.get("memory_discussed_today", 0)),
+		"recent_discussed_memory_label": str(state.get("recent_discussed_memory_label", "")),
 		"morale_boost": _morale_boost_timer,
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
 		"grid_pos": current_grid_pos,
 		"target_grid_pos": target_grid_pos
 	}
+
+
+func _roll_daily_social_credit_into_memory() -> void:
+	var next_memory := ""
+	if int(state.get("helped_today", 0)) > 0:
+		next_memory = str(state.get("recent_help_label", ""))
+	elif int(state.get("favor_spent_today", 0)) > 0:
+		next_memory = str(state.get("recent_spent_favor_label", ""))
+
+	if next_memory != "":
+		state["remembered_help_label"] = next_memory
+		state["remembered_help_days"] = 1
+		return
+
+	var remembered_days := int(state.get("remembered_help_days", 0))
+	if remembered_days <= 0:
+		state["remembered_help_label"] = ""
+		return
+
+	remembered_days -= 1
+	state["remembered_help_days"] = remembered_days
+	if remembered_days <= 0:
+		state["remembered_help_label"] = ""
 
 
 func apply_adversarial_result(result: Dictionary) -> void:
@@ -240,6 +274,13 @@ func apply_adversarial_result(result: Dictionary) -> void:
 		state["recent_spent_favor_label"] = spent_label
 		state["helped_today"] = 0
 		state["recent_help_label"] = ""
+	var remembered_label := str(result.get("remembered_help_label", "")).strip_edges()
+	if remembered_label != "":
+		state["memory_discussed_today"] = int(state.get("memory_discussed_today", 0)) + 1
+		state["recent_discussed_memory_label"] = remembered_label
+		if str(state.get("remembered_help_label", "")) == remembered_label:
+			state["remembered_help_label"] = ""
+			state["remembered_help_days"] = 0
 	_update_expression_visuals()
 	state_changed.emit(get_snapshot())
 

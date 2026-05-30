@@ -12,11 +12,15 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
 	var helped_agents: Dictionary = summary.get("helped_agents", {})
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
+	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
 	var reasons: Array[String] = []
 	var score := 50
 	var label := "quiet"
 
 	if total == 0:
+		if not remembered_help_sessions.is_empty():
+			reasons.append("remembered %s during Parley" % _format_remembered_help_session_names(remembered_help_sessions))
+			return _result("careful", 54, reasons)
 		reasons.append("no player farm work logged")
 		return _result("neglectful", 18, reasons)
 
@@ -42,6 +46,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	if not favored_agents.is_empty():
 		score += mini(8, favored_agents.size() * 4 + int(summary.get("called_favors", 0)) * 2)
 		reasons.append("called %s" % _format_called_favor_names(favored_agents))
+	if not remembered_help_sessions.is_empty():
+		score += mini(6, remembered_help_sessions.size() * 3 + int(summary.get("memory_context_sessions", 0)))
+		reasons.append("remembered %s during Parley" % _format_remembered_help_session_names(remembered_help_sessions))
 	if failed > 0:
 		reasons.append("%s missed actions" % failed)
 
@@ -95,6 +102,24 @@ func _format_called_favor_names(favored_agents: Dictionary) -> String:
 			continue
 		var count := int(receipt.get("called_favors", 0))
 		var label := "%s's favor" % name
+		if count > 1:
+			label += " x%s" % count
+		if not names.has(label):
+			names.append(label)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_remembered_help_session_names(memory_sessions: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in memory_sessions.keys():
+		var receipt: Dictionary = memory_sessions.get(agent_id, {})
+		var name := str(receipt.get("name", str(agent_id).capitalize()))
+		var memory_label := str(receipt.get("last_memory_label", ""))
+		if name == "" or memory_label == "":
+			continue
+		var count := int(receipt.get("memory_context_sessions", 0))
+		var label := "%s's %s" % [name, memory_label]
 		if count > 1:
 			label += " x%s" % count
 		if not names.has(label):

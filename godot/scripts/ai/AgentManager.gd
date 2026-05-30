@@ -215,6 +215,17 @@ func _summary_comment(summary: Dictionary) -> String:
 	var helped_names := _format_helped_agent_names(helped_agents)
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var favor_names := _format_called_favor_names(favored_agents)
+	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
+	var memory_names := _format_remembered_help_session_names(remembered_help_sessions)
+
+	if memory_names != "":
+		match personality:
+			"grizzled":
+				return "%s: \"Remembered %s during Parley. Context logged; still not a blank check.\"" % [name, memory_names]
+			"hopeful":
+				return "%s: \"Remembered %s during Parley. That kind of care keeps the room warmer.\"" % [name, memory_names]
+			"chaotic":
+				return "%s: \"Remembered %s during Parley. Friendship ledger glittered, allegedly.\"" % [name, memory_names]
 
 	if total == 0:
 		match personality:
@@ -320,6 +331,24 @@ func _format_called_favor_names(favored_agents: Dictionary) -> String:
 			continue
 		var count := int(receipt.get("called_favors", 0))
 		var label := "%s's favor" % favored_name
+		if count > 1:
+			label += " x%s" % count
+		if not names.has(label):
+			names.append(label)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_remembered_help_session_names(memory_sessions: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in memory_sessions.keys():
+		var receipt: Dictionary = memory_sessions.get(agent_id, {})
+		var remembered_name := str(receipt.get("name", str(agent_id).capitalize()))
+		var memory_label := str(receipt.get("last_memory_label", ""))
+		if remembered_name == "" or memory_label == "":
+			continue
+		var count := int(receipt.get("memory_context_sessions", 0))
+		var label := "%s's %s" % [remembered_name, memory_label]
 		if count > 1:
 			label += " x%s" % count
 		if not names.has(label):

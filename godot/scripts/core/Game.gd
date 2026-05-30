@@ -451,6 +451,10 @@ func _apply_adversarial_result(result: Dictionary) -> void:
 	if not crafting_demand.is_empty():
 		_create_crafting_demand(crafting_demand, payload)
 
+	var remembered_help_label := str(payload.get("remembered_help_label", "")).strip_edges()
+	if remembered_help_label != "":
+		game_ui.add_field_log("Memory discussed: %s remembered %s." % [str(payload.get("agent_name", "Crew")), remembered_help_label])
+
 	var verdict := str(payload.get("verdict", "The encounter ended."))
 	game_ui.add_field_log(verdict)
 	game_ui.show_message(_format_adversarial_result(payload))
@@ -2290,13 +2294,18 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
 	var helped_agents: Dictionary = summary.get("helped_agents", {})
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
+	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
+	var remembered_context_text := _format_remembered_help_session_names(remembered_help_sessions)
 	var top_action := str(summary.get("top_action", "none"))
 	var vibe: Dictionary = summary.get("vibe", {})
 	var vibe_label := str(vibe.get("label", "mixed"))
 	var vibe_score := int(vibe.get("score", 50))
 
 	if total == 0:
-		return "Day %s: neglectful, no farm work logged." % int(summary.get("day", 1))
+		var empty_line := "Day %s: neglectful, no farm work logged" % int(summary.get("day", 1))
+		if remembered_context_text != "":
+			empty_line += ", remembered %s" % remembered_context_text
+		return empty_line + "."
 
 	var line := "Day %s: %s vibe (%s), %s actions, %s missed" % [int(summary.get("day", 1)), vibe_label, vibe_score, total, failed]
 	if harvest_value > 0:
@@ -2307,6 +2316,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", settled %s/%s grievances" % [resolved_adversarial_sessions, adversarial_session_count]
 	if called_favors > 0:
 		line += ", called %s" % _format_called_favor_names(favored_agents)
+	if remembered_context_text != "":
+		line += ", remembered %s" % remembered_context_text
 	if craft_count > 0:
 		line += ", %s craft%s" % [craft_count, "" if craft_count == 1 else "s"]
 	if supply_deliveries > 0:
@@ -2399,6 +2410,24 @@ func _format_called_favor_names(favored_agents: Dictionary) -> String:
 	names.sort()
 	if names.is_empty():
 		return "a favor"
+	return _join_names(names)
+
+
+func _format_remembered_help_session_names(memory_sessions: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in memory_sessions.keys():
+		var receipt: Dictionary = memory_sessions.get(agent_id, {})
+		var name := str(receipt.get("name", str(agent_id).capitalize()))
+		var memory_label := str(receipt.get("last_memory_label", ""))
+		if name == "" or memory_label == "":
+			continue
+		var count := int(receipt.get("memory_context_sessions", 0))
+		var label := "%s's %s" % [name, memory_label]
+		if count > 1:
+			label += " x%s" % count
+		if not names.has(label):
+			names.append(label)
+	names.sort()
 	return _join_names(names)
 
 

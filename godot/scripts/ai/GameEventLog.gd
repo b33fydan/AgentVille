@@ -51,6 +51,8 @@ func build_day_summary(day: int) -> Dictionary:
 		"resolved_adversarial_sessions": 0,
 		"called_favors": 0,
 		"favored_agents": {},
+		"memory_context_sessions": 0,
+		"remembered_help_sessions": {},
 		"total_player_actions": 0,
 		"top_action": "none",
 		"notable_events": [],
@@ -108,6 +110,9 @@ func build_day_summary(day: int) -> Dictionary:
 				if bool(event.get("social_credit_used", false)):
 					summary["called_favors"] += 1
 					_add_called_favor_summary(summary, event)
+				if str(event.get("remembered_help_label", "")) != "":
+					summary["memory_context_sessions"] += 1
+					_add_remembered_help_session_summary(summary, event)
 				summary["notable_events"].append(event)
 
 	var top_action := "none"
@@ -168,6 +173,24 @@ func _add_called_favor_summary(summary: Dictionary, event: Dictionary) -> void:
 	receipt["last_favor_label"] = _favor_help_label(str(event.get("social_credit_label", "")))
 	favored_agents[agent_id] = receipt
 	summary["favored_agents"] = favored_agents
+
+
+func _add_remembered_help_session_summary(summary: Dictionary, event: Dictionary) -> void:
+	var agent_id := str(event.get("agent_id", ""))
+	if agent_id == "":
+		return
+
+	var remembered_sessions: Dictionary = summary["remembered_help_sessions"]
+	var receipt: Dictionary = remembered_sessions.get(agent_id, {
+		"name": str(event.get("agent_name", "Crew")),
+		"memory_context_sessions": 0,
+		"last_memory_label": ""
+	})
+	receipt["name"] = str(event.get("agent_name", receipt.get("name", "Crew")))
+	receipt["memory_context_sessions"] = int(receipt.get("memory_context_sessions", 0)) + 1
+	receipt["last_memory_label"] = str(event.get("remembered_help_label", ""))
+	remembered_sessions[agent_id] = receipt
+	summary["remembered_help_sessions"] = remembered_sessions
 
 
 func _favor_help_label(social_credit_label: String) -> String:

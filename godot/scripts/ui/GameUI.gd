@@ -317,7 +317,7 @@ func set_adversarial_session(session: Dictionary) -> void:
 	_encounter_title_label.text = "%s'S GRIEVANCE" % agent_name.to_upper()
 	_encounter_meter.value = float(session.get("patience_meter", 0.0))
 	_encounter_goal_label.text = _format_encounter_goal(session)
-	_encounter_goal_label.tooltip_text = str(session.get("social_credit_label", ""))
+	_encounter_goal_label.tooltip_text = _encounter_goal_tooltip(session)
 	_encounter_line_label.text = str(session.get("npc_line", ""))
 	_encounter_choices = session.get("choices", [])
 
@@ -1285,6 +1285,19 @@ func _format_spent_favor_signal(favor_spent_today: int, recent_spent_favor_label
 	return "Favor spent%s" % suffix
 
 
+func _format_memory_signal(remembered_help_label: String) -> String:
+	if remembered_help_label == "":
+		return "Remembers help"
+	return "Remembers: %s" % remembered_help_label
+
+
+func _format_discussed_memory_signal(memory_discussed_today: int, recent_discussed_memory_label: String) -> String:
+	var suffix := ": %s" % recent_discussed_memory_label if recent_discussed_memory_label != "" else ""
+	if memory_discussed_today > 1:
+		return "Discussed x%s%s" % [memory_discussed_today, suffix]
+	return "Discussed%s" % suffix
+
+
 func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants", detail: String = "") -> String:
 	match signal_state:
 		"bonus":
@@ -1414,11 +1427,14 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var recent_help_label := str(snapshot.get("recent_help_label", ""))
 	var favor_spent_today := int(snapshot.get("favor_spent_today", 0))
 	var recent_spent_favor_label := str(snapshot.get("recent_spent_favor_label", ""))
+	var memory_discussed_today := int(snapshot.get("memory_discussed_today", 0))
+	var recent_discussed_memory_label := str(snapshot.get("recent_discussed_memory_label", ""))
 	var pending_demand_detail := str(_crew_pending_demand_details.get(agent_id, ""))
 	var pending_demand_label := str(_crew_pending_demand_labels.get(agent_id, ""))
 	var pending_demand_order_id := str(_crew_pending_demand_order_ids.get(agent_id, ""))
 	var pending_demand_signal_state := str(_crew_pending_demand_signal_states.get(agent_id, "wants"))
 	var pending_demand_target_id := str(_crew_pending_demand_target_ids.get(agent_id, ""))
+	var remembered_help_label := str(snapshot.get("remembered_help_label", ""))
 	var social_label := row["social"] as Label
 	if helped_today > 0:
 		social_label.visible = true
@@ -1432,19 +1448,34 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 		social_label.visible = true
 		social_label.text = _format_pending_demand_signal(pending_demand_label, pending_demand_signal_state, pending_demand_detail)
 		_configure_crew_social_target(social_label, pending_demand_target_id, pending_demand_order_id)
+	elif memory_discussed_today > 0:
+		social_label.visible = true
+		social_label.text = _format_discussed_memory_signal(memory_discussed_today, recent_discussed_memory_label)
+		_configure_crew_social_target(social_label, "", "", agent_id, recent_discussed_memory_label)
+	elif remembered_help_label != "":
+		social_label.visible = true
+		social_label.text = _format_memory_signal(remembered_help_label)
+		_configure_crew_social_target(social_label, "", "")
 	else:
 		social_label.visible = false
 		social_label.text = ""
 		_configure_crew_social_target(social_label, "", "")
 
 
-func _configure_crew_social_target(social_label: Label, demand_id: String, order_id: String = "") -> void:
+func _configure_crew_social_target(social_label: Label, demand_id: String, order_id: String = "", memory_agent_id: String = "", memory_label: String = "") -> void:
 	social_label.set_meta("crew_demand_id", demand_id)
 	social_label.set_meta("crew_order_id", order_id)
-	if demand_id == "":
+	social_label.set_meta("crew_memory_agent_id", memory_agent_id)
+	social_label.set_meta("crew_memory_label", memory_label)
+	if demand_id == "" and memory_label == "":
 		social_label.tooltip_text = ""
 		social_label.mouse_default_cursor_shape = Control.CURSOR_ARROW
 		social_label.mouse_filter = Control.MOUSE_FILTER_PASS
+		return
+	if memory_label != "":
+		social_label.tooltip_text = "Replay discussed memory"
+		social_label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		social_label.mouse_filter = Control.MOUSE_FILTER_STOP
 		return
 	social_label.tooltip_text = "Focus target and send order" if order_id != "" else "Focus demand target"
 	social_label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -1464,9 +1495,19 @@ func _on_crew_social_signal_input(agent_id: String, event: InputEvent) -> void:
 	if social_label == null or not social_label.visible:
 		return
 	var demand_id := str(social_label.get_meta("crew_demand_id", ""))
-	if demand_id == "":
+	var memory_label := str(social_label.get_meta("crew_memory_label", ""))
+	if demand_id == "" and memory_label == "":
 		return
 	sound_requested.emit("ui_click")
+	if memory_label != "":
+		var agent_name := _crew_name_for(str(social_label.get_meta("crew_memory_agent_id", agent_id)))
+		var message := "Memory discussed: %s remembered %s." % [agent_name, memory_label]
+		add_field_log(message)
+		show_message(message)
+		var memory_viewport := get_viewport()
+		if memory_viewport != null:
+			memory_viewport.set_input_as_handled()
+		return
 	crafting_demand_target_requested.emit(demand_id)
 	var order_id := str(social_label.get_meta("crew_order_id", ""))
 	if order_id != "":
@@ -1476,13 +1517,30 @@ func _on_crew_social_signal_input(agent_id: String, event: InputEvent) -> void:
 		viewport.set_input_as_handled()
 
 
+func _crew_name_for(agent_id: String) -> String:
+	var snapshot: Dictionary = _crew_snapshots_by_id.get(agent_id, {})
+	return str(snapshot.get("name", agent_id.capitalize()))
+
+
 func _format_encounter_goal(session: Dictionary) -> String:
 	var patience := roundi(float(session.get("patience_meter", 0.0)))
 	var turns := int(session.get("max_turns", 3)) - int(session.get("turn_count", 0))
 	var social_credit_bonus := roundi(float(session.get("social_credit_bonus", 0.0)))
 	if social_credit_bonus > 0:
 		return "Patience %s | Favor +%s | Turns %s" % [patience, social_credit_bonus, turns]
+	if str(session.get("remembered_help_label", "")) != "":
+		return "Patience %s | Memory | Turns %s" % [patience, turns]
 	return "Patience %s | Turns %s" % [patience, turns]
+
+
+func _encounter_goal_tooltip(session: Dictionary) -> String:
+	var social_credit_label := str(session.get("social_credit_label", ""))
+	if social_credit_label != "":
+		return social_credit_label
+	var remembered_help_label := str(session.get("remembered_help_label", ""))
+	if remembered_help_label != "":
+		return "Remembered help: %s" % remembered_help_label
+	return ""
 
 
 func _format_action(action: String, phase: String = "idle") -> String:

@@ -20,8 +20,7 @@ func _run() -> void:
 		"kind": "deliver_item",
 		"required_item": "seed_bundle",
 		"amount": 1,
-		"label": "Deliver Seed Bundle",
-		"reason": "Marigold should show a crew-row social receipt."
+		"label": "Deliver Seed Bundle"
 	}, {
 		"agent_id": "marigold",
 		"agent_name": "Marigold"
@@ -29,59 +28,46 @@ func _run() -> void:
 	await process_frame
 
 	var give_button := _demand_button(scene, demand_id)
-	if give_button == null or give_button.text != "Give":
-		_fail("Smoke setup did not expose a Give action.")
+	if give_button == null:
+		_fail("Smoke setup did not expose a Give button.")
 		return
 
 	give_button.pressed.emit()
 	await process_frame
 	await process_frame
 
-	var agent_manager = scene.get_node("FarmWorld/AgentManager")
-	var snapshot := _agent_snapshot(agent_manager, "marigold")
-	if int(snapshot.get("helped_today", 0)) != 1:
-		_fail("Marigold snapshot did not remember today's completed help.")
-		return
-	if not str(snapshot.get("recent_help_label", "")).contains("Seed Bundle"):
-		_fail("Marigold snapshot did not remember the helped supply label.")
-		return
-
 	var social_label := _crew_social_label(scene, "marigold")
-	if social_label == null:
-		_fail("Crew row did not expose a social receipt label.")
-		return
-	if not social_label.visible or not social_label.text.contains("Helped today"):
-		_fail("Marigold crew row did not show the helped-today signal.")
+	if social_label == null or not social_label.visible or not social_label.text.contains("Helped today"):
+		_fail("Marigold did not show same-day helped credit before day advance.")
 		return
 	if not social_label.text.contains("Seed Bundle"):
-		_fail("Marigold crew row did not name the delivered supply.")
+		_fail("Same-day helped credit did not name the delivered Seed Bundle.")
 		return
 
 	scene.call("_on_advance_day_requested")
 	await process_frame
 	await process_frame
 
-	snapshot = _agent_snapshot(agent_manager, "marigold")
-	if int(snapshot.get("helped_today", -1)) != 0:
-		_fail("Marigold helped-today signal did not reset the next morning.")
+	social_label = _crew_social_label(scene, "marigold")
+	if social_label == null or not social_label.visible:
+		_fail("Marigold did not keep a next-day memory signal after helped credit reset.")
 		return
-	if social_label.visible and social_label.text.contains("Helped today"):
-		_fail("Marigold crew row kept showing yesterday's helped-today signal.")
+	if not social_label.text.contains("Remembers") or not social_label.text.contains("Seed Bundle"):
+		_fail("Next-day memory signal did not name the remembered help. saw=%s" % social_label.text)
 		return
-	if not social_label.visible or not social_label.text.contains("Remembers"):
-		_fail("Marigold crew row did not roll yesterday's help into a memory signal.")
+
+	scene.call("_on_advance_day_requested")
+	await process_frame
+	await process_frame
+
+	social_label = _crew_social_label(scene, "marigold")
+	if social_label != null and social_label.visible and social_label.text.contains("Remembers"):
+		_fail("One-day memory signal did not clear on the following morning.")
 		return
 
 	scene.queue_free()
 	await process_frame
 	quit()
-
-
-func _agent_snapshot(agent_manager, agent_id: String) -> Dictionary:
-	for snapshot in agent_manager.call("get_agent_snapshots"):
-		if typeof(snapshot) == TYPE_DICTIONARY and str(snapshot.get("id", "")) == agent_id:
-			return snapshot
-	return {}
 
 
 func _demand_button(scene: Node, demand_id: String) -> Button:

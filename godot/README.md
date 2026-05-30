@@ -27,15 +27,24 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - End-day summaries now include a local player vibe label such as chaotic, productive, careful, or neglectful.
 - End-day summaries now remember which NPCs were helped through completed crew demands.
 - Crew rows now show a same-day helped signal after a delivered supply, then clear it the next morning.
+- Cleared same-day help now rolls into a one-day `Remembers` crew-row signal, so NPC gratitude stays readable without remaining spendable.
 - NPC end-day verdicts now acknowledge helped crew members by name before falling back to generic action summaries.
 - Same-day help now gives that NPC a small Parley social-credit patience bump and appears in the opening grievance line.
 - The Parley panel now surfaces that social-credit cushion beside the patience meter as a visible favor bonus.
+- Next-day remembered help can appear as non-spendable `Memory` context in Parley, without granting a favor button or patience bump.
+- Memory-backed Parley can mark that context as `Discussed` in the crew row after the encounter, then clear it the next morning.
+- Memory-backed Parley also writes a compact Field Log receipt when remembered context is discussed.
+- Clicking a `Discussed` crew-row memory signal replays that memory receipt in the Field Log and toast.
+- Discussed memory cannot be reused as fresh Parley `Memory` context again on the same day.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
 - Crew rows now keep spent favor markers visible until the next morning, making used social credit readable after Parley closes.
 - Called Parley favors now become day-summary receipts, including which NPC's favor was spent.
+- Parley sessions that use next-day memory context now become day-summary receipts too, without counting as called favors.
 - NPC end-day verdicts now prioritize spent favor receipts over generic helped-agent callouts.
+- NPC end-day verdicts now also notice remembered-help Parley context before falling back to quiet-day commentary.
 - The local vibe scorer now includes called Parley favors as named relationship reasons.
+- The local vibe scorer now includes remembered-help Parley context as named relationship work instead of scoring those quiet days as pure neglect.
 - The crew panel's Parley button opens the first bounded grievance encounter with a patience meter and local menu responses.
 - Repeated failed actions or chaotic day summaries can queue a crew grievance and pulse the Parley button.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
@@ -107,17 +116,25 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_npc_escalation_bargains.gd` exercises escalated NPC-authored order incentives, compact demand-row bargain text, payout, and receipt logging.
 - `tools/smoke_order_bargain_row.gd` exercises compact `Bonus` and `Claimed` bargain states in the crew-order row.
 - `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, called-favor vibe reasons, formatted day summaries, and NPC vibe verdicts.
+- `tools/smoke_vibe_scorer.gd` also exercises remembered-help Parley context in local vibe reasons.
 - `tools/smoke_supply_help_vibe.gd` exercises demand-row `Prep` and `Give` supply help counting as player work in day vibe summaries.
 - `tools/smoke_social_receipts.gd` exercises helped-agent receipts and end-day summary callouts after supply delivery.
 - `tools/smoke_crew_social_signal.gd` exercises crew-row helped-today signals and next-morning clearing.
+- `tools/smoke_crew_memory_signal.gd` exercises helped credit rolling into a one-day next-morning memory signal.
 - `tools/smoke_social_verdicts.gd` exercises NPC day-end verdicts that name helped crew members.
 - `tools/smoke_parley_social_credit.gd` exercises same-day help softening the helped NPC's next Parley patience meter.
 - `tools/smoke_parley_social_credit_ui.gd` exercises visible Parley favor bonus text after helping an NPC.
+- `tools/smoke_parley_memory_context.gd` exercises next-day remembered help surfacing in Parley without becoming spendable favor credit.
+- `tools/smoke_parley_memory_discussed_signal.gd` exercises remembered-help Parley switching the crew row from `Remembers` to `Discussed`.
+- `tools/smoke_parley_memory_discussed_signal.gd` also exercises the immediate Field Log receipt for discussed memory and click-to-replay feedback.
+- `tools/smoke_parley_memory_single_use.gd` exercises discussed memory staying single-use inside same-day Parley sessions.
 - `tools/smoke_parley_call_favor.gd` exercises the one-use `Call favor` Parley response and fourth encounter button.
 - `tools/smoke_parley_favor_spend.gd` exercises spent favor clearing crew-row social credit and preventing same-day reuse.
 - `tools/smoke_parley_favor_spent_signal.gd` exercises visible spent-favor crew-row markers and next-morning clearing.
 - `tools/smoke_parley_favor_receipts.gd` exercises called-favor day-summary receipts and formatted summary text.
+- `tools/smoke_parley_memory_context.gd` also exercises remembered-help Parley receipts and formatted summary text.
 - `tools/smoke_parley_favor_verdicts.gd` exercises NPC end-day verdicts that name a spent Parley favor.
+- `tools/smoke_parley_memory_verdicts.gd` exercises NPC end-day verdicts that name remembered-help Parley context without calling it a favor.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
@@ -175,14 +192,23 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - End-day summaries turn action history into compact receipts the crew can judge.
 - Social receipts remember which crew members the player helped, so future local or model-driven observers can reason from named relationships instead of raw counts alone.
 - Crew snapshots now surface a compact same-day social signal, keeping the relationship receipt visible while the player is still making choices.
+- Same-day social credit now rolls into a one-day memory signal after dawn, separating harmless remembered help from spendable Parley favor.
 - NPC verdicts can now speak from those social receipts, turning completed demands into named relationship feedback.
 - Bounded Parley sessions can consume same-day social credit too, turning a completed favor into a visible patience cushion without adding live model calls.
 - The encounter UI exposes that cushion as `Favor +N`, keeping social consequences readable during the argument.
+- Next-day memory appears separately as Parley `Memory` context, so remembered goodwill can color the encounter without becoming a second favor economy.
+- Discussed memory gets its own temporary crew-row state, so used context stops looking untouched while still avoiding a second favor economy.
+- Discussed memory also lands as an immediate Field Log receipt, making the non-spendable memory use visible without waiting for end-day summaries.
+- Discussed memory signals are clickable local receipts, letting the player replay that social context without reopening Parley.
+- Same-day discussed memory is single-use: later Parley sessions ignore it until a future day creates new remembered context.
 - Social credit is now playable during Parley through a one-use favor call that advances repair while recording the remembered supply.
 - Spent social credit clears the banked help and adds a spent-favor marker to the target crew snapshot, so future local observers see it as used instead of banked.
 - Called favors now land in the day summary as named relationship receipts, giving future verdict and UI layers a clean hook for spent goodwill.
+- Remembered Parley context lands in the day summary as its own named receipt, giving future observer/model layers a clean hook without treating it as spendable goodwill.
 - NPC summary comments now read those spent-goodwill receipts first, so favor use feels socially noticed instead of hidden behind generic help.
+- NPC summary comments now read remembered-help Parley receipts too, so next-day memory can affect commentary without becoming a gameplay coupon.
 - The threshold-based vibe scorer also reads spent-goodwill receipts, so future observer prompts can inherit named social context from local scoring.
+- It also reads remembered-help Parley receipts, keeping the future observer/model input aware of non-spendable relationship memory.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
 
 For now, LSTM/ML is intentionally out of the runtime loop. The current seam is the decision model: replace or wrap `UtilityAgentDecisionModel.gd` when the game has enough action history to justify learned intent prediction.

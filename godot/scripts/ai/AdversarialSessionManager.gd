@@ -33,11 +33,14 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 	var recent_failures := int(context.get("recent_failures", _count_recent_failures(context.get("recent_events", []))))
 	var social_credit_bonus := _social_credit_patience_bonus(agent_snapshot, context)
 	var social_credit_label := _social_credit_label(agent_snapshot, context)
+	var remembered_help_label := _remembered_help_label(agent_snapshot, context)
 	var starting_patience := clampf(76.0 - irritation * 0.36 - float(recent_failures * 4) + social_credit_bonus, 32.0, 94.0)
 	var grievance := _build_grievance(agent_snapshot, context)
 	var grievance_text := str(grievance.get("text", "The crew wants a word."))
 	if social_credit_label != "":
 		grievance_text = "%s %s" % [_social_credit_opening_note(personality_trait, social_credit_label), grievance_text]
+	elif remembered_help_label != "":
+		grievance_text = "%s %s" % [_remembered_help_opening_note(personality_trait, remembered_help_label), grievance_text]
 	var session_id := "arg_%03d" % _next_session_number
 	_next_session_number += 1
 
@@ -53,6 +56,7 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 		"social_credit_bonus": social_credit_bonus,
 		"social_credit_label": social_credit_label,
 		"social_credit_used": false,
+		"remembered_help_label": remembered_help_label,
 		"resolution_meter": 0.0,
 		"turn_count": 0,
 		"max_turns": MAX_TURNS,
@@ -287,6 +291,16 @@ func _social_credit_label(agent_snapshot: Dictionary, context: Dictionary) -> St
 	return "Helped today: %s" % help_label
 
 
+func _remembered_help_label(agent_snapshot: Dictionary, context: Dictionary) -> String:
+	if _social_credit_patience_bonus(agent_snapshot, context) > 0.0:
+		return ""
+	if int(agent_snapshot.get("memory_discussed_today", context.get("memory_discussed_today", 0))) > 0:
+		return ""
+
+	var help_label := str(agent_snapshot.get("remembered_help_label", context.get("remembered_help_label", "")))
+	return help_label.strip_edges()
+
+
 func _social_credit_opening_note(personality_trait: String, social_credit_label: String) -> String:
 	var help_label := _social_credit_help_label(social_credit_label)
 	match personality_trait:
@@ -297,6 +311,17 @@ func _social_credit_opening_note(personality_trait: String, social_credit_label:
 		"chaotic":
 			return "You did help with %s today, so the complaint has a tiny cushion." % help_label
 	return "You did help with %s today, so this starts calmer." % help_label
+
+
+func _remembered_help_opening_note(personality_trait: String, help_label: String) -> String:
+	match personality_trait:
+		"grizzled":
+			return "I remember the %s. That is context, not a coupon." % help_label
+		"hopeful":
+			return "I remember the %s, and I am carrying that into this." % help_label
+		"chaotic":
+			return "The %s is still in the friendship ledger. Mildly glowing." % help_label
+	return "I remember the %s, and that matters." % help_label
 
 
 func _social_credit_help_label(social_credit_label: String) -> String:
