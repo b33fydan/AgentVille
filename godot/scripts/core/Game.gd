@@ -600,12 +600,16 @@ func _age_open_crafting_demands() -> void:
 			var authored_label := _work_order_label(str(authored_order.get("action", "")), authored_order.get("target_tile", Vector2i.ZERO))
 			game_ui.add_field_log("%s drafted a crew order for %s." % [str(demand.get("agent_name", "Crew")), authored_label])
 		if _agent_manager:
-			_agent_manager.call("apply_adversarial_result", {
-				"agent_id": str(demand.get("agent_id", "")),
-				"outcome": "walked_away",
-				"agent_mood_delta": -1.0,
-				"agent_irritation_delta": 5.0
-			})
+			var agent_id := str(demand.get("agent_id", ""))
+			if bool(_agent_manager.call("has_active_truce", agent_id)):
+				game_ui.add_field_log("%s's truce kept the pressure low." % str(demand.get("agent_name", "Crew")))
+			else:
+				_agent_manager.call("apply_adversarial_result", {
+					"agent_id": agent_id,
+					"outcome": "walked_away",
+					"agent_mood_delta": -1.0,
+					"agent_irritation_delta": 5.0
+				})
 	_refresh_crafting_demands()
 
 
@@ -1336,7 +1340,35 @@ func _escalate_ignored_npc_authored_orders() -> void:
 			continue
 		if int(order.get("escalated_day", 0)) == grid_manager.day:
 			continue
+		if _delay_escalation_with_truce(order_id):
+			continue
 		_escalate_npc_authored_order(order_id)
+
+
+func _delay_escalation_with_truce(order_id: String) -> bool:
+	if _agent_manager == null or not work_orders.has(order_id):
+		return false
+
+	var order: Dictionary = work_orders[order_id]
+	var author_id := str(order.get("author_agent_id", ""))
+	if author_id == "":
+		return false
+
+	var escalation_label := _work_order_label(str(order.get("action", "")), order.get("target_tile", Vector2i.ZERO))
+	var receipt: Dictionary = _agent_manager.call("absorb_order_escalation_with_truce", author_id, escalation_label)
+	if receipt.is_empty():
+		return false
+
+	order["truce_delayed_day"] = grid_manager.day
+	order["truce_label"] = str(receipt.get("truce_label", ""))
+	order["last_escalation"] = "truce"
+	order["status_text"] = "%s truce" % str(order.get("author_agent_name", "Crew"))
+	work_orders[order_id] = order
+	_refresh_work_orders()
+	_refresh_crafting_demands()
+	_record_work_order_event(order_id, "truce_delayed")
+	game_ui.add_field_log("%s held truce over %s." % [str(order.get("author_agent_name", "Crew")), escalation_label])
+	return true
 
 
 func _escalate_npc_authored_order(order_id: String) -> bool:
@@ -2155,6 +2187,8 @@ func _record_work_order_event(order_id: String, status: String) -> void:
 		"escalation_count": int(order.get("escalation_count", 0)),
 		"escalated_day": int(order.get("escalated_day", 0)),
 		"last_escalation": str(order.get("last_escalation", "")),
+		"truce_delayed_day": int(order.get("truce_delayed_day", 0)),
+		"truce_label": str(order.get("truce_label", "")),
 		"incentive_label": str(order.get("incentive_label", "")),
 		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
 		"incentive_claimed": bool(order.get("incentive_claimed", false))
@@ -2178,6 +2212,8 @@ func _record_removed_work_order_event(order: Dictionary, status: String) -> void
 		"escalation_count": int(order.get("escalation_count", 0)),
 		"escalated_day": int(order.get("escalated_day", 0)),
 		"last_escalation": str(order.get("last_escalation", "")),
+		"truce_delayed_day": int(order.get("truce_delayed_day", 0)),
+		"truce_label": str(order.get("truce_label", "")),
 		"incentive_label": str(order.get("incentive_label", "")),
 		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
 		"incentive_claimed": bool(order.get("incentive_claimed", false))
@@ -2292,6 +2328,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var player_actions: Dictionary = summary.get("player_actions", {})
 	var supply_deliveries := int(player_actions.get("deliver_supply", 0))
 	var resources_gained: Dictionary = summary.get("resources_gained", {})
+	var work_order_events: Dictionary = summary.get("work_order_events", {})
+	var truce_delayed_orders := int(work_order_events.get("truce_delayed", 0))
 	var helped_agents: Dictionary = summary.get("helped_agents", {})
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
@@ -2305,6 +2343,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		var empty_line := "Day %s: neglectful, no farm work logged" % int(summary.get("day", 1))
 		if remembered_context_text != "":
 			empty_line += ", remembered %s" % remembered_context_text
+		if truce_delayed_orders > 0:
+			empty_line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 		return empty_line + "."
 
 	var line := "Day %s: %s vibe (%s), %s actions, %s missed" % [int(summary.get("day", 1)), vibe_label, vibe_score, total, failed]
@@ -2318,6 +2358,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", called %s" % _format_called_favor_names(favored_agents)
 	if remembered_context_text != "":
 		line += ", remembered %s" % remembered_context_text
+	if truce_delayed_orders > 0:
+		line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 	if craft_count > 0:
 		line += ", %s craft%s" % [craft_count, "" if craft_count == 1 else "s"]
 	if supply_deliveries > 0:

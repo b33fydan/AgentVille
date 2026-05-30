@@ -1298,6 +1298,12 @@ func _format_discussed_memory_signal(memory_discussed_today: int, recent_discuss
 	return "Discussed%s" % suffix
 
 
+func _format_truce_signal(truce_label: String) -> String:
+	if truce_label == "":
+		return "Truce"
+	return "Truce: %s" % truce_label
+
+
 func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants", detail: String = "") -> String:
 	match signal_state:
 		"bonus":
@@ -1429,6 +1435,8 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var recent_spent_favor_label := str(snapshot.get("recent_spent_favor_label", ""))
 	var memory_discussed_today := int(snapshot.get("memory_discussed_today", 0))
 	var recent_discussed_memory_label := str(snapshot.get("recent_discussed_memory_label", ""))
+	var truce_days := int(snapshot.get("truce_days", 0))
+	var truce_label := str(snapshot.get("truce_label", ""))
 	var pending_demand_detail := str(_crew_pending_demand_details.get(agent_id, ""))
 	var pending_demand_label := str(_crew_pending_demand_labels.get(agent_id, ""))
 	var pending_demand_order_id := str(_crew_pending_demand_order_ids.get(agent_id, ""))
@@ -1452,6 +1460,10 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 		social_label.visible = true
 		social_label.text = _format_discussed_memory_signal(memory_discussed_today, recent_discussed_memory_label)
 		_configure_crew_social_target(social_label, "", "", agent_id, recent_discussed_memory_label)
+	elif truce_days > 0:
+		social_label.visible = true
+		social_label.text = _format_truce_signal(truce_label)
+		_configure_crew_social_target(social_label, "", "")
 	elif remembered_help_label != "":
 		social_label.visible = true
 		social_label.text = _format_memory_signal(remembered_help_label)

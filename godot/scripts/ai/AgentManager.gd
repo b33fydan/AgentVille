@@ -132,6 +132,32 @@ func apply_adversarial_result(result: Dictionary) -> void:
 		return
 
 
+func absorb_order_escalation_with_truce(agent_id: String, order_label: String) -> Dictionary:
+	if agent_id == "":
+		return {}
+
+	for agent in agents:
+		if str(agent.get("agent_id")) != agent_id:
+			continue
+		var receipt: Dictionary = agent.call("try_absorb_order_escalation_with_truce", order_label)
+		if not receipt.is_empty():
+			crew_updated.emit(get_agent_snapshots())
+		return receipt
+	return {}
+
+
+func has_active_truce(agent_id: String) -> bool:
+	if agent_id == "":
+		return false
+
+	for agent in agents:
+		if str(agent.get("agent_id")) != agent_id:
+			continue
+		var snapshot: Dictionary = agent.call("get_snapshot")
+		return int(snapshot.get("truce_days", 0)) > 0 and str(snapshot.get("truce_label", "")) != ""
+	return false
+
+
 func acknowledge_supply_delivery(agent_id: String, item_label: String, payoff_label: String = "") -> void:
 	if agent_id == "":
 		return

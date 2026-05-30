@@ -78,6 +78,9 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"remembered_help_days": 0,
 		"memory_discussed_today": 0,
 		"recent_discussed_memory_label": "",
+		"truce_label": "",
+		"truce_days": 0,
+		"truce_absorbed_today": 0,
 		"current_action": "idle",
 		"current_phase": "idle"
 	}
@@ -220,6 +223,9 @@ func get_snapshot() -> Dictionary:
 		"remembered_help_days": int(state.get("remembered_help_days", 0)),
 		"memory_discussed_today": int(state.get("memory_discussed_today", 0)),
 		"recent_discussed_memory_label": str(state.get("recent_discussed_memory_label", "")),
+		"truce_label": str(state.get("truce_label", "")),
+		"truce_days": int(state.get("truce_days", 0)),
+		"truce_absorbed_today": int(state.get("truce_absorbed_today", 0)),
 		"morale_boost": _morale_boost_timer,
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
@@ -229,6 +235,18 @@ func get_snapshot() -> Dictionary:
 
 
 func _roll_daily_social_credit_into_memory() -> void:
+	var discussed_label := str(state.get("recent_discussed_memory_label", "")).strip_edges()
+	if int(state.get("memory_discussed_today", 0)) > 0 and discussed_label != "":
+		state["truce_label"] = discussed_label
+		state["truce_days"] = 1
+		state["truce_absorbed_today"] = 0
+	elif int(state.get("truce_days", 0)) > 0:
+		var truce_days := int(state.get("truce_days", 0)) - 1
+		state["truce_days"] = maxi(0, truce_days)
+		state["truce_absorbed_today"] = 0
+		if truce_days <= 0:
+			state["truce_label"] = ""
+
 	var next_memory := ""
 	if int(state.get("helped_today", 0)) > 0:
 		next_memory = str(state.get("recent_help_label", ""))
@@ -283,6 +301,28 @@ func apply_adversarial_result(result: Dictionary) -> void:
 			state["remembered_help_days"] = 0
 	_update_expression_visuals()
 	state_changed.emit(get_snapshot())
+
+
+func try_absorb_order_escalation_with_truce(order_label: String) -> Dictionary:
+	var truce_label := str(state.get("truce_label", "")).strip_edges()
+	if truce_label == "" or int(state.get("truce_days", 0)) <= 0:
+		return {}
+	if int(state.get("truce_absorbed_today", 0)) > 0:
+		return {}
+
+	state["truce_absorbed_today"] = int(state.get("truce_absorbed_today", 0)) + 1
+	state["mood"] = clampf(float(state.get("mood", 50.0)) + 0.6, 0.0, 100.0)
+	state["irritation"] = clampf(float(state.get("irritation", 0.0)) - 2.0, 0.0, 100.0)
+	state["expression"] = "side_eye"
+	state["reaction_intensity"] = maxf(float(state.get("reaction_intensity", 0.0)), 0.48)
+	_update_expression_visuals()
+	state_changed.emit(get_snapshot())
+	return {
+		"agent_id": agent_id,
+		"agent_name": display_name,
+		"truce_label": truce_label,
+		"order_label": order_label
+	}
 
 
 func _spent_favor_label(social_credit_label: String) -> String:
