@@ -40,6 +40,7 @@ var _crafting_demand_rows: Dictionary = {}
 var _crafting_demand_list_stack: VBoxContainer
 var _crew_pending_demand_details: Dictionary = {}
 var _crew_pending_demand_labels: Dictionary = {}
+var _crew_pending_demand_order_ids: Dictionary = {}
 var _crew_pending_demand_signal_states: Dictionary = {}
 var _crew_pending_demand_target_ids: Dictionary = {}
 var _crew_snapshots_by_id: Dictionary = {}
@@ -152,6 +153,7 @@ func set_crafting_demands(demands: Array) -> void:
 
 	_crew_pending_demand_details = _pending_demand_details_from(demands)
 	_crew_pending_demand_labels = _pending_demand_labels_from(demands)
+	_crew_pending_demand_order_ids = _pending_demand_order_ids_from(demands)
 	_crew_pending_demand_signal_states = _pending_demand_signal_states_from(demands)
 	_crew_pending_demand_target_ids = _pending_demand_target_ids_from(demands)
 	for child in _crafting_demand_list_stack.get_children():
@@ -1323,6 +1325,22 @@ func _pending_demand_labels_from(demands: Array) -> Dictionary:
 	return labels
 
 
+func _pending_demand_order_ids_from(demands: Array) -> Dictionary:
+	var order_ids := {}
+	for demand in demands:
+		if typeof(demand) != TYPE_DICTIONARY:
+			continue
+		if str(demand.get("status", "")) != "open":
+			continue
+		var agent_id := str(demand.get("agent_id", ""))
+		if agent_id == "" or order_ids.has(agent_id):
+			continue
+		var order_id := str(demand.get("authored_order_id", ""))
+		if order_id != "":
+			order_ids[agent_id] = order_id
+	return order_ids
+
+
 func _pending_demand_signal_states_from(demands: Array) -> Dictionary:
 	var states := {}
 	for demand in demands:
@@ -1390,35 +1408,37 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var recent_spent_favor_label := str(snapshot.get("recent_spent_favor_label", ""))
 	var pending_demand_detail := str(_crew_pending_demand_details.get(agent_id, ""))
 	var pending_demand_label := str(_crew_pending_demand_labels.get(agent_id, ""))
+	var pending_demand_order_id := str(_crew_pending_demand_order_ids.get(agent_id, ""))
 	var pending_demand_signal_state := str(_crew_pending_demand_signal_states.get(agent_id, "wants"))
 	var pending_demand_target_id := str(_crew_pending_demand_target_ids.get(agent_id, ""))
 	var social_label := row["social"] as Label
 	if helped_today > 0:
 		social_label.visible = true
 		social_label.text = _format_social_signal(helped_today, recent_help_label)
-		_configure_crew_social_target(social_label, "")
+		_configure_crew_social_target(social_label, "", "")
 	elif favor_spent_today > 0:
 		social_label.visible = true
 		social_label.text = _format_spent_favor_signal(favor_spent_today, recent_spent_favor_label)
-		_configure_crew_social_target(social_label, "")
+		_configure_crew_social_target(social_label, "", "")
 	elif pending_demand_label != "":
 		social_label.visible = true
 		social_label.text = _format_pending_demand_signal(pending_demand_label, pending_demand_signal_state, pending_demand_detail)
-		_configure_crew_social_target(social_label, pending_demand_target_id)
+		_configure_crew_social_target(social_label, pending_demand_target_id, pending_demand_order_id)
 	else:
 		social_label.visible = false
 		social_label.text = ""
-		_configure_crew_social_target(social_label, "")
+		_configure_crew_social_target(social_label, "", "")
 
 
-func _configure_crew_social_target(social_label: Label, demand_id: String) -> void:
+func _configure_crew_social_target(social_label: Label, demand_id: String, order_id: String = "") -> void:
 	social_label.set_meta("crew_demand_id", demand_id)
+	social_label.set_meta("crew_order_id", order_id)
 	if demand_id == "":
 		social_label.tooltip_text = ""
 		social_label.mouse_default_cursor_shape = Control.CURSOR_ARROW
 		social_label.mouse_filter = Control.MOUSE_FILTER_PASS
 		return
-	social_label.tooltip_text = "Focus demand target"
+	social_label.tooltip_text = "Focus target and send order" if order_id != "" else "Focus demand target"
 	social_label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	social_label.mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -1440,6 +1460,9 @@ func _on_crew_social_signal_input(agent_id: String, event: InputEvent) -> void:
 		return
 	sound_requested.emit("ui_click")
 	crafting_demand_target_requested.emit(demand_id)
+	var order_id := str(social_label.get_meta("crew_order_id", ""))
+	if order_id != "":
+		work_order_requested.emit(order_id)
 	var viewport := get_viewport()
 	if viewport != null:
 		viewport.set_input_as_handled()
