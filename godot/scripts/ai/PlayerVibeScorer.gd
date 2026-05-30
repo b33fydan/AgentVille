@@ -13,6 +13,8 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	var helped_agents: Dictionary = summary.get("helped_agents", {})
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
+	var work_order_events: Dictionary = summary.get("work_order_events", {})
+	var truce_delayed_orders := int(work_order_events.get("truce_delayed", 0))
 	var reasons: Array[String] = []
 	var score := 50
 	var label := "quiet"
@@ -21,6 +23,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 		if not remembered_help_sessions.is_empty():
 			reasons.append("remembered %s during Parley" % _format_remembered_help_session_names(remembered_help_sessions))
 			return _result("careful", 54, reasons)
+		if truce_delayed_orders > 0:
+			reasons.append("truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"])
+			return _result("careful", 52, reasons)
 		reasons.append("no player farm work logged")
 		return _result("neglectful", 18, reasons)
 
@@ -49,6 +54,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	if not remembered_help_sessions.is_empty():
 		score += mini(6, remembered_help_sessions.size() * 3 + int(summary.get("memory_context_sessions", 0)))
 		reasons.append("remembered %s during Parley" % _format_remembered_help_session_names(remembered_help_sessions))
+	if truce_delayed_orders > 0:
+		score += mini(6, truce_delayed_orders * 3)
+		reasons.append("truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"])
 	if failed > 0:
 		reasons.append("%s missed actions" % failed)
 

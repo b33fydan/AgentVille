@@ -106,6 +106,10 @@ func _run() -> void:
 	if not summary_line.contains("truce delayed") or not summary_line.contains("1 order"):
 		_fail("Formatted day summary did not mention the truce-delayed order. saw=%s" % summary_line)
 		return
+	var verdict := str(agent_manager.call("_summary_comment", summary))
+	if not verdict.to_lower().contains("truce") or verdict.to_lower().contains("neglectful"):
+		_fail("NPC verdict did not notice the held truce before quiet-day commentary. saw=%s" % verdict)
+		return
 
 	scene.call("_on_advance_day_requested")
 	await process_frame

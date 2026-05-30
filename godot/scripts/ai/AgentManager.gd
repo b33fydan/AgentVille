@@ -243,6 +243,18 @@ func _summary_comment(summary: Dictionary) -> String:
 	var favor_names := _format_called_favor_names(favored_agents)
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
 	var memory_names := _format_remembered_help_session_names(remembered_help_sessions)
+	var work_order_events: Dictionary = summary.get("work_order_events", {})
+	var truce_delayed_orders := int(work_order_events.get("truce_delayed", 0))
+
+	if truce_delayed_orders > 0:
+		var order_text := "%s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
+		match personality:
+			"grizzled":
+				return "%s: \"Truce held on %s. Pressure postponed, not forgotten.\"" % [name, order_text]
+			"hopeful":
+				return "%s: \"The truce held on %s. That bought the farm a calmer morning.\"" % [name, order_text]
+			"chaotic":
+				return "%s: \"Truce held on %s. Emotional duct tape, but surprisingly load-bearing.\"" % [name, order_text]
 
 	if memory_names != "":
 		match personality:

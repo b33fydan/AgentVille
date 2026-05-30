@@ -99,6 +99,27 @@ func _run() -> void:
 		_fail("Remembered Parley context was not included in vibe reasons.")
 		return
 
+	var truce_log := Node.new()
+	truce_log.set_script(GameEventLogScript)
+	root.add_child(truce_log)
+	truce_log.call("record_event", "work_order", {
+		"day": 5,
+		"order_id": "order_777",
+		"label": "Bert: Clear 0,1",
+		"status": "truce_delayed",
+		"author_agent_id": "bert",
+		"author_agent_name": "Bert",
+		"truce_label": "Fence Kit"
+	})
+	var truce_summary: Dictionary = truce_log.call("build_day_summary", 5)
+	var truce_vibe: Dictionary = truce_summary.get("vibe", {})
+	if str(truce_vibe.get("label", "")) != "careful":
+		_fail("Truce-delayed quiet day did not score as careful. saw=%s" % str(truce_vibe.get("label", "")))
+		return
+	if not _reasons_contain(truce_vibe.get("reasons", []), "truce delayed 1 order"):
+		_fail("Truce-delayed order was not included in vibe reasons.")
+		return
+
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	await process_frame

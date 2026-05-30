@@ -39,6 +39,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Discussed memory now rolls into a one-day `Truce` crew-row signal the next morning.
 - A fresh memory truce can delay one ignored NPC-authored order escalation, keeping same-day demand pressure low and recording the delay in the day summary.
 - When a truce absorbs an escalation, the crew row switches to `Truce held` so the social state stays visible over the queued demand.
+- NPC end-day verdicts now notice truce-delayed orders before falling back to quiet-day commentary.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
 - Crew rows now keep spent favor markers visible until the next morning, making used social credit readable after Parley closes.
@@ -48,6 +49,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - NPC end-day verdicts now also notice remembered-help Parley context before falling back to quiet-day commentary.
 - The local vibe scorer now includes called Parley favors as named relationship reasons.
 - The local vibe scorer now includes remembered-help Parley context as named relationship work instead of scoring those quiet days as pure neglect.
+- The local vibe scorer now treats truce-delayed order days as careful relationship maintenance instead of pure neglect.
 - The crew panel's Parley button opens the first bounded grievance encounter with a patience meter and local menu responses.
 - Repeated failed actions or chaotic day summaries can queue a crew grievance and pulse the Parley button.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
@@ -120,6 +122,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_order_bargain_row.gd` exercises compact `Bonus` and `Claimed` bargain states in the crew-order row.
 - `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, called-favor vibe reasons, formatted day summaries, and NPC vibe verdicts.
 - `tools/smoke_vibe_scorer.gd` also exercises remembered-help Parley context in local vibe reasons.
+- `tools/smoke_vibe_scorer.gd` also exercises truce-delayed order receipts as careful local vibe reasons.
 - `tools/smoke_supply_help_vibe.gd` exercises demand-row `Prep` and `Give` supply help counting as player work in day vibe summaries.
 - `tools/smoke_social_receipts.gd` exercises helped-agent receipts and end-day summary callouts after supply delivery.
 - `tools/smoke_crew_social_signal.gd` exercises crew-row helped-today signals and next-morning clearing.
@@ -132,6 +135,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_parley_memory_discussed_signal.gd` also exercises the immediate Field Log receipt for discussed memory and click-to-replay feedback.
 - `tools/smoke_crew_memory_truce_signal.gd` exercises discussed memory rolling into a one-day next-morning truce signal.
 - `tools/smoke_crew_memory_truce_delays_escalation.gd` exercises a fresh truce delaying one NPC-authored order escalation, surfacing in crew rows, and landing in day summaries.
+- `tools/smoke_crew_memory_truce_delays_escalation.gd` also exercises NPC verdicts noticing held truces before generic quiet-day commentary.
 - `tools/smoke_parley_memory_single_use.gd` exercises discussed memory staying single-use inside same-day Parley sessions.
 - `tools/smoke_parley_call_favor.gd` exercises the one-use `Call favor` Parley response and fourth encounter button.
 - `tools/smoke_parley_favor_spend.gd` exercises spent favor clearing crew-row social credit and preventing same-day reuse.
@@ -209,6 +213,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - The next dawn turns discussed memory into a one-day truce, giving acknowledged context a soft behavioral consequence instead of another spendable favor.
 - Truces can absorb one same-day NPC-authored order escalation, reduce the pressure spike, and record a `truce_delayed` work-order receipt for summaries.
 - A held truce takes temporary crew-row priority over the queued demand, keeping the social consequence visible at the moment it matters.
+- NPC summary comments read truce-delayed work-order receipts too, so held truces become social commentary rather than silent accounting.
 - Social credit is now playable during Parley through a one-use favor call that advances repair while recording the remembered supply.
 - Spent social credit clears the banked help and adds a spent-favor marker to the target crew snapshot, so future local observers see it as used instead of banked.
 - Called favors now land in the day summary as named relationship receipts, giving future verdict and UI layers a clean hook for spent goodwill.
@@ -217,6 +222,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - NPC summary comments now read remembered-help Parley receipts too, so next-day memory can affect commentary without becoming a gameplay coupon.
 - The threshold-based vibe scorer also reads spent-goodwill receipts, so future observer prompts can inherit named social context from local scoring.
 - It also reads remembered-help Parley receipts, keeping the future observer/model input aware of non-spendable relationship memory.
+- It also reads truce-delayed work-order receipts, preserving social repair as structured local vibe context.
 - A future observer model can read day/week summaries from `GameEventLog.gd` and generate richer reviews without running live LLM calls every few seconds.
 
 For now, LSTM/ML is intentionally out of the runtime loop. The current seam is the decision model: replace or wrap `UtilityAgentDecisionModel.gd` when the game has enough action history to justify learned intent prediction.
