@@ -1162,11 +1162,21 @@ func _demand_status_text(demand: Dictionary) -> String:
 	var age_days := int(demand.get("age_days", 0))
 	var age_prefix := "%sd " % age_days if age_days > 0 else ""
 	var authored_order_id := str(demand.get("authored_order_id", ""))
-	if authored_order_id != "" and work_orders.has(authored_order_id) and int(work_orders[authored_order_id].get("escalation_count", 0)) > 0:
-		var incentive: Dictionary = work_orders[authored_order_id].get("incentive_resource_delta", {})
-		if not incentive.is_empty() and not bool(work_orders[authored_order_id].get("incentive_claimed", false)):
-			return "%s+%s" % [age_prefix, _format_resource_list(incentive)]
-		return "%sEscalated" % age_prefix
+	if authored_order_id != "" and work_orders.has(authored_order_id):
+		var linked_order: Dictionary = work_orders[authored_order_id]
+		if int(linked_order.get("escalation_count", 0)) > 0:
+			var incentive: Dictionary = linked_order.get("incentive_resource_delta", {})
+			if not incentive.is_empty() and not bool(linked_order.get("incentive_claimed", false)):
+				return "%s+%s" % [age_prefix, _format_resource_list(incentive)]
+			return "%sEscalated" % age_prefix
+		match str(linked_order.get("status", "ready")):
+			"queued", "gathering":
+				return "%sSent" % age_prefix
+			"waiting":
+				return "%sWaiting crew" % age_prefix
+			"done":
+				return "%sDone" % age_prefix
+		return "%sOrder drafted" % age_prefix
 	if authored_order_id != "":
 		return "%sOrder drafted" % age_prefix
 	match str(demand.get("kind", "deliver_item")):
@@ -1666,6 +1676,7 @@ func _queue_build_order(order_id: String, quiet: bool = false) -> bool:
 	order["status"] = "queued"
 	work_orders[order_id] = order
 	_refresh_work_orders()
+	_refresh_crafting_demands()
 	if not quiet:
 		game_ui.show_message("Crew assigned: %s." % str(order.get("label", "Work order")))
 		sound_manager.play_stamp("tool_select")
@@ -1699,6 +1710,7 @@ func _queue_directive_order(order_id: String, quiet: bool = false) -> bool:
 	order["status"] = "queued"
 	work_orders[order_id] = order
 	_refresh_work_orders()
+	_refresh_crafting_demands()
 	if not quiet:
 		game_ui.show_message("Crew assigned: %s." % str(order.get("label", "Work order")))
 		sound_manager.play_stamp("tool_select")
@@ -1748,6 +1760,7 @@ func _queue_supply_for_order(order_id: String, quiet: bool = false) -> bool:
 	order["status_text"] = "Gathering %s" % supply_label.capitalize()
 	work_orders[order_id] = order
 	_refresh_work_orders()
+	_refresh_crafting_demands()
 	game_ui.add_field_log("Crew gathering %s for %s." % [supply_label, str(order.get("label", "work order"))])
 	if not quiet:
 		game_ui.show_message("Crew gathering %s." % supply_label)
@@ -1776,6 +1789,7 @@ func _continue_resource_orders(quiet: bool = false) -> void:
 			order["status_text"] = "Target changed"
 			work_orders[order_id] = order
 			_refresh_work_orders()
+			_refresh_crafting_demands()
 			continue
 
 		if str(order.get("action", "build_fence")) != "build_fence":
@@ -1914,6 +1928,7 @@ func _mark_order_waiting(order_id: String) -> void:
 	order["status_text"] = "Waiting crew"
 	work_orders[order_id] = order
 	_refresh_work_orders()
+	_refresh_crafting_demands()
 
 
 func _reserve_required_item_for_order(order: Dictionary) -> bool:

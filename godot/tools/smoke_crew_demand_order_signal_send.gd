@@ -59,6 +59,12 @@ func _run() -> void:
 	if str(scene.work_orders[order_id].get("status", "")) != "queued":
 		_fail("Clicking a queued crew-row demand did not send the linked work order.")
 		return
+	if social_label.text.contains("Queued"):
+		_fail("Sent crew-row demand signal still looked unsent.")
+		return
+	if not social_label.text.contains("Sent") or not social_label.text.contains("Clear Brush"):
+		_fail("Sent crew-row demand signal did not show the linked order as sent.")
+		return
 
 	scene.queue_free()
 	await process_frame

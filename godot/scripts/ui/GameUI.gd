@@ -1292,6 +1292,10 @@ func _format_pending_demand_signal(demand_label: String, signal_state: String = 
 			return "Bonus: %s%s" % [demand_label, suffix]
 		"escalated":
 			return "Escalated: %s" % demand_label
+		"sent":
+			return "Sent: %s" % demand_label
+		"waiting":
+			return "Waiting: %s" % demand_label
 		"queued":
 			return "Queued: %s" % demand_label
 	return "Wants: %s" % demand_label
@@ -1356,6 +1360,10 @@ func _pending_demand_signal_states_from(demands: Array) -> Dictionary:
 			states[agent_id] = "bonus"
 		elif status_detail == "Escalated":
 			states[agent_id] = "escalated"
+		elif status_detail == "Sent":
+			states[agent_id] = "sent"
+		elif status_detail.begins_with("Waiting"):
+			states[agent_id] = "waiting"
 		else:
 			states[agent_id] = "queued" if str(demand.get("authored_order_id", "")) != "" else "wants"
 	return states
