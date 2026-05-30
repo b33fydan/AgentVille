@@ -38,6 +38,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Discussed memory cannot be reused as fresh Parley `Memory` context again on the same day.
 - Discussed memory now rolls into a one-day `Truce` crew-row signal the next morning.
 - A fresh memory truce can delay one ignored NPC-authored order escalation, keeping same-day demand pressure low and recording the delay in the day summary.
+- When a truce absorbs an escalation, the crew row switches to `Truce held` so the social state stays visible over the queued demand.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
 - Crew rows now keep spent favor markers visible until the next morning, making used social credit readable after Parley closes.
@@ -130,7 +131,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_parley_memory_discussed_signal.gd` exercises remembered-help Parley switching the crew row from `Remembers` to `Discussed`.
 - `tools/smoke_parley_memory_discussed_signal.gd` also exercises the immediate Field Log receipt for discussed memory and click-to-replay feedback.
 - `tools/smoke_crew_memory_truce_signal.gd` exercises discussed memory rolling into a one-day next-morning truce signal.
-- `tools/smoke_crew_memory_truce_delays_escalation.gd` exercises a fresh truce delaying one NPC-authored order escalation and surfacing in day summaries.
+- `tools/smoke_crew_memory_truce_delays_escalation.gd` exercises a fresh truce delaying one NPC-authored order escalation, surfacing in crew rows, and landing in day summaries.
 - `tools/smoke_parley_memory_single_use.gd` exercises discussed memory staying single-use inside same-day Parley sessions.
 - `tools/smoke_parley_call_favor.gd` exercises the one-use `Call favor` Parley response and fourth encounter button.
 - `tools/smoke_parley_favor_spend.gd` exercises spent favor clearing crew-row social credit and preventing same-day reuse.
@@ -207,6 +208,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Same-day discussed memory is single-use: later Parley sessions ignore it until a future day creates new remembered context.
 - The next dawn turns discussed memory into a one-day truce, giving acknowledged context a soft behavioral consequence instead of another spendable favor.
 - Truces can absorb one same-day NPC-authored order escalation, reduce the pressure spike, and record a `truce_delayed` work-order receipt for summaries.
+- A held truce takes temporary crew-row priority over the queued demand, keeping the social consequence visible at the moment it matters.
 - Social credit is now playable during Parley through a one-use favor call that advances repair while recording the remembered supply.
 - Spent social credit clears the banked help and adds a spent-favor marker to the target crew snapshot, so future local observers see it as used instead of banked.
 - Called favors now land in the day summary as named relationship receipts, giving future verdict and UI layers a clean hook for spent goodwill.

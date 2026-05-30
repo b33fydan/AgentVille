@@ -75,6 +75,16 @@ func _run() -> void:
 	if int(truce_snapshot.get("truce_absorbed_today", 0)) != 1:
 		_fail("Bert's truce did not record absorbing the escalation.")
 		return
+	var social_label := _crew_social_label(scene, "bert")
+	if social_label == null or not social_label.visible:
+		_fail("Crew row did not expose Bert's held-truce social signal.")
+		return
+	if not social_label.text.contains("Truce held") or not social_label.text.contains("Fence Kit"):
+		_fail("Crew row did not show the held-truce signal. saw=%s" % social_label.text)
+		return
+	if social_label.text.contains("Queued") or social_label.text.contains("Bonus"):
+		_fail("Held-truce signal was hidden behind the demand/order state. saw=%s" % social_label.text)
+		return
 
 	var delayed_receipt := false
 	var log = scene.get_node("GameEventLog")
@@ -122,6 +132,15 @@ func _agent_irritation(agent_manager, agent_id: String) -> float:
 		if str(snapshot.get("id", "")) == agent_id:
 			return float(snapshot.get("irritation", 0.0))
 	return -1.0
+
+
+func _crew_social_label(scene: Node, agent_id: String) -> Label:
+	var game_ui = scene.get_node("GameUI")
+	var rows: Dictionary = game_ui.get("_crew_rows")
+	if not rows.has(agent_id):
+		return null
+	var row: Dictionary = rows[agent_id]
+	return row.get("social", null) as Label
 
 
 func _fail(message: String) -> void:
