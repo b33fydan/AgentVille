@@ -46,6 +46,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Remembered help and active truces now bias autonomous NPC utility choices toward related farm behavior, so social context can change what they decide to do next.
 - Socially biased autonomy now falls back to relevant planning checks, such as watching growing crops, checking routes, or inspecting open ground when immediate work is unavailable.
 - Socially biased autonomous NPC work now carries `Memory` or `Truce` context into agent receipts, Field Log text, and day summaries.
+- Crew rows now surface active `Memory work` or `Truce work` context while socially biased NPC autonomy is walking or working, then clear that live signal when the job ends.
 - Local vibe scoring and NPC end-day verdicts now notice socially biased autonomous work instead of treating those quiet days as neglect.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
@@ -102,7 +103,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `scripts/ai/UtilityAgentDecisionModel.gd` is the deterministic decision layer that an LSTM can later replace or assist.
 - `tools/smoke_receipts.gd` exercises player-action receipts, agent reactions, and day summaries.
 - `tools/smoke_agents.gd` exercises NPC harvesting, coin updates, and brush clearing.
-- `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, planning fallbacks, and preserved receipt context.
+- `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, live crew-row motive signals, planning fallbacks, and preserved receipt context.
 - `tools/smoke_adversarial_reactions.gd` exercises local NPC irritation, sarcastic reactions, and crew UI expression state.
 - `tools/smoke_adversarial_session.gd` exercises bounded NPC grievance sessions, scene UI wiring, result receipts, and rewards.
 - `tools/smoke_crafting_demands.gd` exercises Parley-created crafting demands, player delivery, demand receipts, and NPC cooldown.
@@ -232,6 +233,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Social context now reaches autonomous behavior too: remembered help and truces create local utility candidates for harvest, clearing, or boundary checks when matching farm opportunities exist.
 - Social-autonomy fallbacks can create softer NPC planning behavior too, letting memory/truce state drive crop watching, route checks, or open-ground inspection before there is direct work to do.
 - Socially biased NPC autonomy now records its source and label on agent action receipts, completed world actions, Field Log lines, and day-summary social autonomy receipts.
+- Crew snapshots expose active social-autonomy source and label separately from durable memory/truce state, letting the UI show why an NPC is acting right now without consuming the underlying relationship context.
 - The local vibe scorer and NPC summary comments read those social-autonomy receipts, giving future observer prompts a cleaner signal for relationship-motivated NPC work.
 - NPC summary comments now read remembered-help Parley receipts too, so next-day memory can affect commentary without becoming a gameplay coupon.
 - The threshold-based vibe scorer also reads spent-goodwill receipts, so future observer prompts can inherit named social context from local scoring.

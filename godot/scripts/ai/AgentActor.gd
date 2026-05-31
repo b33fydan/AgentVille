@@ -81,6 +81,8 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"truce_label": "",
 		"truce_days": 0,
 		"truce_absorbed_today": 0,
+		"active_social_preference_source": "",
+		"active_social_preference_label": "",
 		"current_action": "idle",
 		"current_phase": "idle"
 	}
@@ -181,6 +183,7 @@ func _start_decision(decision: Dictionary) -> void:
 	memory.remember_action(action, reason, score)
 	_set_target_grid(target_tile)
 	_active_decision = decision.duplicate(true)
+	_set_active_social_preference(decision)
 	_arrival_action_done = false
 	_work_timer = 0.0
 	_set_phase("working" if _is_at_target() else "walking")
@@ -228,6 +231,8 @@ func get_snapshot() -> Dictionary:
 		"truce_label": str(state.get("truce_label", "")),
 		"truce_days": int(state.get("truce_days", 0)),
 		"truce_absorbed_today": int(state.get("truce_absorbed_today", 0)),
+		"active_social_preference_source": str(state.get("active_social_preference_source", "")),
+		"active_social_preference_label": str(state.get("active_social_preference_label", "")),
 		"morale_boost": _morale_boost_timer,
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
@@ -532,6 +537,7 @@ func _complete_active_decision() -> void:
 	_arrival_action_done = false
 	_work_timer = 0.0
 	state["current_action"] = "idle"
+	_clear_active_social_preference()
 	_set_phase("idle")
 	state_changed.emit(get_snapshot())
 
@@ -672,6 +678,16 @@ func _add_social_preference_metadata(payload: Dictionary, decision: Dictionary) 
 		return
 	payload["social_preference_source"] = source
 	payload["social_preference_label"] = label
+
+
+func _set_active_social_preference(decision: Dictionary) -> void:
+	state["active_social_preference_source"] = str(decision.get("social_preference_source", "")).strip_edges()
+	state["active_social_preference_label"] = str(decision.get("social_preference_label", "")).strip_edges()
+
+
+func _clear_active_social_preference() -> void:
+	state["active_social_preference_source"] = ""
+	state["active_social_preference_label"] = ""
 
 
 func _tile_subject(tile) -> String:

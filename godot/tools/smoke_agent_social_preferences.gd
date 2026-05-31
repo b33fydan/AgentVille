@@ -264,10 +264,32 @@ func _test_scene_social_preference_receipts() -> void:
 		"social_preference_source": "truce",
 		"social_preference_label": "Rush Kit"
 	})
+	await process_frame
+
+	var active_snapshot: Dictionary = agent.call("get_snapshot")
+	if str(active_snapshot.get("active_social_preference_source", "")) != "truce":
+		_fail("Active agent snapshot did not expose the social preference source.")
+		return
+	if str(active_snapshot.get("active_social_preference_label", "")) != "Rush Kit":
+		_fail("Active agent snapshot did not expose the social preference label.")
+		return
+
+	var social_label := _crew_social_label(scene, "chuck")
+	if social_label == null or not social_label.visible:
+		_fail("Crew row did not show active social-preference work.")
+		return
+	if not social_label.text.contains("Truce") or not social_label.text.contains("Rush Kit"):
+		_fail("Crew row did not show active truce work context. saw=%s" % social_label.text)
+		return
+
 	await create_timer(1.0).timeout
 
 	if str(tile.decor_id) != "":
 		_fail("Scene social-preference setup did not complete the brush work.")
+		return
+	var completed_snapshot: Dictionary = agent.call("get_snapshot")
+	if str(completed_snapshot.get("active_social_preference_source", "")) != "" or str(completed_snapshot.get("active_social_preference_label", "")) != "":
+		_fail("Completed agent snapshot kept stale active social-preference context.")
 		return
 
 	var log = scene.get_node("GameEventLog")
@@ -318,6 +340,15 @@ func _test_scene_social_preference_receipts() -> void:
 
 	scene.queue_free()
 	await process_frame
+
+
+func _crew_social_label(scene: Node, agent_id: String) -> Label:
+	var game_ui = scene.get_node("GameUI")
+	var rows: Dictionary = game_ui.get("_crew_rows")
+	if not rows.has(agent_id):
+		return null
+	var row: Dictionary = rows[agent_id]
+	return row.get("social", null) as Label
 
 
 func _decision(agent_state: Dictionary, world: Dictionary) -> Dictionary:

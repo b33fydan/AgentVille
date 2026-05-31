@@ -1335,6 +1335,15 @@ func _format_truce_signal(truce_label: String, truce_absorbed_today: int = 0) ->
 	return "%s: %s" % [prefix, truce_label]
 
 
+func _format_active_social_preference_signal(source: String, label: String) -> String:
+	var prefix := "Memory work"
+	if source == "truce":
+		prefix = "Truce work"
+	if label == "":
+		return prefix
+	return "%s: %s" % [prefix, label]
+
+
 func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants", detail: String = "") -> String:
 	match signal_state:
 		"memory":
@@ -1479,6 +1488,8 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var truce_days := int(snapshot.get("truce_days", 0))
 	var truce_label := str(snapshot.get("truce_label", ""))
 	var truce_absorbed_today := int(snapshot.get("truce_absorbed_today", 0))
+	var active_social_preference_source := str(snapshot.get("active_social_preference_source", ""))
+	var active_social_preference_label := str(snapshot.get("active_social_preference_label", ""))
 	var pending_demand_detail := str(_crew_pending_demand_details.get(agent_id, ""))
 	var pending_demand_label := str(_crew_pending_demand_labels.get(agent_id, ""))
 	var pending_demand_order_id := str(_crew_pending_demand_order_ids.get(agent_id, ""))
@@ -1497,6 +1508,10 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	elif truce_absorbed_today > 0:
 		social_label.visible = true
 		social_label.text = _format_truce_signal(truce_label, truce_absorbed_today)
+		_configure_crew_social_target(social_label, "", "")
+	elif active_social_preference_source != "" and active_social_preference_label != "":
+		social_label.visible = true
+		social_label.text = _format_active_social_preference_signal(active_social_preference_source, active_social_preference_label)
 		_configure_crew_social_target(social_label, "", "")
 	elif pending_demand_label != "":
 		social_label.visible = true
