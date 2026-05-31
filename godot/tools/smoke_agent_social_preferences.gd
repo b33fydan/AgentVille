@@ -12,9 +12,13 @@ func _run() -> void:
 	_test_remembered_seed_help_biases_harvest()
 	_test_truce_rush_biases_brush_clearing()
 	_test_fence_memory_biases_boundary_checks()
+	_test_seed_memory_checks_growing_crops()
+	_test_rush_truce_scans_structures_when_no_brush()
+	_test_fence_memory_checks_open_ground_when_no_boundary()
 	_test_plain_utility_still_prefers_ready_crops()
 	if not _test_model_metadata():
 		return
+	await _test_scene_world_snapshot_exposes_growing_crop()
 	await _test_scene_social_preference_receipts()
 	quit()
 
@@ -94,6 +98,72 @@ func _test_fence_memory_biases_boundary_checks() -> void:
 		return
 
 
+func _test_seed_memory_checks_growing_crops() -> void:
+	var decision := _decision(
+		_agent_state("marigold", "Marigold", "hopeful", {
+			"remembered_help_label": "Seed Bundle",
+			"remembered_help_days": 1
+		}),
+		_world({
+			"growing_crops": 2,
+			"growing_tile": Vector2i(3, 6)
+		})
+	)
+	if str(decision.get("action", "")) != "inspect_ready_crop":
+		_fail("Seed memory without ready work did not bias Marigold toward checking growing crops.")
+		return
+	if decision.get("target_tile", Vector2i.ZERO) != Vector2i(3, 6):
+		_fail("Seed memory crop-watch fallback did not keep the growing crop target.")
+		return
+	if str(decision.get("social_preference_source", "")) != "memory":
+		_fail("Seed memory crop-watch fallback did not carry social metadata.")
+		return
+
+
+func _test_rush_truce_scans_structures_when_no_brush() -> void:
+	var decision := _decision(
+		_agent_state("chuck", "Chuck", "chaotic", {
+			"truce_label": "Rush Kit",
+			"truce_days": 1
+		}),
+		_world({
+			"structures": 1,
+			"structure_tile": Vector2i(7, 1)
+		})
+	)
+	if str(decision.get("action", "")) != "inspect_structure":
+		_fail("Rush truce without brush did not bias Chuck toward route inspection.")
+		return
+	if decision.get("target_tile", Vector2i.ZERO) != Vector2i(7, 1):
+		_fail("Rush truce route inspection did not keep the structure target.")
+		return
+	if str(decision.get("social_preference_source", "")) != "truce":
+		_fail("Rush truce route inspection did not carry social metadata.")
+		return
+
+
+func _test_fence_memory_checks_open_ground_when_no_boundary() -> void:
+	var decision := _decision(
+		_agent_state("bert", "Bert", "grizzled", {
+			"remembered_help_label": "Fence Kit",
+			"remembered_help_days": 1
+		}),
+		_world({
+			"empty_soil": 1,
+			"soil_tile": Vector2i(5, 4)
+		})
+	)
+	if str(decision.get("action", "")) != "inspect_soil":
+		_fail("Fence memory without boundary work did not bias Bert toward open-ground checks.")
+		return
+	if decision.get("target_tile", Vector2i.ZERO) != Vector2i(5, 4):
+		_fail("Fence memory open-ground fallback did not keep the soil target.")
+		return
+	if str(decision.get("social_preference_source", "")) != "memory":
+		_fail("Fence memory open-ground fallback did not carry social metadata.")
+		return
+
+
 func _test_plain_utility_still_prefers_ready_crops() -> void:
 	var decision := _decision(
 		_agent_state("marigold", "Marigold", "hopeful"),
@@ -133,6 +203,37 @@ func _test_model_metadata() -> bool:
 		_fail("Fallback fence-space preference did not preserve the truce label.")
 		return false
 	return true
+
+
+func _test_scene_world_snapshot_exposes_growing_crop() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	await process_frame
+	await process_frame
+
+	var grid = scene.get_node("FarmWorld/GridManager")
+	var agent_manager = scene.get_node("FarmWorld/AgentManager")
+	var agent = agent_manager.agents[1]
+	var target := Vector2i(4, 4)
+	var tile = grid.get_tile(target)
+	if tile == null:
+		_fail("Scene growing-crop setup could not find the target tile.")
+		return
+	tile.erase()
+	tile.till()
+	tile.plant_corn()
+	tile.crop.setup("corn", 1)
+
+	var world: Dictionary = agent.call("_build_world_snapshot")
+	if int(world.get("growing_crops", 0)) <= 0:
+		_fail("Agent world snapshot did not count growing crops.")
+		return
+	if not world.has("growing_tile") or world.get("growing_tile", Vector2i(-1, -1)) != target:
+		_fail("Agent world snapshot did not expose a nearest growing crop tile.")
+		return
+
+	scene.queue_free()
+	await process_frame
 
 
 func _test_scene_social_preference_receipts() -> void:
@@ -249,6 +350,7 @@ func _world(extra: Dictionary = {}) -> Dictionary:
 		"ready_crops": 0,
 		"ready_tile": Vector2i.ZERO,
 		"growing_crops": 0,
+		"growing_tile": Vector2i.ZERO,
 		"empty_soil": 0,
 		"soil_tile": Vector2i.ZERO,
 		"brush_tiles": 0,

@@ -418,6 +418,7 @@ func _build_world_snapshot() -> Dictionary:
 		"brush_tiles": brush_tiles.size(),
 		"structures": structure_tiles.size(),
 		"ready_tile": _nearest_tile(ready_tiles),
+		"growing_tile": _nearest_tile(growing_tiles),
 		"soil_tile": _nearest_tile(soil_tiles),
 		"brush_tile": _nearest_tile(brush_tiles),
 		"structure_tile": _nearest_tile(structure_tiles),

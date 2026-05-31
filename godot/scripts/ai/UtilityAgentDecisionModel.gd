@@ -69,6 +69,15 @@ func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) ->
 				_social_preference_line(agent_state, source, "soil", label),
 				_social_preference_metadata(source, label)
 			)
+		if int(world.get("growing_crops", 0)) > 0:
+			return _candidate(
+				"inspect_ready_crop",
+				base_score - 2.0,
+				"%s points toward crop watching: %s" % [source, label],
+				world.get("growing_tile", world.get("home_tile", Vector2i.ZERO)),
+				_social_preference_line(agent_state, source, "crop_watch", label),
+				_social_preference_metadata(source, label)
+			)
 
 	if _label_matches_any(lower_label, ["rush", "hustle", "clear", "brush", "fiber"]):
 		if int(world.get("brush_tiles", 0)) > 0:
@@ -78,6 +87,15 @@ func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) ->
 				"%s points toward clearing work: %s" % [source, label],
 				world.get("brush_tile", world.get("home_tile", Vector2i.ZERO)),
 				_social_preference_line(agent_state, source, "brush", label),
+				_social_preference_metadata(source, label)
+			)
+		if int(world.get("structures", 0)) > 0:
+			return _candidate(
+				"inspect_structure",
+				base_score - 1.0,
+				"%s points toward route inspection: %s" % [source, label],
+				world.get("structure_tile", world.get("home_tile", Vector2i.ZERO)),
+				_social_preference_line(agent_state, source, "route", label),
 				_social_preference_metadata(source, label)
 			)
 
@@ -98,6 +116,15 @@ func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) ->
 				"%s points toward clearing fence space: %s" % [source, label],
 				world.get("brush_tile", world.get("home_tile", Vector2i.ZERO)),
 				_social_preference_line(agent_state, source, "brush", label),
+				_social_preference_metadata(source, label)
+			)
+		if int(world.get("empty_soil", 0)) > 0:
+			return _candidate(
+				"inspect_soil",
+				base_score - 1.0,
+				"%s points toward fence planning: %s" % [source, label],
+				world.get("soil_tile", world.get("home_tile", Vector2i.ZERO)),
+				_social_preference_line(agent_state, source, "fence_space", label),
 				_social_preference_metadata(source, label)
 			)
 
@@ -143,32 +170,50 @@ func _social_preference_line(agent_state: Dictionary, source: String, focus: Str
 			match focus:
 				"harvest":
 					return "%s says %s means we finish the crop work." % [context, label]
+				"crop_watch":
+					return "%s says %s means we keep an eye on the crop." % [context, label]
 				"soil":
 					return "%s says %s starts with checking the soil." % [context, label]
 				"brush":
 					return "%s says %s starts by making room." % [context, label]
+				"route":
+					return "%s says %s starts with checking the route." % [context, label]
 				"fence":
 					return "%s says %s means checking the boundaries." % [context, label]
+				"fence_space":
+					return "%s says %s means checking the ground for a line." % [context, label]
 		"hopeful":
 			match focus:
 				"harvest":
 					return "%s says %s can turn into a useful harvest." % [context, label]
+				"crop_watch":
+					return "%s says %s wants a little crop check-in." % [context, label]
 				"soil":
 					return "%s says %s wants a good place to grow." % [context, label]
 				"brush":
 					return "%s says %s can clear a better path." % [context, label]
+				"route":
+					return "%s says %s wants the path checked first." % [context, label]
 				"fence":
 					return "%s says %s can make the farm feel steadier." % [context, label]
+				"fence_space":
+					return "%s says %s needs a sensible line to land on." % [context, label]
 		"chaotic":
 			match focus:
 				"harvest":
 					return "%s says %s. The vegetables are implicated." % [context, label]
+				"crop_watch":
+					return "%s says %s. Crop surveillance begins." % [context, label]
 				"soil":
 					return "%s says %s. I am interrogating the dirt." % [context, label]
 				"brush":
 					return "%s says %s. The weeds have been notified." % [context, label]
+				"route":
+					return "%s says %s. Route inspection, dramatic edition." % [context, label]
 				"fence":
 					return "%s says %s. Boundary inspection mode." % [context, label]
+				"fence_space":
+					return "%s says %s. I am measuring imaginary fences." % [context, label]
 	return "%s says %s matters right now." % [context, label]
 
 
