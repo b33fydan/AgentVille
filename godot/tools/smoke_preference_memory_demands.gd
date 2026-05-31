@@ -150,6 +150,20 @@ func _test_scene_remembered_help_deepens_next_ask() -> void:
 	if str(preference_demand.get("preference_label", "")) != "Seed Bundle":
 		_fail("Scene demand did not preserve the Seed Bundle preference label.")
 		return
+	var preference_label := _demand_preference_label(scene, str(preference_demand.get("id", "")))
+	if preference_label == null or not preference_label.visible or str(preference_label.text) != "Memory":
+		_fail("Preference-driven demand row did not show a Memory marker.")
+		return
+	if not str(preference_label.tooltip_text).contains("Seed Bundle"):
+		_fail("Memory demand row marker did not explain the remembered Seed Bundle.")
+		return
+	var social_label := _crew_social_label(scene, "marigold")
+	if social_label == null or not social_label.visible:
+		_fail("Crew row did not show the memory-influenced demand signal.")
+		return
+	if not str(social_label.text).contains("Memory:") or not str(social_label.text).contains("Harvest Crop"):
+		_fail("Crew row did not label the open demand as memory-influenced. saw=%s" % social_label.text)
+		return
 
 	var logged_preference := false
 	for event in scene.get_node("GameEventLog").get("events"):
@@ -184,6 +198,24 @@ func _demand_button(scene: Node, demand_id: String) -> Button:
 		return null
 	var row: Dictionary = rows[demand_id]
 	return row.get("button", null) as Button
+
+
+func _demand_preference_label(scene: Node, demand_id: String) -> Label:
+	var game_ui = scene.get_node("GameUI")
+	var rows: Dictionary = game_ui.get("_crafting_demand_rows")
+	if not rows.has(demand_id):
+		return null
+	var row: Dictionary = rows[demand_id]
+	return row.get("preference", null) as Label
+
+
+func _crew_social_label(scene: Node, agent_id: String) -> Label:
+	var game_ui = scene.get_node("GameUI")
+	var rows: Dictionary = game_ui.get("_crew_rows")
+	if not rows.has(agent_id):
+		return null
+	var row: Dictionary = rows[agent_id]
+	return row.get("social", null) as Label
 
 
 func _encounter_button(scene: Node, button_text: String) -> Button:

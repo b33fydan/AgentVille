@@ -949,6 +949,16 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 	status.add_theme_color_override("font_color", Color("#746b5f"))
 	row.add_child(status)
 
+	var preference := Label.new()
+	preference.text = _demand_preference_context_text(demand)
+	preference.visible = preference.text != ""
+	preference.custom_minimum_size = Vector2(44, 0)
+	preference.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	preference.add_theme_font_size_override("font_size", 9)
+	preference.add_theme_color_override("font_color", Color("#7b5aa6") if str(demand.get("preference_source", "")) == "truce" else Color("#5f7f39"))
+	preference.tooltip_text = _demand_preference_tooltip(demand)
+	row.add_child(preference)
+
 	var reward := Label.new()
 	reward.text = str(demand.get("reward_text", ""))
 	reward.visible = reward.text != ""
@@ -1013,9 +1023,29 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 	_crafting_demand_rows[demand_id] = {
 		"label": label,
 		"status": status,
+		"preference": preference,
 		"reward": reward,
 		"button": action_button
 	}
+
+
+func _demand_preference_context_text(demand: Dictionary) -> String:
+	match str(demand.get("preference_source", "")):
+		"remembered_help":
+			return "Memory"
+		"truce":
+			return "Truce"
+	return ""
+
+
+func _demand_preference_tooltip(demand: Dictionary) -> String:
+	var label := str(demand.get("preference_label", "")).strip_edges()
+	match str(demand.get("preference_source", "")):
+		"remembered_help":
+			return "Remembered help: %s" % label if label != "" else "Influenced by remembered help"
+		"truce":
+			return "Active truce: %s" % label if label != "" else "Influenced by an active truce"
+	return str(demand.get("reason", ""))
 
 
 func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
@@ -1307,6 +1337,10 @@ func _format_truce_signal(truce_label: String, truce_absorbed_today: int = 0) ->
 
 func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants", detail: String = "") -> String:
 	match signal_state:
+		"memory":
+			return "Memory: %s" % demand_label
+		"truce":
+			return "Truce: %s" % demand_label
 		"bonus":
 			var suffix := " %s" % detail if detail != "" else ""
 			return "Bonus: %s%s" % [demand_label, suffix]
@@ -1384,8 +1418,14 @@ func _pending_demand_signal_states_from(demands: Array) -> Dictionary:
 			states[agent_id] = "sent"
 		elif status_detail.begins_with("Waiting"):
 			states[agent_id] = "waiting"
+		elif str(demand.get("authored_order_id", "")) != "":
+			states[agent_id] = "queued"
+		elif str(demand.get("preference_source", "")) == "remembered_help":
+			states[agent_id] = "memory"
+		elif str(demand.get("preference_source", "")) == "truce":
+			states[agent_id] = "truce"
 		else:
-			states[agent_id] = "queued" if str(demand.get("authored_order_id", "")) != "" else "wants"
+			states[agent_id] = "wants"
 	return states
 
 

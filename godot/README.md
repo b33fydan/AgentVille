@@ -41,6 +41,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - When a truce absorbs an escalation, the crew row switches to `Truce held` so the social state stays visible over the queued demand.
 - NPC end-day verdicts now notice truce-delayed orders before falling back to quiet-day commentary.
 - Remembered help and active truces now deepen default NPC supply asks into related field-work demands, such as Seed Bundle memory leading Marigold toward harvest work.
+- Preference-driven demand rows and crew-row demand signals now show `Memory` or `Truce` context so the reason for the follow-up ask stays visible.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
 - Crew rows now keep spent favor markers visible until the next morning, making used social credit readable after Parley closes.
@@ -137,7 +138,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_crew_memory_truce_signal.gd` exercises discussed memory rolling into a one-day next-morning truce signal.
 - `tools/smoke_crew_memory_truce_delays_escalation.gd` exercises a fresh truce delaying one NPC-authored order escalation, surfacing in crew rows, and landing in day summaries.
 - `tools/smoke_crew_memory_truce_delays_escalation.gd` also exercises NPC verdicts noticing held truces before generic quiet-day commentary.
-- `tools/smoke_preference_memory_demands.gd` exercises remembered-help and truce state deepening the next default NPC ask into a related field-work demand.
+- `tools/smoke_preference_memory_demands.gd` exercises remembered-help and truce state deepening the next default NPC ask into a related field-work demand, including visible UI context.
 - `tools/smoke_parley_memory_single_use.gd` exercises discussed memory staying single-use inside same-day Parley sessions.
 - `tools/smoke_parley_call_favor.gd` exercises the one-use `Call favor` Parley response and fourth encounter button.
 - `tools/smoke_parley_favor_spend.gd` exercises spent favor clearing crew-row social credit and preventing same-day reuse.
