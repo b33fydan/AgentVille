@@ -57,6 +57,8 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 		"social_credit_label": social_credit_label,
 		"social_credit_used": false,
 		"remembered_help_label": remembered_help_label,
+		"truce_label": str(agent_snapshot.get("truce_label", context.get("truce_label", ""))).strip_edges(),
+		"truce_days": int(agent_snapshot.get("truce_days", context.get("truce_days", 0))),
 		"resolution_meter": 0.0,
 		"turn_count": 0,
 		"max_turns": MAX_TURNS,
@@ -474,6 +476,9 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 	var demand_hint := str(context.get("demand_hint", "deliver_fence_kit"))
 	match demand_hint:
 		"deliver_agent_supply":
+			var preference_kind := _preference_followup_demand_kind(session)
+			if preference_kind != "":
+				return _with_preference_context(_demand_template(preference_kind, session), session)
 			return _demand_template(_agent_supply_demand_kind(session), session)
 		"deliver_seed_bundle":
 			return _demand_template("deliver_seed_bundle", session)
@@ -488,6 +493,46 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 	return _demand_template("deliver_fence_kit", session)
 
 
+func _preference_followup_demand_kind(session: Dictionary) -> String:
+	var preference := _active_preference_signal(session)
+	if preference.is_empty():
+		return ""
+
+	var label := str(preference.get("label", "")).to_lower()
+	if label.contains("seed") or label.contains("spring") or label.contains("harvest") or label.contains("crop"):
+		return "harvest_crop"
+	if label.contains("rush") or label.contains("hustle") or label.contains("clear") or label.contains("brush") or label.contains("fiber"):
+		return "clear_brush"
+	if label.contains("fence") or label.contains("boundary"):
+		return "build_fence"
+
+	match str(session.get("agent_id", "")):
+		"marigold":
+			return "harvest_crop"
+		"chuck":
+			return "clear_brush"
+		"bert":
+			return "build_fence"
+	return ""
+
+
+func _active_preference_signal(session: Dictionary) -> Dictionary:
+	var truce_label := str(session.get("truce_label", "")).strip_edges()
+	if truce_label != "" and int(session.get("truce_days", 0)) > 0:
+		return {
+			"source": "truce",
+			"label": truce_label
+		}
+
+	var remembered_label := str(session.get("remembered_help_label", "")).strip_edges()
+	if remembered_label != "":
+		return {
+			"source": "remembered_help",
+			"label": remembered_label
+		}
+	return {}
+
+
 func _agent_supply_demand_kind(session: Dictionary) -> String:
 	match str(session.get("agent_id", "")):
 		"marigold":
@@ -499,9 +544,10 @@ func _agent_supply_demand_kind(session: Dictionary) -> String:
 
 func _demand_template(demand_kind: String, session: Dictionary) -> Dictionary:
 	var agent_name := str(session.get("agent_name", "Crew"))
+	var template := {}
 	match demand_kind:
 		"clear_brush":
-			return {
+			template = {
 				"kind": "clear_brush",
 				"required_action": "clear_brush",
 				"amount": 1,
@@ -509,7 +555,7 @@ func _demand_template(demand_kind: String, session: Dictionary) -> Dictionary:
 				"reason": "%s wants one messy patch cut before more grand plans." % agent_name
 			}
 		"harvest_crop":
-			return {
+			template = {
 				"kind": "harvest_crop",
 				"required_action": "harvest_crop",
 				"amount": 1,
@@ -517,7 +563,7 @@ func _demand_template(demand_kind: String, session: Dictionary) -> Dictionary:
 				"reason": "%s wants proof the field can still produce something edible." % agent_name
 			}
 		"build_fence":
-			return {
+			template = {
 				"kind": "build_fence",
 				"required_action": "build_fence",
 				"amount": 1,
@@ -525,7 +571,7 @@ func _demand_template(demand_kind: String, session: Dictionary) -> Dictionary:
 				"reason": "%s wants the kit to become an actual boundary." % agent_name
 			}
 		"deliver_seed_bundle":
-			return {
+			template = {
 				"kind": "deliver_item",
 				"required_item": "seed_bundle",
 				"amount": 1,
@@ -533,20 +579,40 @@ func _demand_template(demand_kind: String, session: Dictionary) -> Dictionary:
 				"reason": "%s wants seed stock before optimism becomes a budget category." % agent_name
 			}
 		"deliver_rush_kit":
-			return {
+			template = {
 				"kind": "deliver_item",
 				"required_item": "rush_kit",
 				"amount": 1,
 				"label": "Deliver Rush Kit",
 				"reason": "%s wants velocity with handles on it." % agent_name
 			}
-	return {
-		"kind": "deliver_item",
-		"required_item": "fence_kit",
-		"amount": 1,
-		"label": "Deliver Fence Kit",
-		"reason": "%s wants proof that the recovery plan has materials behind it." % agent_name
-	}
+		_:
+			template = {
+				"kind": "deliver_item",
+				"required_item": "fence_kit",
+				"amount": 1,
+				"label": "Deliver Fence Kit",
+				"reason": "%s wants proof that the recovery plan has materials behind it." % agent_name
+			}
+	return template
+
+
+func _with_preference_context(template: Dictionary, session: Dictionary) -> Dictionary:
+	var preference := _active_preference_signal(session)
+	if preference.is_empty():
+		return template
+
+	var enriched := template.duplicate(true)
+	var source := str(preference.get("source", ""))
+	var label := str(preference.get("label", ""))
+	enriched["preference_source"] = source
+	enriched["preference_label"] = label
+	match source:
+		"truce":
+			enriched["reason"] = "%s Truce over %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+		"remembered_help":
+			enriched["reason"] = "%s Remembering %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+	return enriched
 
 
 func _count_recent_failures(events) -> int:

@@ -1146,6 +1146,8 @@ func _record_crafting_demand_event(demand_id: String, status: String) -> void:
 		"authored_order_id": str(demand.get("authored_order_id", "")),
 		"amount": int(demand.get("amount", 1)),
 		"age_days": int(demand.get("age_days", 0)),
+		"preference_source": str(demand.get("preference_source", "")),
+		"preference_label": str(demand.get("preference_label", "")),
 		"perk_id": str(demand.get("perk_id", "")),
 		"perk_label": str(demand.get("perk_label", ""))
 	})
