@@ -57,7 +57,8 @@ func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) ->
 				base_score + 7.0,
 				"%s points toward harvest work: %s" % [source, label],
 				world.get("ready_tile", world.get("home_tile", Vector2i.ZERO)),
-				_social_preference_line(agent_state, source, "harvest", label)
+				_social_preference_line(agent_state, source, "harvest", label),
+				_social_preference_metadata(source, label)
 			)
 		if int(world.get("empty_soil", 0)) > 0:
 			return _candidate(
@@ -65,7 +66,8 @@ func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) ->
 				base_score,
 				"%s points toward spring planning: %s" % [source, label],
 				world.get("soil_tile", world.get("home_tile", Vector2i.ZERO)),
-				_social_preference_line(agent_state, source, "soil", label)
+				_social_preference_line(agent_state, source, "soil", label),
+				_social_preference_metadata(source, label)
 			)
 
 	if _label_matches_any(lower_label, ["rush", "hustle", "clear", "brush", "fiber"]):
@@ -75,7 +77,8 @@ func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) ->
 				base_score + 6.0,
 				"%s points toward clearing work: %s" % [source, label],
 				world.get("brush_tile", world.get("home_tile", Vector2i.ZERO)),
-				_social_preference_line(agent_state, source, "brush", label)
+				_social_preference_line(agent_state, source, "brush", label),
+				_social_preference_metadata(source, label)
 			)
 
 	if _label_matches_any(lower_label, ["fence", "boundary"]):
@@ -85,7 +88,8 @@ func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) ->
 				base_score + 3.0,
 				"%s points toward fence checks: %s" % [source, label],
 				world.get("structure_tile", world.get("home_tile", Vector2i.ZERO)),
-				_social_preference_line(agent_state, source, "fence", label)
+				_social_preference_line(agent_state, source, "fence", label),
+				_social_preference_metadata(source, label)
 			)
 		if int(world.get("brush_tiles", 0)) > 0:
 			return _candidate(
@@ -93,7 +97,8 @@ func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) ->
 				base_score + 2.0,
 				"%s points toward clearing fence space: %s" % [source, label],
 				world.get("brush_tile", world.get("home_tile", Vector2i.ZERO)),
-				_social_preference_line(agent_state, source, "brush", label)
+				_social_preference_line(agent_state, source, "brush", label),
+				_social_preference_metadata(source, label)
 			)
 
 	return {}
@@ -115,6 +120,13 @@ func _social_preference_context(agent_state: Dictionary) -> Dictionary:
 		}
 
 	return {}
+
+
+func _social_preference_metadata(source: String, label: String) -> Dictionary:
+	return {
+		"social_preference_source": source,
+		"social_preference_label": label
+	}
 
 
 func _label_matches_any(label: String, needles: Array[String]) -> bool:
@@ -168,14 +180,17 @@ func _reaction_candidate(agent_state: Dictionary, event: Dictionary) -> Dictiona
 	return _candidate("side_eye", 98.0, "player failed at %s" % action, target, _negative_line(agent_state, action))
 
 
-func _candidate(action_name: String, score: float, reason: String, target_tile, comment: String = "") -> Dictionary:
-	return {
+func _candidate(action_name: String, score: float, reason: String, target_tile, comment: String = "", extra: Dictionary = {}) -> Dictionary:
+	var candidate := {
 		"action": action_name,
 		"score": score,
 		"reason": reason,
 		"target_tile": target_tile,
 		"comment": comment
 	}
+	for key in extra.keys():
+		candidate[key] = extra[key]
+	return candidate
 
 
 func _positive_line(agent_state: Dictionary, action_name: String) -> String:

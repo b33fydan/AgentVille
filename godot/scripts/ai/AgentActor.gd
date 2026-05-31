@@ -186,7 +186,7 @@ func _start_decision(decision: Dictionary) -> void:
 	_set_phase("working" if _is_at_target() else "walking")
 
 	if event_log:
-		event_log.record_event("agent_action", {
+		var action_event := {
 			"agent_id": agent_id,
 			"agent_name": display_name,
 			"day": int(grid_manager.day) if grid_manager else 1,
@@ -197,7 +197,9 @@ func _start_decision(decision: Dictionary) -> void:
 			"target_tile": target_tile,
 			"mood": float(state.get("mood", 0.0)),
 			"energy": float(state.get("energy", 0.0))
-		})
+		}
+		_add_social_preference_metadata(action_event, decision)
+		event_log.record_event("agent_action", action_event)
 
 	var comment := str(decision.get("comment", ""))
 	if comment != "":
@@ -636,12 +638,13 @@ func _build_fence_order_at(tile_pos: Vector2i, order: Dictionary) -> void:
 
 
 func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, message: String, value: int = 0, subject: String = "", stamps: Array = [], resources: Dictionary = {}, crafted_cost: Dictionary = {}, work_order_id: String = "") -> void:
-	world_action_performed.emit({
+	var world_action := {
 		"actor": "agent",
 		"agent_id": agent_id,
 		"agent_name": display_name,
 		"trait": personality_trait,
 		"action": action_name,
+		"reason": str(_active_decision.get("reason", "")),
 		"grid_pos": tile_pos,
 		"success": success,
 		"message": message,
@@ -651,12 +654,23 @@ func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, 
 		"resources": resources,
 		"crafted_cost": crafted_cost,
 		"work_order_id": work_order_id
-	})
+	}
+	_add_social_preference_metadata(world_action, _active_decision)
+	world_action_performed.emit(world_action)
 
 	if success:
 		var comment := _work_comment(action_name, value, subject)
 		if comment != "":
 			comment_generated.emit("%s: \"%s\"" % [display_name, comment])
+
+
+func _add_social_preference_metadata(payload: Dictionary, decision: Dictionary) -> void:
+	var source := str(decision.get("social_preference_source", "")).strip_edges()
+	var label := str(decision.get("social_preference_label", "")).strip_edges()
+	if source == "" or label == "":
+		return
+	payload["social_preference_source"] = source
+	payload["social_preference_label"] = label
 
 
 func _tile_subject(tile) -> String:

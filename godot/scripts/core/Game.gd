@@ -2363,6 +2363,7 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
 	var remembered_context_text := _format_remembered_help_session_names(remembered_help_sessions)
+	var social_autonomy_text := _format_agent_social_preference_names(summary.get("agent_social_preference_actions", {}))
 	var top_action := str(summary.get("top_action", "none"))
 	var vibe: Dictionary = summary.get("vibe", {})
 	var vibe_label := str(vibe.get("label", "mixed"))
@@ -2372,6 +2373,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		var empty_line := "Day %s: neglectful, no farm work logged" % int(summary.get("day", 1))
 		if remembered_context_text != "":
 			empty_line += ", remembered %s" % remembered_context_text
+		if social_autonomy_text != "":
+			empty_line += ", crew followed %s" % social_autonomy_text
 		if truce_delayed_orders > 0:
 			empty_line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 		return empty_line + "."
@@ -2387,6 +2390,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", called %s" % _format_called_favor_names(favored_agents)
 	if remembered_context_text != "":
 		line += ", remembered %s" % remembered_context_text
+	if social_autonomy_text != "":
+		line += ", crew followed %s" % social_autonomy_text
 	if truce_delayed_orders > 0:
 		line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 	if craft_count > 0:
@@ -2410,24 +2415,25 @@ func _format_agent_receipt(event: Dictionary) -> String:
 	var target := "(%s,%s)" % [grid_pos.x, grid_pos.y]
 	var success := bool(event.get("success", false))
 	var subject := str(event.get("subject", "tile"))
+	var social_context := _format_social_preference_suffix(event)
 
 	if not success:
 		return "%s missed %s at %s." % [name, action.replace("_", " "), target]
 
 	match action:
 		"build_fence_order":
-			return "%s built fence at %s.%s" % [name, target, _format_crafted_cost_suffix(event.get("crafted_cost", {}))]
+			return "%s built fence at %s.%s%s" % [name, target, _format_crafted_cost_suffix(event.get("crafted_cost", {})), social_context]
 		"harvest_crop":
-			return "%s harvested %s coins at %s.%s" % [name, int(event.get("value", 0)), target, _format_resource_suffix(event.get("resources", {}))]
+			return "%s harvested %s coins at %s.%s%s" % [name, int(event.get("value", 0)), target, _format_resource_suffix(event.get("resources", {})), social_context]
 		"clear_brush":
-			return "%s cleared %s at %s.%s" % [name, subject, target, _format_resource_suffix(event.get("resources", {}))]
+			return "%s cleared %s at %s.%s%s" % [name, subject, target, _format_resource_suffix(event.get("resources", {})), social_context]
 		"inspect_structure":
-			return "%s inspected %s at %s." % [name, subject, target]
+			return "%s inspected %s at %s%s." % [name, subject, target, social_context]
 		"inspect_ready_crop":
-			return "%s checked %s at %s." % [name, subject, target]
+			return "%s checked %s at %s%s." % [name, subject, target, social_context]
 		"inspect_soil":
-			return "%s checked open soil at %s." % [name, target]
-	return "%s completed %s at %s." % [name, action.replace("_", " "), target]
+			return "%s checked open soil at %s%s." % [name, target, social_context]
+	return "%s completed %s at %s%s." % [name, action.replace("_", " "), target, social_context]
 
 
 func _format_adversarial_result(result: Dictionary) -> String:
@@ -2500,6 +2506,38 @@ func _format_remembered_help_session_names(memory_sessions: Dictionary) -> Strin
 			names.append(label)
 	names.sort()
 	return _join_names(names)
+
+
+func _format_agent_social_preference_names(social_actions) -> String:
+	if typeof(social_actions) != TYPE_DICTIONARY:
+		return ""
+
+	var names: Array[String] = []
+	for agent_id in social_actions.keys():
+		var receipt: Dictionary = social_actions.get(agent_id, {})
+		var name := str(receipt.get("name", str(agent_id).capitalize()))
+		var label := str(receipt.get("last_label", ""))
+		var source := str(receipt.get("last_source", "")).capitalize()
+		if name == "" or label == "":
+			continue
+		var detail := "%s's %s" % [name, label]
+		if source != "":
+			detail += " %s" % source
+		var count := int(receipt.get("actions", 0))
+		if count > 1:
+			detail += " x%s" % count
+		if not names.has(detail):
+			names.append(detail)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_social_preference_suffix(event: Dictionary) -> String:
+	var source := str(event.get("social_preference_source", "")).strip_edges()
+	var label := str(event.get("social_preference_label", "")).strip_edges()
+	if source == "" or label == "":
+		return ""
+	return " [%s: %s]" % [source.capitalize(), label]
 
 
 func _join_names(names: Array[String]) -> String:

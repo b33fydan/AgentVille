@@ -13,6 +13,9 @@ func _run() -> void:
 	_test_truce_rush_biases_brush_clearing()
 	_test_fence_memory_biases_boundary_checks()
 	_test_plain_utility_still_prefers_ready_crops()
+	if not _test_model_metadata():
+		return
+	await _test_scene_social_preference_receipts()
 	quit()
 
 
@@ -38,6 +41,9 @@ func _test_remembered_seed_help_biases_harvest() -> void:
 	if not str(decision.get("reason", "")).contains("memory"):
 		_fail("Remembered harvest preference did not record a memory reason.")
 		return
+	if str(decision.get("social_preference_source", "")) != "memory" or str(decision.get("social_preference_label", "")) != "Seed Bundle":
+		_fail("Remembered harvest preference did not carry social metadata.")
+		return
 
 
 func _test_truce_rush_biases_brush_clearing() -> void:
@@ -61,6 +67,9 @@ func _test_truce_rush_biases_brush_clearing() -> void:
 		return
 	if not str(decision.get("reason", "")).contains("truce"):
 		_fail("Brush-clearing preference did not record a truce reason.")
+		return
+	if str(decision.get("social_preference_source", "")) != "truce" or str(decision.get("social_preference_label", "")) != "Rush Kit":
+		_fail("Brush-clearing truce preference did not carry social metadata.")
 		return
 
 
@@ -101,6 +110,113 @@ func _test_plain_utility_still_prefers_ready_crops() -> void:
 	if str(decision.get("reason", "")).contains("memory") or str(decision.get("reason", "")).contains("truce"):
 		_fail("Plain utility should not carry social preference context.")
 		return
+	if str(decision.get("social_preference_source", "")) != "" or str(decision.get("social_preference_label", "")) != "":
+		_fail("Plain utility should not carry social preference metadata.")
+		return
+
+
+func _test_model_metadata() -> bool:
+	var decision := _decision(
+		_agent_state("bert", "Bert", "grizzled", {
+			"truce_label": "Fence Kit",
+			"truce_days": 1
+		}),
+		_world({
+			"brush_tiles": 1,
+			"brush_tile": Vector2i(3, 3)
+		})
+	)
+	if str(decision.get("social_preference_source", "")) != "truce":
+		_fail("Fallback fence-space preference did not record truce metadata.")
+		return false
+	if str(decision.get("social_preference_label", "")) != "Fence Kit":
+		_fail("Fallback fence-space preference did not preserve the truce label.")
+		return false
+	return true
+
+
+func _test_scene_social_preference_receipts() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	await process_frame
+	await process_frame
+
+	var grid = scene.get_node("FarmWorld/GridManager")
+	var agent_manager = scene.get_node("FarmWorld/AgentManager")
+	var agent = agent_manager.agents[2]
+	agent.move_speed = 36.0
+
+	var target: Vector2i = agent.current_grid_pos
+	var tile = grid.get_tile(target)
+	if tile == null:
+		_fail("Scene social-preference setup could not find Chuck's tile.")
+		return
+	tile.erase()
+	tile.place_item("tall_grass")
+
+	agent.call("_start_decision", {
+		"action": "clear_brush",
+		"reason": "truce points toward clearing work: Rush Kit",
+		"score": 100.0,
+		"target_tile": target,
+		"comment": "Truce says Rush Kit. The weeds have been notified.",
+		"social_preference_source": "truce",
+		"social_preference_label": "Rush Kit"
+	})
+	await create_timer(1.0).timeout
+
+	if str(tile.decor_id) != "":
+		_fail("Scene social-preference setup did not complete the brush work.")
+		return
+
+	var log = scene.get_node("GameEventLog")
+	var saw_agent_action := false
+	var saw_world_action := false
+	for event in log.get("events"):
+		if typeof(event) != TYPE_DICTIONARY:
+			continue
+		if str(event.get("agent_id", "")) != "chuck":
+			continue
+		if str(event.get("social_preference_source", "")) != "truce" or str(event.get("social_preference_label", "")) != "Rush Kit":
+			continue
+		if str(event.get("type", "")) == "agent_action":
+			saw_agent_action = true
+		elif str(event.get("type", "")) == "agent_world_action" and bool(event.get("success", false)):
+			saw_world_action = true
+	if not saw_agent_action:
+		_fail("Agent action receipt did not preserve social preference metadata.")
+		return
+	if not saw_world_action:
+		_fail("Agent world-action receipt did not preserve social preference metadata.")
+		return
+
+	var entries: Array = scene.get_node("GameUI").get("_field_log_entries")
+	var saw_field_log := false
+	for entry in entries:
+		if str(entry).contains("Truce: Rush Kit"):
+			saw_field_log = true
+			break
+	if not saw_field_log:
+		_fail("Field Log did not show the social preference context for autonomous work.")
+		return
+
+	var summary: Dictionary = log.call("build_day_summary", grid.day)
+	var social_actions: Dictionary = summary.get("agent_social_preference_actions", {})
+	if not social_actions.has("chuck"):
+		_fail("Day summary did not count Chuck's social-preference autonomous work.")
+		return
+	var chuck_receipt: Dictionary = social_actions.get("chuck", {})
+	if str(chuck_receipt.get("last_source", "")) != "truce" or str(chuck_receipt.get("last_label", "")) != "Rush Kit":
+		_fail("Day summary did not keep the social-preference source and label.")
+		return
+
+	var summary_text := str(scene.call("_format_day_summary", summary))
+	if not summary_text.contains("crew followed") or not summary_text.contains("Rush Kit"):
+		_fail("Formatted day summary did not expose social-preference autonomous work. saw=%s" % summary_text)
+		return
+
+	scene.queue_free()
+	await process_frame
 
 
 func _decision(agent_state: Dictionary, world: Dictionary) -> Dictionary:

@@ -44,6 +44,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Preference-driven demand rows and crew-row demand signals now show `Memory` or `Truce` context so the reason for the follow-up ask stays visible.
 - Preference follow-up asks now read recent demand history and skip open or just-completed repeats before falling back to the next related ask.
 - Remembered help and active truces now bias autonomous NPC utility choices toward related farm behavior, so social context can change what they decide to do next.
+- Socially biased autonomous NPC work now carries `Memory` or `Truce` context into agent receipts, Field Log text, and day summaries.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
 - Crew rows now keep spent favor markers visible until the next morning, making used social credit readable after Parley closes.
@@ -99,7 +100,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `scripts/ai/UtilityAgentDecisionModel.gd` is the deterministic decision layer that an LSTM can later replace or assist.
 - `tools/smoke_receipts.gd` exercises player-action receipts, agent reactions, and day summaries.
 - `tools/smoke_agents.gd` exercises NPC harvesting, coin updates, and brush clearing.
-- `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices toward matching farm behavior.
+- `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, then preserving that context in receipts and summaries.
 - `tools/smoke_adversarial_reactions.gd` exercises local NPC irritation, sarcastic reactions, and crew UI expression state.
 - `tools/smoke_adversarial_session.gd` exercises bounded NPC grievance sessions, scene UI wiring, result receipts, and rewards.
 - `tools/smoke_crafting_demands.gd` exercises Parley-created crafting demands, player delivery, demand receipts, and NPC cooldown.
@@ -226,6 +227,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Remembered Parley context lands in the day summary as its own named receipt, giving future observer/model layers a clean hook without treating it as spendable goodwill.
 - NPC summary comments now read those spent-goodwill receipts first, so favor use feels socially noticed instead of hidden behind generic help.
 - Social context now reaches autonomous behavior too: remembered help and truces create local utility candidates for harvest, clearing, or boundary checks when matching farm opportunities exist.
+- Socially biased NPC autonomy now records its source and label on agent action receipts, completed world actions, Field Log lines, and day-summary social autonomy receipts.
 - NPC summary comments now read remembered-help Parley receipts too, so next-day memory can affect commentary without becoming a gameplay coupon.
 - The threshold-based vibe scorer also reads spent-goodwill receipts, so future observer prompts can inherit named social context from local scoring.
 - It also reads remembered-help Parley receipts, keeping the future observer/model input aware of non-spendable relationship memory.
