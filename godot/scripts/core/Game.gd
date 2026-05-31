@@ -1344,6 +1344,7 @@ func _create_npc_authored_work_order(action_id: String, grid_pos: Vector2i, dema
 		"author_agent_id": str(demand.get("agent_id", "")),
 		"author_agent_name": author_name
 	}
+	_add_preference_context_to_order(order, demand)
 	work_orders[order_id] = order
 	work_order_ids.append(order_id)
 	_refresh_work_orders()
@@ -1354,6 +1355,23 @@ func _create_npc_authored_work_order(action_id: String, grid_pos: Vector2i, dema
 func _work_order_label(action_id: String, grid_pos: Vector2i) -> String:
 	var action: Dictionary = WORK_ORDER_ACTIONS.get(action_id, {})
 	return "%s %s,%s" % [str(action.get("label", "Order")), grid_pos.x, grid_pos.y]
+
+
+func _add_preference_context_to_order(order: Dictionary, demand: Dictionary) -> void:
+	var preference_source := str(demand.get("preference_source", "")).strip_edges()
+	var preference_label := str(demand.get("preference_label", "")).strip_edges()
+	if preference_source == "" or preference_label == "":
+		return
+	order["preference_source"] = preference_source
+	order["preference_label"] = preference_label
+	order["social_preference_source"] = _social_preference_source_for_order(preference_source)
+	order["social_preference_label"] = preference_label
+
+
+func _social_preference_source_for_order(preference_source: String) -> String:
+	if preference_source == "remembered_help":
+		return "memory"
+	return preference_source
 
 
 func _escalate_ignored_npc_authored_orders() -> void:
@@ -1782,9 +1800,8 @@ func _queue_directive_order(order_id: String, quiet: bool = false) -> bool:
 	game_ui.add_field_log("Work order queued: %s." % str(order.get("label", "Crew task")))
 	_record_work_order_event(order_id, "queued")
 
-	var assigned := bool(_agent_manager.call("assign_directive", agent_action, target_tile, "work order: %s" % str(order.get("label", "crew task")), {
-		"work_order_id": order_id
-	}))
+	var directive_extra := _work_order_directive_extra(order_id, order)
+	var assigned := bool(_agent_manager.call("assign_directive", agent_action, target_tile, "work order: %s" % str(order.get("label", "crew task")), directive_extra))
 	if not assigned:
 		_mark_order_waiting(order_id)
 	return assigned
@@ -1832,9 +1849,8 @@ func _queue_supply_for_order(order_id: String, quiet: bool = false) -> bool:
 		sound_manager.play_stamp("tool_select")
 	_record_work_order_event(order_id, "gathering")
 
-	var assigned := bool(_agent_manager.call("assign_directive", supply_action, supply_target, "gather %s for %s" % [supply_label, str(order.get("label", "work order"))], {
-		"work_order_id": order_id
-	}))
+	var directive_extra := _work_order_directive_extra(order_id, order)
+	var assigned := bool(_agent_manager.call("assign_directive", supply_action, supply_target, "gather %s for %s" % [supply_label, str(order.get("label", "work order"))], directive_extra))
 	if not assigned:
 		_mark_order_waiting(order_id)
 	return assigned
@@ -1885,6 +1901,22 @@ func _add_resources(gains) -> Dictionary:
 	if not accepted.is_empty():
 		_refresh_inventory_and_orders()
 	return accepted
+
+
+func _work_order_directive_extra(order_id: String, order: Dictionary) -> Dictionary:
+	var extra := {
+		"work_order_id": order_id
+	}
+	var source := str(order.get("social_preference_source", "")).strip_edges()
+	var label := str(order.get("social_preference_label", "")).strip_edges()
+	if source == "":
+		source = _social_preference_source_for_order(str(order.get("preference_source", "")).strip_edges())
+	if label == "":
+		label = str(order.get("preference_label", "")).strip_edges()
+	if source != "" and label != "":
+		extra["social_preference_source"] = source
+		extra["social_preference_label"] = label
+	return extra
 
 
 func _consume_crafted_cost(cost) -> Dictionary:
@@ -2218,6 +2250,10 @@ func _record_work_order_event(order_id: String, status: String) -> void:
 		"last_escalation": str(order.get("last_escalation", "")),
 		"truce_delayed_day": int(order.get("truce_delayed_day", 0)),
 		"truce_label": str(order.get("truce_label", "")),
+		"preference_source": str(order.get("preference_source", "")),
+		"preference_label": str(order.get("preference_label", "")),
+		"social_preference_source": str(order.get("social_preference_source", "")),
+		"social_preference_label": str(order.get("social_preference_label", "")),
 		"incentive_label": str(order.get("incentive_label", "")),
 		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
 		"incentive_claimed": bool(order.get("incentive_claimed", false))
@@ -2243,6 +2279,10 @@ func _record_removed_work_order_event(order: Dictionary, status: String) -> void
 		"last_escalation": str(order.get("last_escalation", "")),
 		"truce_delayed_day": int(order.get("truce_delayed_day", 0)),
 		"truce_label": str(order.get("truce_label", "")),
+		"preference_source": str(order.get("preference_source", "")),
+		"preference_label": str(order.get("preference_label", "")),
+		"social_preference_source": str(order.get("social_preference_source", "")),
+		"social_preference_label": str(order.get("social_preference_label", "")),
 		"incentive_label": str(order.get("incentive_label", "")),
 		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
 		"incentive_claimed": bool(order.get("incentive_claimed", false))

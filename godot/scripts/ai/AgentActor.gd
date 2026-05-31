@@ -136,9 +136,15 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 
 func start_work_order(order: Dictionary) -> void:
 	var target_tile := _validated_tile(order.get("target_tile", home_tile))
-	start_directive("build_fence_order", target_tile, "crew work order: %s" % str(order.get("label", "farm task")), {
+	var extra := {
 		"work_order": order.duplicate(true)
-	})
+	}
+	var source := str(order.get("social_preference_source", "")).strip_edges()
+	var label := str(order.get("social_preference_label", "")).strip_edges()
+	if source != "" and label != "":
+		extra["social_preference_source"] = source
+		extra["social_preference_label"] = label
+	start_directive("build_fence_order", target_tile, "crew work order: %s" % str(order.get("label", "farm task")), extra)
 
 
 func start_directive(action_name: String, target_tile: Vector2i, reason: String, extra: Dictionary = {}) -> void:
