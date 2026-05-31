@@ -243,6 +243,7 @@ func _summary_comment(summary: Dictionary) -> String:
 	var favor_names := _format_called_favor_names(favored_agents)
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
 	var memory_names := _format_remembered_help_session_names(remembered_help_sessions)
+	var social_autonomy_names := _format_agent_social_preference_names(summary.get("agent_social_preference_actions", {}))
 	var work_order_events: Dictionary = summary.get("work_order_events", {})
 	var truce_delayed_orders := int(work_order_events.get("truce_delayed", 0))
 
@@ -264,6 +265,15 @@ func _summary_comment(summary: Dictionary) -> String:
 				return "%s: \"Remembered %s during Parley. That kind of care keeps the room warmer.\"" % [name, memory_names]
 			"chaotic":
 				return "%s: \"Remembered %s during Parley. Friendship ledger glittered, allegedly.\"" % [name, memory_names]
+
+	if social_autonomy_names != "":
+		match personality:
+			"grizzled":
+				return "%s: \"Crew followed %s on their own. Fine. Useful initiative.\"" % [name, social_autonomy_names]
+			"hopeful":
+				return "%s: \"Crew followed %s on their own. That is real relationship momentum.\"" % [name, social_autonomy_names]
+			"chaotic":
+				return "%s: \"Crew followed %s on their own. Feelings became farm labor. Incredible.\"" % [name, social_autonomy_names]
 
 	if total == 0:
 		match personality:
@@ -391,6 +401,30 @@ func _format_remembered_help_session_names(memory_sessions: Dictionary) -> Strin
 			label += " x%s" % count
 		if not names.has(label):
 			names.append(label)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_agent_social_preference_names(social_actions) -> String:
+	if typeof(social_actions) != TYPE_DICTIONARY:
+		return ""
+
+	var names: Array[String] = []
+	for agent_id in social_actions.keys():
+		var receipt: Dictionary = social_actions.get(agent_id, {})
+		var social_name := str(receipt.get("name", str(agent_id).capitalize()))
+		var label := str(receipt.get("last_label", ""))
+		var source := str(receipt.get("last_source", "")).capitalize()
+		if social_name == "" or label == "":
+			continue
+		var detail := "%s's %s" % [social_name, label]
+		if source != "":
+			detail += " %s" % source
+		var count := int(receipt.get("actions", 0))
+		if count > 1:
+			detail += " x%s" % count
+		if not names.has(detail):
+			names.append(detail)
 	names.sort()
 	return _join_names(names)
 

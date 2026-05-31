@@ -13,6 +13,7 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	var helped_agents: Dictionary = summary.get("helped_agents", {})
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
+	var social_preference_actions: Dictionary = summary.get("agent_social_preference_actions", {})
 	var work_order_events: Dictionary = summary.get("work_order_events", {})
 	var truce_delayed_orders := int(work_order_events.get("truce_delayed", 0))
 	var reasons: Array[String] = []
@@ -26,6 +27,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 		if truce_delayed_orders > 0:
 			reasons.append("truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"])
 			return _result("careful", 52, reasons)
+		if not social_preference_actions.is_empty():
+			reasons.append("crew followed %s" % _format_agent_social_preference_names(social_preference_actions))
+			return _result("careful", 53, reasons)
 		reasons.append("no player farm work logged")
 		return _result("neglectful", 18, reasons)
 
@@ -57,6 +61,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	if truce_delayed_orders > 0:
 		score += mini(6, truce_delayed_orders * 3)
 		reasons.append("truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"])
+	if not social_preference_actions.is_empty():
+		score += mini(6, social_preference_actions.size() * 3)
+		reasons.append("crew followed %s" % _format_agent_social_preference_names(social_preference_actions))
 	if failed > 0:
 		reasons.append("%s missed actions" % failed)
 
@@ -132,6 +139,27 @@ func _format_remembered_help_session_names(memory_sessions: Dictionary) -> Strin
 			label += " x%s" % count
 		if not names.has(label):
 			names.append(label)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_agent_social_preference_names(social_actions: Dictionary) -> String:
+	var names: Array[String] = []
+	for agent_id in social_actions.keys():
+		var receipt: Dictionary = social_actions.get(agent_id, {})
+		var name := str(receipt.get("name", str(agent_id).capitalize()))
+		var label := str(receipt.get("last_label", ""))
+		var source := str(receipt.get("last_source", "")).capitalize()
+		if name == "" or label == "":
+			continue
+		var detail := "%s's %s" % [name, label]
+		if source != "":
+			detail += " %s" % source
+		var count := int(receipt.get("actions", 0))
+		if count > 1:
+			detail += " x%s" % count
+		if not names.has(detail):
+			names.append(detail)
 	names.sort()
 	return _join_names(names)
 

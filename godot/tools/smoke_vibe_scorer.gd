@@ -120,6 +120,28 @@ func _run() -> void:
 		_fail("Truce-delayed order was not included in vibe reasons.")
 		return
 
+	var social_autonomy_log := Node.new()
+	social_autonomy_log.set_script(GameEventLogScript)
+	root.add_child(social_autonomy_log)
+	social_autonomy_log.call("record_event", "agent_world_action", {
+		"day": 6,
+		"agent_id": "chuck",
+		"agent_name": "Chuck",
+		"action": "clear_brush",
+		"success": true,
+		"resources": {"fiber": 2},
+		"social_preference_source": "truce",
+		"social_preference_label": "Rush Kit"
+	})
+	var social_autonomy_summary: Dictionary = social_autonomy_log.call("build_day_summary", 6)
+	var social_autonomy_vibe: Dictionary = social_autonomy_summary.get("vibe", {})
+	if str(social_autonomy_vibe.get("label", "")) != "careful":
+		_fail("Social-autonomy quiet day did not score as careful. saw=%s" % str(social_autonomy_vibe.get("label", "")))
+		return
+	if not _reasons_contain(social_autonomy_vibe.get("reasons", []), "crew followed Chuck's Rush Kit Truce"):
+		_fail("Social-autonomy receipt was not included in vibe reasons.")
+		return
+
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	await process_frame
@@ -134,6 +156,11 @@ func _run() -> void:
 	var verdict := str(agent_manager.call("_summary_comment", chaotic_summary))
 	if not "Chaotic day" in verdict:
 		_fail("NPC summary verdict did not use the vibe label.")
+		return
+
+	var social_verdict := str(agent_manager.call("_summary_comment", social_autonomy_summary))
+	if not social_verdict.contains("Crew followed") or not social_verdict.contains("Rush Kit"):
+		_fail("NPC summary verdict did not notice social-autonomy receipts. saw=%s" % social_verdict)
 		return
 
 	quit()

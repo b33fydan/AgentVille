@@ -45,6 +45,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Preference follow-up asks now read recent demand history and skip open or just-completed repeats before falling back to the next related ask.
 - Remembered help and active truces now bias autonomous NPC utility choices toward related farm behavior, so social context can change what they decide to do next.
 - Socially biased autonomous NPC work now carries `Memory` or `Truce` context into agent receipts, Field Log text, and day summaries.
+- Local vibe scoring and NPC end-day verdicts now notice socially biased autonomous work instead of treating those quiet days as neglect.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
 - Crew rows now keep spent favor markers visible until the next morning, making used social credit readable after Parley closes.
@@ -129,6 +130,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_vibe_scorer.gd` exercises local vibe scoring, called-favor vibe reasons, formatted day summaries, and NPC vibe verdicts.
 - `tools/smoke_vibe_scorer.gd` also exercises remembered-help Parley context in local vibe reasons.
 - `tools/smoke_vibe_scorer.gd` also exercises truce-delayed order receipts as careful local vibe reasons.
+- `tools/smoke_vibe_scorer.gd` also exercises socially biased autonomous NPC work as careful local vibe and end-day verdict context.
 - `tools/smoke_supply_help_vibe.gd` exercises demand-row `Prep` and `Give` supply help counting as player work in day vibe summaries.
 - `tools/smoke_social_receipts.gd` exercises helped-agent receipts and end-day summary callouts after supply delivery.
 - `tools/smoke_crew_social_signal.gd` exercises crew-row helped-today signals and next-morning clearing.
@@ -228,6 +230,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - NPC summary comments now read those spent-goodwill receipts first, so favor use feels socially noticed instead of hidden behind generic help.
 - Social context now reaches autonomous behavior too: remembered help and truces create local utility candidates for harvest, clearing, or boundary checks when matching farm opportunities exist.
 - Socially biased NPC autonomy now records its source and label on agent action receipts, completed world actions, Field Log lines, and day-summary social autonomy receipts.
+- The local vibe scorer and NPC summary comments read those social-autonomy receipts, giving future observer prompts a cleaner signal for relationship-motivated NPC work.
 - NPC summary comments now read remembered-help Parley receipts too, so next-day memory can affect commentary without becoming a gameplay coupon.
 - The threshold-based vibe scorer also reads spent-goodwill receipts, so future observer prompts can inherit named social context from local scoring.
 - It also reads remembered-help Parley receipts, keeping the future observer/model input aware of non-spendable relationship memory.
