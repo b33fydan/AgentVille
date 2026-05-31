@@ -498,21 +498,78 @@ func _preference_followup_demand_kind(session: Dictionary) -> String:
 	if preference.is_empty():
 		return ""
 
+	return _first_unblocked_preference_kind(_preference_followup_demand_kinds(session, preference), session)
+
+
+func _preference_followup_demand_kinds(session: Dictionary, preference: Dictionary) -> Array[String]:
 	var label := str(preference.get("label", "")).to_lower()
 	if label.contains("seed") or label.contains("spring") or label.contains("harvest") or label.contains("crop"):
-		return "harvest_crop"
+		return ["harvest_crop", "deliver_seed_bundle", "clear_brush"]
 	if label.contains("rush") or label.contains("hustle") or label.contains("clear") or label.contains("brush") or label.contains("fiber"):
-		return "clear_brush"
+		return ["clear_brush", "deliver_rush_kit", "harvest_crop"]
 	if label.contains("fence") or label.contains("boundary"):
-		return "build_fence"
+		return ["build_fence", "clear_brush", "deliver_fence_kit"]
 
 	match str(session.get("agent_id", "")):
 		"marigold":
-			return "harvest_crop"
+			return ["harvest_crop", "deliver_seed_bundle", "clear_brush"]
 		"chuck":
-			return "clear_brush"
+			return ["clear_brush", "deliver_rush_kit", "harvest_crop"]
 		"bert":
-			return "build_fence"
+			return ["build_fence", "clear_brush", "deliver_fence_kit"]
+	return []
+
+
+func _first_unblocked_preference_kind(ranked_kinds: Array[String], session: Dictionary) -> String:
+	var fallback := ""
+	for demand_kind in ranked_kinds:
+		if fallback == "":
+			fallback = demand_kind
+		if not _is_preference_kind_blocked(demand_kind, session):
+			return demand_kind
+	return fallback
+
+
+func _is_preference_kind_blocked(demand_kind: String, session: Dictionary) -> bool:
+	var context: Dictionary = session.get("context", {})
+	var history = context.get("demand_history", [])
+	if typeof(history) != TYPE_ARRAY:
+		return false
+
+	var current_day := int(context.get("day", session.get("day", 1)))
+	var agent_id := str(session.get("agent_id", ""))
+	for record in history:
+		if typeof(record) != TYPE_DICTIONARY:
+			continue
+		if str(record.get("agent_id", "")) != agent_id:
+			continue
+		if not _demand_record_matches_kind(record, demand_kind):
+			continue
+
+		var status := str(record.get("status", ""))
+		if status == "open":
+			return true
+		var completed_day := int(record.get("completed_day", record.get("created_day", current_day)))
+		if status == "done" and current_day - completed_day <= 1:
+			return true
+	return false
+
+
+func _demand_record_matches_kind(record: Dictionary, demand_kind: String) -> bool:
+	var required_item := _required_item_for_demand_kind(demand_kind)
+	if required_item != "":
+		return str(record.get("kind", "")) == "deliver_item" and str(record.get("required_item", "")) == required_item
+	return str(record.get("kind", "")) == demand_kind
+
+
+func _required_item_for_demand_kind(demand_kind: String) -> String:
+	match demand_kind:
+		"deliver_seed_bundle":
+			return "seed_bundle"
+		"deliver_rush_kit":
+			return "rush_kit"
+		"deliver_fence_kit":
+			return "fence_kit"
 	return ""
 
 

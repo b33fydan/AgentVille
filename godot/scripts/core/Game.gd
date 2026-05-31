@@ -414,8 +414,35 @@ func _build_adversarial_context() -> Dictionary:
 		"money": money,
 		"resources": resources.duplicate(true),
 		"crafted_items": crafted_items.duplicate(true),
+		"demand_history": _crafting_demand_history_for_context(),
 		"demand_hint": "deliver_agent_supply"
 	}.merged(_queued_grievance_context, true)
+
+
+func _crafting_demand_history_for_context(limit: int = 8) -> Array[Dictionary]:
+	var history: Array[Dictionary] = []
+	for index in range(crafting_demand_ids.size() - 1, -1, -1):
+		var demand_id := str(crafting_demand_ids[index])
+		if not crafting_demands.has(demand_id):
+			continue
+		var demand: Dictionary = crafting_demands[demand_id]
+		history.append({
+			"id": demand_id,
+			"agent_id": str(demand.get("agent_id", "")),
+			"agent_name": str(demand.get("agent_name", "")),
+			"kind": str(demand.get("kind", "")),
+			"required_item": str(demand.get("required_item", "")),
+			"required_action": str(demand.get("required_action", "")),
+			"label": str(demand.get("label", "")),
+			"status": str(demand.get("status", "")),
+			"created_day": int(demand.get("created_day", grid_manager.day)),
+			"completed_day": int(demand.get("completed_day", demand.get("created_day", grid_manager.day))),
+			"preference_source": str(demand.get("preference_source", "")),
+			"preference_label": str(demand.get("preference_label", ""))
+		})
+		if history.size() >= limit:
+			break
+	return history
 
 
 func _apply_adversarial_result(result: Dictionary) -> void:

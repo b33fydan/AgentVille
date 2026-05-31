@@ -52,6 +52,45 @@ func _test_session_memory_preference_demands() -> void:
 		_fail("Truce demand did not record its preference source.")
 		return
 
+	var repeated_harvest_demand := _resolved_demand({
+		"id": "marigold",
+		"name": "Marigold",
+		"trait": "hopeful",
+		"irritation": 24.0,
+		"remembered_help_label": "Harvest Crop 0,1",
+		"remembered_help_days": 1
+	}, "deliver_agent_supply", [
+		{
+			"agent_id": "marigold",
+			"kind": "harvest_crop",
+			"status": "done",
+			"created_day": 2,
+			"completed_day": 2
+		}
+	])
+	if str(repeated_harvest_demand.get("kind", "")) != "deliver_item" or str(repeated_harvest_demand.get("required_item", "")) != "seed_bundle":
+		_fail("Recent harvest history did not steer Marigold away from repeating harvest.")
+		return
+
+	var open_fence_demand := _resolved_demand({
+		"id": "bert",
+		"name": "Bert",
+		"trait": "grizzled",
+		"irritation": 32.0,
+		"truce_label": "Fence Kit",
+		"truce_days": 1
+	}, "deliver_agent_supply", [
+		{
+			"agent_id": "bert",
+			"kind": "build_fence",
+			"status": "open",
+			"created_day": 2
+		}
+	])
+	if str(open_fence_demand.get("kind", "")) != "clear_brush":
+		_fail("Open fence follow-up did not steer Bert toward the next ranked preference ask.")
+		return
+
 	var explicit_demand := _resolved_demand({
 		"id": "bert",
 		"name": "Bert",
@@ -72,11 +111,12 @@ func _resolved_supply_demand(agent_snapshot: Dictionary) -> Dictionary:
 	return _resolved_demand(agent_snapshot, "deliver_agent_supply")
 
 
-func _resolved_demand(agent_snapshot: Dictionary, demand_hint: String) -> Dictionary:
+func _resolved_demand(agent_snapshot: Dictionary, demand_hint: String, demand_history: Array = []) -> Dictionary:
 	var manager = AdversarialSessionManagerScript.new()
 	manager.start_session(agent_snapshot, {
-		"day": 2,
+		"day": 3,
 		"demand_hint": demand_hint,
+		"demand_history": demand_history,
 		"recent_failures": 1
 	})
 	manager.choose_response("own_mistake")
@@ -174,6 +214,60 @@ func _test_scene_remembered_help_deepens_next_ask() -> void:
 			break
 	if not logged_preference:
 		_fail("Crafting-demand receipt did not include remembered-help preference metadata.")
+		return
+
+	var preference_target: Vector2i = preference_demand.get("target_tile", Vector2i(-1, -1))
+	scene.call("_on_player_action_logged", {
+		"actor": "player",
+		"tool": "sickle",
+		"action": "harvest",
+		"grid_pos": preference_target,
+		"item_id": "sickle",
+		"success": true,
+		"message": "Harvested the remembered-help follow-up.",
+		"value": 4,
+		"resources": {"grain": 1},
+		"crafted_cost": {}
+	})
+	await process_frame
+	await process_frame
+
+	var demands_after_harvest: Dictionary = scene.get("crafting_demands")
+	var completed_preference: Dictionary = demands_after_harvest.get(str(preference_demand.get("id", "")), {})
+	if str(completed_preference.get("status", "")) != "done":
+		_fail("Smoke setup did not complete the first memory-preference harvest demand.")
+		return
+
+	scene.call("_on_advance_day_requested")
+	await process_frame
+	await process_frame
+
+	scene.call("_on_adversarial_encounter_requested", "marigold")
+	await process_frame
+	own_it_button = _encounter_button(scene, "Own it")
+	if own_it_button == null:
+		_fail("Second remembered-help Parley did not expose Own it.")
+		return
+	own_it_button.pressed.emit()
+	await process_frame
+
+	own_it_button = _encounter_button(scene, "Own it")
+	if own_it_button == null:
+		_fail("Second remembered-help Parley did not keep Own it for the second response.")
+		return
+	own_it_button.pressed.emit()
+	await process_frame
+	await process_frame
+
+	var second_preference_demand := _latest_open_demand(scene, "marigold")
+	if second_preference_demand.is_empty():
+		_fail("Second remembered-help Parley did not create a follow-up demand.")
+		return
+	if str(second_preference_demand.get("kind", "")) != "deliver_item" or str(second_preference_demand.get("required_item", "")) != "seed_bundle":
+		_fail("Recent completed harvest did not steer the next remembered ask away from repeating harvest.")
+		return
+	if not (str(second_preference_demand.get("preference_source", "")) in ["remembered_help", "truce"]):
+		_fail("Second preference demand did not keep social preference metadata. saw=%s" % str(second_preference_demand))
 		return
 
 	scene.queue_free()
