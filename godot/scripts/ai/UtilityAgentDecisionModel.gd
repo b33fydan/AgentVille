@@ -9,6 +9,10 @@ func decide(agent_state: Dictionary, world: Dictionary, memory) -> Dictionary:
 	if not focus_event.is_empty():
 		candidates.append(_reaction_candidate(agent_state, focus_event))
 
+	var social_preference := _social_preference_candidate(agent_state, world)
+	if not social_preference.is_empty():
+		candidates.append(social_preference)
+
 	if float(agent_state.get("energy", 70.0)) < 28.0:
 		candidates.append(_candidate("rest", 86.0, "energy is low", world.get("home_tile", Vector2i.ZERO)))
 
@@ -35,6 +39,125 @@ func decide(agent_state: Dictionary, world: Dictionary, memory) -> Dictionary:
 		if float(candidate.get("score", 0.0)) > float(best.get("score", 0.0)):
 			best = candidate
 	return best
+
+
+func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) -> Dictionary:
+	var context := _social_preference_context(agent_state)
+	var label := str(context.get("label", ""))
+	if label == "":
+		return {}
+
+	var source := str(context.get("source", "memory"))
+	var base_score := 88.0 if source == "truce" else 80.0
+	var lower_label := label.to_lower()
+	if _label_matches_any(lower_label, ["seed", "spring", "harvest", "crop"]):
+		if int(world.get("ready_crops", 0)) > 0:
+			return _candidate(
+				"harvest_crop",
+				base_score + 7.0,
+				"%s points toward harvest work: %s" % [source, label],
+				world.get("ready_tile", world.get("home_tile", Vector2i.ZERO)),
+				_social_preference_line(agent_state, source, "harvest", label)
+			)
+		if int(world.get("empty_soil", 0)) > 0:
+			return _candidate(
+				"inspect_soil",
+				base_score,
+				"%s points toward spring planning: %s" % [source, label],
+				world.get("soil_tile", world.get("home_tile", Vector2i.ZERO)),
+				_social_preference_line(agent_state, source, "soil", label)
+			)
+
+	if _label_matches_any(lower_label, ["rush", "hustle", "clear", "brush", "fiber"]):
+		if int(world.get("brush_tiles", 0)) > 0:
+			return _candidate(
+				"clear_brush",
+				base_score + 6.0,
+				"%s points toward clearing work: %s" % [source, label],
+				world.get("brush_tile", world.get("home_tile", Vector2i.ZERO)),
+				_social_preference_line(agent_state, source, "brush", label)
+			)
+
+	if _label_matches_any(lower_label, ["fence", "boundary"]):
+		if int(world.get("structures", 0)) > 0:
+			return _candidate(
+				"inspect_structure",
+				base_score + 3.0,
+				"%s points toward fence checks: %s" % [source, label],
+				world.get("structure_tile", world.get("home_tile", Vector2i.ZERO)),
+				_social_preference_line(agent_state, source, "fence", label)
+			)
+		if int(world.get("brush_tiles", 0)) > 0:
+			return _candidate(
+				"clear_brush",
+				base_score + 2.0,
+				"%s points toward clearing fence space: %s" % [source, label],
+				world.get("brush_tile", world.get("home_tile", Vector2i.ZERO)),
+				_social_preference_line(agent_state, source, "brush", label)
+			)
+
+	return {}
+
+
+func _social_preference_context(agent_state: Dictionary) -> Dictionary:
+	var truce_label := str(agent_state.get("truce_label", "")).strip_edges()
+	if truce_label != "" and int(agent_state.get("truce_days", 0)) > 0:
+		return {
+			"source": "truce",
+			"label": truce_label
+		}
+
+	var remembered_label := str(agent_state.get("remembered_help_label", "")).strip_edges()
+	if remembered_label != "" and int(agent_state.get("remembered_help_days", 0)) > 0:
+		return {
+			"source": "memory",
+			"label": remembered_label
+		}
+
+	return {}
+
+
+func _label_matches_any(label: String, needles: Array[String]) -> bool:
+	for needle in needles:
+		if label.contains(needle):
+			return true
+	return false
+
+
+func _social_preference_line(agent_state: Dictionary, source: String, focus: String, label: String) -> String:
+	var context := "Truce" if source == "truce" else "Memory"
+	match str(agent_state.get("trait", "")):
+		"grizzled":
+			match focus:
+				"harvest":
+					return "%s says %s means we finish the crop work." % [context, label]
+				"soil":
+					return "%s says %s starts with checking the soil." % [context, label]
+				"brush":
+					return "%s says %s starts by making room." % [context, label]
+				"fence":
+					return "%s says %s means checking the boundaries." % [context, label]
+		"hopeful":
+			match focus:
+				"harvest":
+					return "%s says %s can turn into a useful harvest." % [context, label]
+				"soil":
+					return "%s says %s wants a good place to grow." % [context, label]
+				"brush":
+					return "%s says %s can clear a better path." % [context, label]
+				"fence":
+					return "%s says %s can make the farm feel steadier." % [context, label]
+		"chaotic":
+			match focus:
+				"harvest":
+					return "%s says %s. The vegetables are implicated." % [context, label]
+				"soil":
+					return "%s says %s. I am interrogating the dirt." % [context, label]
+				"brush":
+					return "%s says %s. The weeds have been notified." % [context, label]
+				"fence":
+					return "%s says %s. Boundary inspection mode." % [context, label]
+	return "%s says %s matters right now." % [context, label]
 
 
 func _reaction_candidate(agent_state: Dictionary, event: Dictionary) -> Dictionary:
