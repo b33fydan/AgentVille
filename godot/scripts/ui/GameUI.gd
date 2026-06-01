@@ -38,6 +38,8 @@ var _crafted_labels: Dictionary = {}
 var _craft_buttons: Dictionary = {}
 var _crafting_demand_rows: Dictionary = {}
 var _crafting_demand_list_stack: VBoxContainer
+var _crew_mission_rows: Dictionary = {}
+var _crew_mission_list_stack: VBoxContainer
 var _crew_pending_demand_details: Dictionary = {}
 var _crew_pending_demand_labels: Dictionary = {}
 var _crew_pending_demand_order_ids: Dictionary = {}
@@ -170,6 +172,24 @@ func set_crafting_demands(demands: Array) -> void:
 			continue
 		_add_crafting_demand_row(_crafting_demand_list_stack, demand)
 	_refresh_crew_social_signals()
+
+
+func set_crew_missions(missions: Array) -> void:
+	if _crew_mission_list_stack == null:
+		return
+
+	for child in _crew_mission_list_stack.get_children():
+		child.queue_free()
+	_crew_mission_rows.clear()
+
+	if missions.is_empty():
+		_add_empty_crew_mission_row(_crew_mission_list_stack)
+		return
+
+	for mission in missions:
+		if typeof(mission) != TYPE_DICTIONARY:
+			continue
+		_add_crew_mission_row(_crew_mission_list_stack, mission)
 
 
 func set_work_orders(orders: Array) -> void:
@@ -576,6 +596,17 @@ func _build_crew_panel() -> void:
 	_add_crew_row(stack, "marigold", "Marigold", "hopeful", Color("#7faf62"))
 	_add_crew_row(stack, "chuck", "Chuck", "chaotic", Color("#9b6fb6"))
 
+	var mission_label := Label.new()
+	mission_label.text = "MISSIONS"
+	mission_label.add_theme_font_size_override("font_size", 12)
+	mission_label.add_theme_color_override("font_color", Color("#8a806f"))
+	stack.add_child(mission_label)
+
+	_crew_mission_list_stack = VBoxContainer.new()
+	_crew_mission_list_stack.add_theme_constant_override("separation", 3)
+	stack.add_child(_crew_mission_list_stack)
+	_add_empty_crew_mission_row(_crew_mission_list_stack)
+
 	var log_label := Label.new()
 	log_label.text = "FIELD LOG"
 	log_label.add_theme_font_size_override("font_size", 12)
@@ -926,6 +957,79 @@ func _add_empty_crafting_demand_row(parent: VBoxContainer) -> void:
 	label.add_theme_font_size_override("font_size", 10)
 	label.add_theme_color_override("font_color", Color("#8a806f"))
 	parent.add_child(label)
+
+
+func _add_empty_crew_mission_row(parent: VBoxContainer) -> void:
+	var label := Label.new()
+	label.text = "No missions"
+	label.custom_minimum_size = Vector2(0, 16)
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", Color("#8a806f"))
+	parent.add_child(label)
+
+
+func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
+	var mission_id := str(mission.get("id", ""))
+	var row_panel := PanelContainer.new()
+	row_panel.custom_minimum_size = Vector2(0, 38)
+	row_panel.add_theme_stylebox_override("panel", _crew_mission_row_style(mission))
+	parent.add_child(row_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	row_panel.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 1)
+	margin.add_child(stack)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
+	stack.add_child(top)
+
+	var label := Label.new()
+	label.text = str(mission.get("label", "Crew Mission"))
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color("#3f372d"))
+	top.add_child(label)
+
+	var status := Label.new()
+	status.text = str(mission.get("status_text", "Step"))
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	status.add_theme_font_size_override("font_size", 10)
+	status.add_theme_color_override("font_color", _crew_mission_status_color(mission))
+	top.add_child(status)
+
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 6)
+	stack.add_child(bottom)
+
+	var agent := Label.new()
+	agent.text = str(mission.get("agent_name", "Crew"))
+	agent.custom_minimum_size = Vector2(62, 0)
+	agent.add_theme_font_size_override("font_size", 9)
+	agent.add_theme_color_override("font_color", Color("#7a6f60"))
+	bottom.add_child(agent)
+
+	var step := Label.new()
+	step.text = str(mission.get("current_step_label", ""))
+	step.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	step.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	step.add_theme_font_size_override("font_size", 9)
+	step.add_theme_color_override("font_color", Color("#5f6478"))
+	bottom.add_child(step)
+
+	_crew_mission_rows[mission_id] = {
+		"panel": row_panel,
+		"label": label,
+		"agent": agent,
+		"status": status,
+		"step": step
+	}
 
 
 func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void:
@@ -1863,6 +1967,22 @@ func _crew_row_style(mood: float) -> StyleBoxFlat:
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(11)
 	return style
+
+
+func _crew_mission_row_style(mission: Dictionary) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	var is_done := str(mission.get("status", "")) == "done"
+	style.bg_color = Color("#eef5ea") if is_done else Color("#f0f1fb")
+	style.border_color = Color("#a4bd8d") if is_done else Color("#a8a9d6")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	return style
+
+
+func _crew_mission_status_color(mission: Dictionary) -> Color:
+	if str(mission.get("status", "")) == "done":
+		return Color("#5f7f39")
+	return Color("#6469a6")
 
 
 func _cursor_ghost_style() -> StyleBoxFlat:

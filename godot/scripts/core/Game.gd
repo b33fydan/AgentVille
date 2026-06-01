@@ -709,6 +709,7 @@ func _create_crew_mission(template: Dictionary, source_event: Dictionary) -> Str
 	_record_crew_mission_event(mission_id, "started")
 	game_ui.add_field_log("%s started mission: %s." % [str(mission.get("agent_name", "Crew")), str(mission.get("label", "Crew Mission"))])
 	_start_next_crew_mission_step(mission_id)
+	_refresh_crew_missions()
 	return mission_id
 
 
@@ -993,6 +994,7 @@ func _advance_crew_mission_from_demand(demand: Dictionary) -> void:
 		int(mission.get("total_steps", 0))
 	])
 	_start_next_crew_mission_step(mission_id)
+	_refresh_crew_missions()
 
 
 func _complete_crew_mission(mission_id: String) -> void:
@@ -1020,6 +1022,7 @@ func _complete_crew_mission(mission_id: String) -> void:
 
 	game_ui.add_field_log("%s completed mission: %s." % [str(mission.get("agent_name", "Crew")), str(mission.get("label", "Crew Mission"))])
 	_record_crew_mission_event(mission_id, "done")
+	_refresh_crew_missions()
 
 
 func _acknowledge_completed_demand(demand: Dictionary) -> void:
@@ -2128,6 +2131,7 @@ func _refresh_inventory_and_orders() -> void:
 	game_ui.set_inventory(resources, _available_crafted_items_snapshot())
 	_refresh_crafting_demands()
 	_refresh_work_orders()
+	_refresh_crew_missions()
 
 
 func _refresh_crafting_demands() -> void:
@@ -2138,6 +2142,10 @@ func _refresh_crafting_demands() -> void:
 func _refresh_work_orders() -> void:
 	_refresh_order_markers()
 	game_ui.set_work_orders(_work_order_snapshots())
+
+
+func _refresh_crew_missions() -> void:
+	game_ui.set_crew_missions(_crew_mission_snapshots())
 
 
 func _refresh_order_markers() -> void:
@@ -2540,6 +2548,47 @@ func _crafting_demand_snapshots() -> Array:
 	visible_ids.reverse()
 	for demand_id in visible_ids.slice(0, 2):
 		snapshots.append(_crafting_demand_snapshot(demand_id))
+	return snapshots
+
+
+func _crew_mission_snapshot(mission_id: String) -> Dictionary:
+	if not crew_missions.has(mission_id):
+		return {}
+
+	var mission: Dictionary = crew_missions[mission_id].duplicate(true)
+	var status := str(mission.get("status", "active"))
+	var total_steps := int(mission.get("total_steps", 0))
+	var current_step_index := int(mission.get("current_step_index", 0))
+	if status == "done":
+		mission["status_text"] = "Done"
+		mission["current_step_label"] = "Completed"
+		return mission
+
+	var display_step := clampi(current_step_index + 1, 1, maxi(1, total_steps))
+	mission["status_text"] = "Step %s/%s" % [display_step, maxi(1, total_steps)]
+	var step_label := ""
+	var current_demand_id := str(mission.get("current_demand_id", ""))
+	if crafting_demands.has(current_demand_id):
+		var demand: Dictionary = crafting_demands[current_demand_id]
+		step_label = str(demand.get("mission_step_label", "")).strip_edges()
+	if step_label == "":
+		var steps: Array = mission.get("steps", [])
+		if current_step_index >= 0 and current_step_index < steps.size() and typeof(steps[current_step_index]) == TYPE_DICTIONARY:
+			step_label = str((steps[current_step_index] as Dictionary).get("label", "")).strip_edges()
+	if step_label == "":
+		step_label = "Active"
+	mission["current_step_label"] = step_label
+	return mission
+
+
+func _crew_mission_snapshots() -> Array:
+	var snapshots: Array = []
+	var visible_ids := crew_mission_ids.duplicate()
+	visible_ids.reverse()
+	for mission_id in visible_ids.slice(0, 2):
+		var snapshot := _crew_mission_snapshot(str(mission_id))
+		if not snapshot.is_empty():
+			snapshots.append(snapshot)
 	return snapshots
 
 
