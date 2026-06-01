@@ -170,6 +170,30 @@ func acknowledge_supply_delivery(agent_id: String, item_label: String, payoff_la
 		return
 
 
+func acknowledge_completed_authored_order(agent_id: String, order_label: String) -> void:
+	if agent_id == "":
+		return
+
+	for agent in agents:
+		if str(agent.get("agent_id")) != agent_id:
+			continue
+		agent.call("acknowledge_completed_authored_order", order_label)
+		crew_updated.emit(get_agent_snapshots())
+		return
+
+
+func remember_ignored_ask(agent_id: String, order_label: String) -> void:
+	if agent_id == "":
+		return
+
+	for agent in agents:
+		if str(agent.get("agent_id")) != agent_id:
+			continue
+		agent.call("remember_ignored_ask", order_label)
+		crew_updated.emit(get_agent_snapshots())
+		return
+
+
 func apply_crew_boost(seconds: float, multiplier: float = 1.28) -> void:
 	if seconds <= 0.0:
 		return

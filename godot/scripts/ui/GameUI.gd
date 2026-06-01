@@ -1035,6 +1035,14 @@ func _demand_preference_context_text(demand: Dictionary) -> String:
 			return "Memory"
 		"truce":
 			return "Truce"
+		"repeated_help":
+			return "Streak"
+		"completed_order":
+			return "Follow-up"
+		"ignored_ask":
+			return "Pressure"
+		"held_truce":
+			return "Held"
 	return ""
 
 
@@ -1045,6 +1053,14 @@ func _demand_preference_tooltip(demand: Dictionary) -> String:
 			return "Remembered help: %s" % label if label != "" else "Influenced by remembered help"
 		"truce":
 			return "Active truce: %s" % label if label != "" else "Influenced by an active truce"
+		"repeated_help":
+			return "Repeated help: %s" % label if label != "" else "Influenced by repeated help"
+		"completed_order":
+			return "Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order"
+		"ignored_ask":
+			return "Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask"
+		"held_truce":
+			return "Held truce: %s" % label if label != "" else "Influenced by a held truce"
 	return str(demand.get("reason", ""))
 
 

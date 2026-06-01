@@ -82,6 +82,13 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"truce_label": "",
 		"truce_days": 0,
 		"truce_absorbed_today": 0,
+		"completed_authored_order_today": 0,
+		"recent_completed_order_label": "",
+		"ignored_ask_today": 0,
+		"recent_ignored_ask_label": "",
+		"memory_consequence_source": "",
+		"memory_consequence_label": "",
+		"memory_consequence_days": 0,
 		"active_social_preference_source": "",
 		"active_social_preference_label": "",
 		"daily_intention_id": str(daily_intention.get("id", "")),
@@ -125,6 +132,10 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 		state["recent_spent_favor_label"] = ""
 		state["memory_discussed_today"] = 0
 		state["recent_discussed_memory_label"] = ""
+		state["completed_authored_order_today"] = 0
+		state["recent_completed_order_label"] = ""
+		state["ignored_ask_today"] = 0
+		state["recent_ignored_ask_label"] = ""
 		_refresh_daily_intention()
 		_decision_timer = minf(_decision_timer, 0.8)
 		state_changed.emit(get_snapshot())
@@ -243,6 +254,13 @@ func get_snapshot() -> Dictionary:
 		"truce_label": str(state.get("truce_label", "")),
 		"truce_days": int(state.get("truce_days", 0)),
 		"truce_absorbed_today": int(state.get("truce_absorbed_today", 0)),
+		"completed_authored_order_today": int(state.get("completed_authored_order_today", 0)),
+		"recent_completed_order_label": str(state.get("recent_completed_order_label", "")),
+		"ignored_ask_today": int(state.get("ignored_ask_today", 0)),
+		"recent_ignored_ask_label": str(state.get("recent_ignored_ask_label", "")),
+		"memory_consequence_source": str(state.get("memory_consequence_source", "")),
+		"memory_consequence_label": str(state.get("memory_consequence_label", "")),
+		"memory_consequence_days": int(state.get("memory_consequence_days", 0)),
 		"active_social_preference_source": str(state.get("active_social_preference_source", "")),
 		"active_social_preference_label": str(state.get("active_social_preference_label", "")),
 		"daily_intention_id": str(state.get("daily_intention_id", "")),
@@ -257,6 +275,7 @@ func get_snapshot() -> Dictionary:
 
 
 func _roll_daily_social_credit_into_memory() -> void:
+	var next_consequence := _next_memory_consequence()
 	var discussed_label := str(state.get("recent_discussed_memory_label", "")).strip_edges()
 	if int(state.get("memory_discussed_today", 0)) > 0 and discussed_label != "":
 		state["truce_label"] = discussed_label
@@ -278,17 +297,69 @@ func _roll_daily_social_credit_into_memory() -> void:
 	if next_memory != "":
 		state["remembered_help_label"] = next_memory
 		state["remembered_help_days"] = 1
+	else:
+		var remembered_days := int(state.get("remembered_help_days", 0))
+		if remembered_days <= 0:
+			state["remembered_help_label"] = ""
+		else:
+			remembered_days -= 1
+			state["remembered_help_days"] = remembered_days
+			if remembered_days <= 0:
+				state["remembered_help_label"] = ""
+
+	_apply_memory_consequence(next_consequence)
+
+
+func _next_memory_consequence() -> Dictionary:
+	var truce_label := str(state.get("truce_label", "")).strip_edges()
+	if int(state.get("truce_absorbed_today", 0)) > 0 and truce_label != "":
+		return {
+			"source": "held_truce",
+			"label": truce_label
+		}
+
+	var ignored_label := str(state.get("recent_ignored_ask_label", "")).strip_edges()
+	if int(state.get("ignored_ask_today", 0)) > 0 and ignored_label != "":
+		return {
+			"source": "ignored_ask",
+			"label": ignored_label
+		}
+
+	var completed_label := str(state.get("recent_completed_order_label", "")).strip_edges()
+	if int(state.get("completed_authored_order_today", 0)) > 0 and completed_label != "":
+		return {
+			"source": "completed_order",
+			"label": completed_label
+		}
+
+	var remembered_label := str(state.get("remembered_help_label", "")).strip_edges()
+	var recent_help_label := str(state.get("recent_help_label", "")).strip_edges()
+	if int(state.get("helped_today", 0)) > 0 and remembered_label != "":
+		return {
+			"source": "repeated_help",
+			"label": recent_help_label if recent_help_label != "" else remembered_label
+		}
+	return {}
+
+
+func _apply_memory_consequence(consequence: Dictionary) -> void:
+	if not consequence.is_empty():
+		state["memory_consequence_source"] = str(consequence.get("source", ""))
+		state["memory_consequence_label"] = str(consequence.get("label", ""))
+		state["memory_consequence_days"] = 1
 		return
 
-	var remembered_days := int(state.get("remembered_help_days", 0))
-	if remembered_days <= 0:
-		state["remembered_help_label"] = ""
+	var consequence_days := int(state.get("memory_consequence_days", 0))
+	if consequence_days <= 0:
+		state["memory_consequence_source"] = ""
+		state["memory_consequence_label"] = ""
 		return
 
-	remembered_days -= 1
-	state["remembered_help_days"] = remembered_days
-	if remembered_days <= 0:
-		state["remembered_help_label"] = ""
+	consequence_days -= 1
+	state["memory_consequence_days"] = consequence_days
+	if consequence_days <= 0:
+		state["memory_consequence_source"] = ""
+		state["memory_consequence_label"] = ""
 
 
 func apply_adversarial_result(result: Dictionary) -> void:
@@ -365,6 +436,20 @@ func acknowledge_supply_delivery(item_label: String, payoff_label: String = "") 
 	var line := _supply_acknowledgement_line(item_label, payoff_label)
 	if line != "":
 		comment_generated.emit("%s: \"%s\"" % [display_name, line])
+	state_changed.emit(get_snapshot())
+
+
+func acknowledge_completed_authored_order(order_label: String) -> void:
+	state["completed_authored_order_today"] = int(state.get("completed_authored_order_today", 0)) + 1
+	state["recent_completed_order_label"] = order_label
+	state["mood"] = clampf(float(state.get("mood", 50.0)) + 0.8, 0.0, 100.0)
+	state["irritation"] = clampf(float(state.get("irritation", 0.0)) - 1.4, 0.0, 100.0)
+	state_changed.emit(get_snapshot())
+
+
+func remember_ignored_ask(order_label: String) -> void:
+	state["ignored_ask_today"] = int(state.get("ignored_ask_today", 0)) + 1
+	state["recent_ignored_ask_label"] = order_label
 	state_changed.emit(get_snapshot())
 
 
@@ -706,10 +791,56 @@ func _add_daily_intention_metadata(payload: Dictionary, decision: Dictionary) ->
 
 
 func _refresh_daily_intention() -> void:
-	var daily_intention := _daily_intention_for_trait(personality_trait)
+	var daily_intention := _daily_intention_for_memory_consequence()
+	if daily_intention.is_empty():
+		daily_intention = _daily_intention_for_trait(personality_trait)
 	state["daily_intention_id"] = str(daily_intention.get("id", ""))
 	state["daily_intention_label"] = str(daily_intention.get("label", ""))
 	state["daily_intention_focus"] = str(daily_intention.get("focus", ""))
+
+
+func _daily_intention_for_memory_consequence() -> Dictionary:
+	if int(state.get("memory_consequence_days", 0)) <= 0:
+		return {}
+
+	var label := str(state.get("memory_consequence_label", "")).strip_edges()
+	match str(state.get("memory_consequence_source", "")):
+		"repeated_help":
+			return {
+				"id": "repeat_goodwill",
+				"label": "Repeat Goodwill",
+				"focus": _focus_for_consequence_label(label, "grow")
+			}
+		"completed_order":
+			return {
+				"id": "follow_through",
+				"label": "Follow Through",
+				"focus": _focus_for_consequence_label(label, "clear")
+			}
+		"ignored_ask":
+			return {
+				"id": "press_the_ask",
+				"label": "Press the Ask",
+				"focus": _focus_for_consequence_label(label, "clear")
+			}
+		"held_truce":
+			return {
+				"id": "keep_the_truce",
+				"label": "Keep the Truce",
+				"focus": _focus_for_consequence_label(label, "boundary")
+			}
+	return {}
+
+
+func _focus_for_consequence_label(label: String, fallback: String) -> String:
+	var lowered := label.to_lower()
+	if lowered.contains("seed") or lowered.contains("crop") or lowered.contains("harvest") or lowered.contains("growth"):
+		return "grow"
+	if lowered.contains("fence") or lowered.contains("boundary"):
+		return "boundary"
+	if lowered.contains("brush") or lowered.contains("clear") or lowered.contains("rush"):
+		return "clear"
+	return fallback
 
 
 func _daily_intention_for_trait(trait_name: String) -> Dictionary:

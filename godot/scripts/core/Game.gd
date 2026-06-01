@@ -1606,6 +1606,7 @@ func _escalate_npc_authored_order(order_id: String) -> bool:
 		game_ui.add_field_log("%s offered +%s if it gets done now." % [author_name, _format_resource_list(incentive_delta)])
 
 	if _agent_manager:
+		_agent_manager.call("remember_ignored_ask", str(order.get("author_agent_id", "")), escalation_label)
 		_agent_manager.call("apply_adversarial_result", {
 			"agent_id": str(order.get("author_agent_id", "")),
 			"outcome": "walked_away",
@@ -2365,6 +2366,8 @@ func _update_work_order_from_agent_action(event: Dictionary) -> void:
 	work_orders[order_id] = order
 	if success:
 		_claim_work_order_incentive(order_id)
+		if str(order.get("source", "")) == "npc_demand" and _agent_manager:
+			_agent_manager.call("acknowledge_completed_authored_order", str(order.get("author_agent_id", "")), _work_order_label(action_id, order.get("target_tile", Vector2i.ZERO)))
 	_refresh_work_orders()
 
 	_record_work_order_event(order_id, str(order.get("status", "ready")))

@@ -59,6 +59,9 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 		"remembered_help_label": remembered_help_label,
 		"truce_label": str(agent_snapshot.get("truce_label", context.get("truce_label", ""))).strip_edges(),
 		"truce_days": int(agent_snapshot.get("truce_days", context.get("truce_days", 0))),
+		"memory_consequence_source": str(agent_snapshot.get("memory_consequence_source", context.get("memory_consequence_source", ""))).strip_edges(),
+		"memory_consequence_label": str(agent_snapshot.get("memory_consequence_label", context.get("memory_consequence_label", ""))).strip_edges(),
+		"memory_consequence_days": int(agent_snapshot.get("memory_consequence_days", context.get("memory_consequence_days", 0))),
 		"resolution_meter": 0.0,
 		"turn_count": 0,
 		"max_turns": MAX_TURNS,
@@ -609,6 +612,14 @@ func _active_preference_signal(session: Dictionary) -> Dictionary:
 			"label": truce_label
 		}
 
+	var consequence_source := str(session.get("memory_consequence_source", "")).strip_edges()
+	var consequence_label := str(session.get("memory_consequence_label", "")).strip_edges()
+	if consequence_source != "" and consequence_label != "" and int(session.get("memory_consequence_days", 0)) > 0:
+		return {
+			"source": consequence_source,
+			"label": consequence_label
+		}
+
 	var remembered_label := str(session.get("remembered_help_label", "")).strip_edges()
 	if remembered_label != "":
 		return {
@@ -697,6 +708,14 @@ func _with_preference_context(template: Dictionary, session: Dictionary) -> Dict
 			enriched["reason"] = "%s Truce over %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
 		"remembered_help":
 			enriched["reason"] = "%s Remembering %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+		"repeated_help":
+			enriched["reason"] = "%s Repeated help around %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+		"completed_order":
+			enriched["reason"] = "%s Completed crew order %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+		"ignored_ask":
+			enriched["reason"] = "%s Ignored ask %s kept pressure on %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+		"held_truce":
+			enriched["reason"] = "%s Held truce over %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
 	return enriched
 
 
