@@ -736,6 +736,8 @@ func _with_preference_context(template: Dictionary, session: Dictionary) -> Dict
 			enriched["reason"] = "%s Repeated help around %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
 		"completed_order":
 			enriched["reason"] = "%s Completed crew order %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+		"completed_mission":
+			enriched["reason"] = "%s Completed mission %s kept momentum pointed at %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
 		"ignored_ask":
 			enriched["reason"] = "%s Ignored ask %s kept pressure on %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
 		"held_truce":

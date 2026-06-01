@@ -1175,6 +1175,8 @@ func _demand_preference_context_text(demand: Dictionary) -> String:
 			return "Streak"
 		"completed_order":
 			return "Follow-up"
+		"completed_mission":
+			return "Mission"
 		"ignored_ask":
 			return "Pressure"
 		"held_truce":
@@ -1193,6 +1195,8 @@ func _demand_preference_tooltip(demand: Dictionary) -> String:
 			return "Repeated help: %s" % label if label != "" else "Influenced by repeated help"
 		"completed_order":
 			return "Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order"
+		"completed_mission":
+			return "Completed mission: %s" % label if label != "" else "Influenced by a completed mission"
 		"ignored_ask":
 			return "Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask"
 		"held_truce":

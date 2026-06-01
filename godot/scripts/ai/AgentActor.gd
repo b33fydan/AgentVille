@@ -88,6 +88,8 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"truce_absorbed_today": 0,
 		"completed_authored_order_today": 0,
 		"recent_completed_order_label": "",
+		"completed_mission_today": 0,
+		"recent_completed_mission_label": "",
 		"ignored_ask_today": 0,
 		"recent_ignored_ask_label": "",
 		"memory_consequence_source": "",
@@ -138,6 +140,8 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 		state["recent_discussed_memory_label"] = ""
 		state["completed_authored_order_today"] = 0
 		state["recent_completed_order_label"] = ""
+		state["completed_mission_today"] = 0
+		state["recent_completed_mission_label"] = ""
 		state["ignored_ask_today"] = 0
 		state["recent_ignored_ask_label"] = ""
 		_refresh_daily_intention()
@@ -267,6 +271,8 @@ func get_snapshot() -> Dictionary:
 		"truce_absorbed_today": int(state.get("truce_absorbed_today", 0)),
 		"completed_authored_order_today": int(state.get("completed_authored_order_today", 0)),
 		"recent_completed_order_label": str(state.get("recent_completed_order_label", "")),
+		"completed_mission_today": int(state.get("completed_mission_today", 0)),
+		"recent_completed_mission_label": str(state.get("recent_completed_mission_label", "")),
 		"ignored_ask_today": int(state.get("ignored_ask_today", 0)),
 		"recent_ignored_ask_label": str(state.get("recent_ignored_ask_label", "")),
 		"memory_consequence_source": str(state.get("memory_consequence_source", "")),
@@ -341,6 +347,13 @@ func _next_memory_consequence() -> Dictionary:
 		return {
 			"source": "completed_order",
 			"label": completed_label
+		}
+
+	var completed_mission_label := str(state.get("recent_completed_mission_label", "")).strip_edges()
+	if int(state.get("completed_mission_today", 0)) > 0 and completed_mission_label != "":
+		return {
+			"source": "completed_mission",
+			"label": completed_mission_label
 		}
 
 	var remembered_label := str(state.get("remembered_help_label", "")).strip_edges()
@@ -455,6 +468,14 @@ func acknowledge_completed_authored_order(order_label: String) -> void:
 	state["recent_completed_order_label"] = order_label
 	state["mood"] = clampf(float(state.get("mood", 50.0)) + 0.8, 0.0, 100.0)
 	state["irritation"] = clampf(float(state.get("irritation", 0.0)) - 1.4, 0.0, 100.0)
+	state_changed.emit(get_snapshot())
+
+
+func acknowledge_completed_mission(mission_label: String) -> void:
+	state["completed_mission_today"] = int(state.get("completed_mission_today", 0)) + 1
+	state["recent_completed_mission_label"] = mission_label
+	state["mood"] = clampf(float(state.get("mood", 50.0)) + 1.0, 0.0, 100.0)
+	state["irritation"] = clampf(float(state.get("irritation", 0.0)) - 1.0, 0.0, 100.0)
 	state_changed.emit(get_snapshot())
 
 
@@ -839,6 +860,12 @@ func _daily_intention_for_memory_consequence() -> Dictionary:
 				"id": "follow_through",
 				"label": "Follow Through",
 				"focus": _focus_for_consequence_label(label, "clear")
+			}
+		"completed_mission":
+			return {
+				"id": "mission_momentum",
+				"label": "Mission Momentum",
+				"focus": _focus_for_consequence_label(label, "grow")
 			}
 		"ignored_ask":
 			return {

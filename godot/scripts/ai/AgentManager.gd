@@ -182,6 +182,18 @@ func acknowledge_completed_authored_order(agent_id: String, order_label: String)
 		return
 
 
+func acknowledge_completed_mission(agent_id: String, mission_label: String) -> void:
+	if agent_id == "":
+		return
+
+	for agent in agents:
+		if str(agent.get("agent_id")) != agent_id:
+			continue
+		agent.call("acknowledge_completed_mission", mission_label)
+		crew_updated.emit(get_agent_snapshots())
+		return
+
+
 func remember_ignored_ask(agent_id: String, order_label: String) -> void:
 	if agent_id == "":
 		return

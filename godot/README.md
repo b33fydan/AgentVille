@@ -58,6 +58,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Socially biased autonomous NPC work now carries `Memory` or `Truce` context into agent receipts, Field Log text, and day summaries.
 - Crew rows now surface active `Memory work` or `Truce work` context while socially biased NPC autonomy is walking or working, then clear that live signal when the job ends.
 - Repeated help, completed NPC-authored orders, ignored asks, and held truces now roll into a one-day consequence memory that can reshape the next daily `Plan` or NPC ask.
+- Completed crew missions now roll into a one-day `Mission Momentum` consequence that can shape the next daily plan or follow-up ask.
 - NPCs now show a compact in-world reason badge above their voxel rig, switching between `Plan`, social-memory work, and active `Mission` work as their current motive changes.
 - Reason badges now have a small backing plate and motive-change pop so NPC plans and mission/social work read better in motion.
 - Local vibe scoring and NPC end-day verdicts now notice socially biased autonomous work instead of treating those quiet days as neglect.
@@ -123,6 +124,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_mission_tracker_actions.gd` exercises clicking mission tracker rows to focus current mission targets and send linked drafted orders.
 - `tools/smoke_mission_tracker_order_state.gd` exercises mission tracker status text following drafted and sent linked order states.
 - `tools/smoke_mission_variety.gd` exercises Bert's Boundary Run and Chuck's Cleanup Sprint as distinct multi-step mission arcs.
+- `tools/smoke_mission_consequences.gd` exercises completed missions becoming next-day mission-momentum consequences and Parley ask context.
 - `tools/smoke_memory_consequences.gd` exercises repeated help, completed NPC-authored orders, ignored asks, and held truces rolling into next-day consequence intentions or asks.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
 - `tools/smoke_visual_polish.gd` exercises the reason-badge backing plate, readable outline, and motive-change pop.
@@ -216,6 +218,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - The crew-panel mission tracker gives active mini-arcs a persistent local home while still avoiding a full mission-management screen.
 - Mission tracker rows now reuse the existing demand-focus and work-order send path, giving mini-arcs a small management affordance without new mission logic.
 - Mission tracker state text now reuses linked order state, keeping mission UI and crew-demand UI in sync as orders are drafted, assigned, or escalated.
+- Completed missions now feed the local memory-consequence loop, so deterministic mini-arcs can influence tomorrow's intention and ask without live API calls.
 - Memory consequences now sit between raw receipts and future behavior: repeated help, completed authored work, ignored asks, and held truces can become a short-lived local signal for tomorrow's plan or ask.
 - In-world reason badges make the observer loop more legible without opening another panel: idle intention, relationship-driven work, and mission work now have compact visual signals on the NPCs themselves.
 - The first juice pass is intentionally small: clearer NPC reason badges, a readable plate, and a quick pop on motive changes to make the current plan feel alive without an art overhaul.
