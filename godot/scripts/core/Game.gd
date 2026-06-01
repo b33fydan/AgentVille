@@ -79,6 +79,8 @@ var crafting_demands: Dictionary = {}
 var crafting_demand_ids: Array[String] = []
 var work_orders: Dictionary = {}
 var work_order_ids: Array[String] = []
+var crew_missions: Dictionary = {}
+var crew_mission_ids: Array[String] = []
 
 var _environment: Environment
 var _sun: DirectionalLight3D
@@ -88,6 +90,7 @@ var _adversarial_session
 var _crew_priority_timer: float = 0.0
 var _next_work_order_number: int = 1
 var _next_crafting_demand_number: int = 1
+var _next_crew_mission_number: int = 1
 var _queued_grievance_agent_id: String = ""
 var _queued_grievance_context: Dictionary = {}
 var _last_failure_grievance_day: int = 0
@@ -474,6 +477,10 @@ func _apply_adversarial_result(result: Dictionary) -> void:
 		_patience_tax_orders += tax_orders
 		game_ui.add_field_log("Crew patience tax armed for the next order.")
 
+	var crew_mission: Dictionary = payload.get("crew_mission", {})
+	if not crew_mission.is_empty():
+		_create_crew_mission(crew_mission, payload)
+
 	var crafting_demand: Dictionary = payload.get("crafting_demand", {})
 	if not crafting_demand.is_empty():
 		_create_crafting_demand(crafting_demand, payload)
@@ -677,6 +684,67 @@ func _create_crafting_demand(template: Dictionary, source_event: Dictionary) -> 
 	return demand_id
 
 
+func _create_crew_mission(template: Dictionary, source_event: Dictionary) -> String:
+	var steps: Array = template.get("steps", [])
+	if steps.size() <= 1:
+		return ""
+
+	var mission_id := "mission_%03d" % _next_crew_mission_number
+	_next_crew_mission_number += 1
+	var mission := template.duplicate(true)
+	mission["id"] = mission_id
+	mission["status"] = "active"
+	mission["agent_id"] = str(source_event.get("agent_id", ""))
+	mission["agent_name"] = str(source_event.get("agent_name", "Crew"))
+	mission["created_day"] = grid_manager.day
+	mission["current_step_index"] = 0
+	mission["completed_steps"] = 0
+	mission["total_steps"] = steps.size()
+	mission["label"] = str(mission.get("label", "Crew Mission"))
+	mission["status_text"] = "Step 1/%s" % steps.size()
+	mission["current_demand_id"] = ""
+
+	crew_missions[mission_id] = mission
+	crew_mission_ids.append(mission_id)
+	_record_crew_mission_event(mission_id, "started")
+	game_ui.add_field_log("%s started mission: %s." % [str(mission.get("agent_name", "Crew")), str(mission.get("label", "Crew Mission"))])
+	_start_next_crew_mission_step(mission_id)
+	return mission_id
+
+
+func _start_next_crew_mission_step(mission_id: String) -> String:
+	if not crew_missions.has(mission_id):
+		return ""
+
+	var mission: Dictionary = crew_missions[mission_id]
+	if str(mission.get("status", "")) != "active":
+		return ""
+
+	var steps: Array = mission.get("steps", [])
+	var step_index := int(mission.get("current_step_index", 0))
+	if step_index < 0 or step_index >= steps.size():
+		return ""
+
+	var step: Dictionary = steps[step_index].duplicate(true)
+	step["mission_id"] = mission_id
+	step["mission_label"] = str(mission.get("label", "Crew Mission"))
+	step["mission_step_index"] = step_index
+	step["mission_total_steps"] = steps.size()
+	step["mission_step_label"] = str(step.get("label", "Step %s" % (step_index + 1)))
+
+	var demand_id := _create_crafting_demand(step, {
+		"agent_id": str(mission.get("agent_id", "")),
+		"agent_name": str(mission.get("agent_name", "Crew"))
+	})
+	if demand_id == "":
+		return ""
+
+	mission["current_demand_id"] = demand_id
+	mission["status_text"] = "Step %s/%s" % [step_index + 1, steps.size()]
+	crew_missions[mission_id] = mission
+	return demand_id
+
+
 func _satisfy_open_crafting_demands(item_id: String, source: String) -> void:
 	if source != "player":
 		return
@@ -857,6 +925,7 @@ func _complete_crafting_demand(demand_id: String, message: String) -> void:
 	_record_crafting_demand_event(demand_id, "done")
 	game_ui.add_field_log(message)
 	_apply_demand_completion_effects(demand)
+	_advance_crew_mission_from_demand(demand)
 
 
 func _apply_demand_completion_effects(demand: Dictionary) -> void:
@@ -886,6 +955,71 @@ func _apply_demand_completion_effects(demand: Dictionary) -> void:
 	elif str(demand.get("agent_id", "")) == "chuck" and str(demand.get("required_item", "")) == "rush_kit":
 		_activate_hustle_hands(demand)
 	_acknowledge_completed_demand(demand)
+
+
+func _advance_crew_mission_from_demand(demand: Dictionary) -> void:
+	var mission_id := str(demand.get("mission_id", ""))
+	if mission_id == "" or not crew_missions.has(mission_id):
+		return
+
+	var mission: Dictionary = crew_missions[mission_id]
+	if str(mission.get("status", "")) != "active":
+		return
+
+	var step_index := int(demand.get("mission_step_index", -1))
+	if step_index < 0:
+		return
+
+	var completed_steps := int(mission.get("completed_steps", 0))
+	if completed_steps > step_index:
+		return
+
+	var next_step_index := step_index + 1
+	mission["completed_steps"] = next_step_index
+	mission["current_step_index"] = next_step_index
+	mission["current_demand_id"] = ""
+	mission["status_text"] = "Step %s/%s complete" % [next_step_index, int(mission.get("total_steps", 0))]
+	crew_missions[mission_id] = mission
+	_record_crew_mission_event(mission_id, "step_done", demand)
+
+	if next_step_index >= int(mission.get("total_steps", 0)):
+		_complete_crew_mission(mission_id)
+		return
+
+	game_ui.add_field_log("%s advanced: %s step %s/%s." % [
+		str(mission.get("agent_name", "Crew")),
+		str(mission.get("label", "Crew Mission")),
+		next_step_index + 1,
+		int(mission.get("total_steps", 0))
+	])
+	_start_next_crew_mission_step(mission_id)
+
+
+func _complete_crew_mission(mission_id: String) -> void:
+	if not crew_missions.has(mission_id):
+		return
+
+	var mission: Dictionary = crew_missions[mission_id]
+	mission["status"] = "done"
+	mission["completed_day"] = grid_manager.day
+	mission["status_text"] = "Done"
+	crew_missions[mission_id] = mission
+
+	if _agent_manager:
+		_agent_manager.call("apply_adversarial_result", {
+			"agent_id": str(mission.get("agent_id", "")),
+			"outcome": "resolved",
+			"agent_mood_delta": 2.0,
+			"agent_irritation_delta": -4.0
+		})
+
+	var resource_delta: Dictionary = mission.get("completion_resource_delta", {})
+	var accepted := _add_resources(resource_delta)
+	if not accepted.is_empty():
+		game_ui.add_field_log("%s complete: +%s." % [str(mission.get("label", "Crew Mission")), _format_resource_list(accepted)])
+
+	game_ui.add_field_log("%s completed mission: %s." % [str(mission.get("agent_name", "Crew")), str(mission.get("label", "Crew Mission"))])
+	_record_crew_mission_event(mission_id, "done")
 
 
 func _acknowledge_completed_demand(demand: Dictionary) -> void:
@@ -1175,8 +1309,37 @@ func _record_crafting_demand_event(demand_id: String, status: String) -> void:
 		"age_days": int(demand.get("age_days", 0)),
 		"preference_source": str(demand.get("preference_source", "")),
 		"preference_label": str(demand.get("preference_label", "")),
+		"mission_id": str(demand.get("mission_id", "")),
+		"mission_label": str(demand.get("mission_label", "")),
+		"mission_step_index": int(demand.get("mission_step_index", -1)),
+		"mission_total_steps": int(demand.get("mission_total_steps", 0)),
+		"mission_step_label": str(demand.get("mission_step_label", "")),
 		"perk_id": str(demand.get("perk_id", "")),
 		"perk_label": str(demand.get("perk_label", ""))
+	})
+
+
+func _record_crew_mission_event(mission_id: String, status: String, demand: Dictionary = {}) -> void:
+	if _event_log == null or not crew_missions.has(mission_id):
+		return
+
+	var mission: Dictionary = crew_missions[mission_id]
+	_event_log.record_event("crew_mission", {
+		"day": grid_manager.day,
+		"mission_id": mission_id,
+		"label": str(mission.get("label", "")),
+		"status": status,
+		"agent_id": str(mission.get("agent_id", "")),
+		"agent_name": str(mission.get("agent_name", "")),
+		"created_day": int(mission.get("created_day", grid_manager.day)),
+		"completed_day": int(mission.get("completed_day", 0)),
+		"current_step_index": int(mission.get("current_step_index", 0)),
+		"completed_steps": int(mission.get("completed_steps", 0)),
+		"total_steps": int(mission.get("total_steps", 0)),
+		"current_demand_id": str(mission.get("current_demand_id", "")),
+		"step_demand_id": str(demand.get("id", "")),
+		"mission_step_index": int(demand.get("mission_step_index", -1)),
+		"completion_resource_delta": mission.get("completion_resource_delta", {})
 	})
 
 
@@ -2404,6 +2567,7 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
 	var remembered_context_text := _format_remembered_help_session_names(remembered_help_sessions)
 	var social_autonomy_text := _format_agent_social_preference_names(summary.get("agent_social_preference_actions", {}))
+	var completed_crew_missions := int(summary.get("completed_crew_missions", 0))
 	var top_action := str(summary.get("top_action", "none"))
 	var vibe: Dictionary = summary.get("vibe", {})
 	var vibe_label := str(vibe.get("label", "mixed"))
@@ -2417,6 +2581,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 			empty_line += ", crew followed %s" % social_autonomy_text
 		if truce_delayed_orders > 0:
 			empty_line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
+		if completed_crew_missions > 0:
+			empty_line += ", completed %s mission%s" % [completed_crew_missions, "" if completed_crew_missions == 1 else "s"]
 		return empty_line + "."
 
 	var line := "Day %s: %s vibe (%s), %s actions, %s missed" % [int(summary.get("day", 1)), vibe_label, vibe_score, total, failed]
@@ -2434,6 +2600,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", crew followed %s" % social_autonomy_text
 	if truce_delayed_orders > 0:
 		line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
+	if completed_crew_missions > 0:
+		line += ", completed %s mission%s" % [completed_crew_missions, "" if completed_crew_missions == 1 else "s"]
 	if craft_count > 0:
 		line += ", %s craft%s" % [craft_count, "" if craft_count == 1 else "s"]
 	if supply_deliveries > 0:

@@ -37,6 +37,9 @@ func build_day_summary(day: int) -> Dictionary:
 		"agent_world_actions": {},
 		"agent_social_preference_actions": {},
 		"agent_intention_actions": {},
+		"crew_missions": {},
+		"crew_mission_count": 0,
+		"completed_crew_missions": 0,
 		"successful_player_actions": 0,
 		"failed_player_actions": 0,
 		"harvest_value": 0,
@@ -118,6 +121,8 @@ func build_day_summary(day: int) -> Dictionary:
 					summary["memory_context_sessions"] += 1
 					_add_remembered_help_session_summary(summary, event)
 				summary["notable_events"].append(event)
+			"crew_mission":
+				_add_crew_mission_summary(summary, event)
 
 	var top_action := "none"
 	var top_count := 0
@@ -209,6 +214,35 @@ func _add_agent_intention_summary(summary: Dictionary, event: Dictionary) -> voi
 	receipt["last_intention_label"] = intention_label
 	intention_actions[agent_id] = receipt
 	summary["agent_intention_actions"] = intention_actions
+
+
+func _add_crew_mission_summary(summary: Dictionary, event: Dictionary) -> void:
+	var mission_id := str(event.get("mission_id", ""))
+	if mission_id == "":
+		return
+
+	var missions: Dictionary = summary["crew_missions"]
+	var receipt: Dictionary = missions.get(mission_id, {
+		"label": str(event.get("label", "Crew Mission")),
+		"agent_id": str(event.get("agent_id", "")),
+		"agent_name": str(event.get("agent_name", "Crew")),
+		"status": "",
+		"completed_steps": 0,
+		"total_steps": 0,
+		"counted_done": false
+	})
+	receipt["label"] = str(event.get("label", receipt.get("label", "Crew Mission")))
+	receipt["agent_id"] = str(event.get("agent_id", receipt.get("agent_id", "")))
+	receipt["agent_name"] = str(event.get("agent_name", receipt.get("agent_name", "Crew")))
+	receipt["status"] = str(event.get("status", receipt.get("status", "")))
+	receipt["completed_steps"] = maxi(int(receipt.get("completed_steps", 0)), int(event.get("completed_steps", 0)))
+	receipt["total_steps"] = maxi(int(receipt.get("total_steps", 0)), int(event.get("total_steps", 0)))
+	if str(event.get("status", "")) == "done" and not bool(receipt.get("counted_done", false)):
+		summary["completed_crew_missions"] = int(summary.get("completed_crew_missions", 0)) + 1
+		receipt["counted_done"] = true
+	missions[mission_id] = receipt
+	summary["crew_missions"] = missions
+	summary["crew_mission_count"] = missions.size()
 
 
 func _add_called_favor_summary(summary: Dictionary, event: Dictionary) -> void:

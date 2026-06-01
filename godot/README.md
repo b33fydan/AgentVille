@@ -46,6 +46,8 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - NPC-authored work orders spawned from preference-driven demands now carry that `Memory` or `Truce` context into the assigned crew action and receipts.
 - Each NPC now wakes with a lightweight daily `Plan`, such as Bert shoring boundaries, Marigold tending growth, or Chuck clearing the way.
 - Daily plans can bias autonomous utility choices, show in idle crew rows, and land in agent receipts and day-summary intention counts.
+- Resolved local Parley results can now start a multi-step crew mission, beginning with Marigold's two-step Growth Run of clearing brush and harvesting a crop.
+- Crew mission steps are tracked as linked demand receipts, resolve into existing NPC goodwill and resource rewards, and appear in day summaries when completed.
 - Remembered help and active truces now bias autonomous NPC utility choices toward related farm behavior, so social context can change what they decide to do next.
 - Socially biased autonomy now falls back to relevant planning checks, such as watching growing crops, checking routes, or inspecting open ground when immediate work is unavailable.
 - Socially biased autonomous NPC work now carries `Memory` or `Truce` context into agent receipts, Field Log text, and day summaries.
@@ -107,6 +109,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_receipts.gd` exercises player-action receipts, agent reactions, and day summaries.
 - `tools/smoke_agents.gd` exercises NPC harvesting, coin updates, and brush clearing.
 - `tools/smoke_agent_daily_intentions.gd` exercises daily NPC plans biasing utility choices, surfacing in crew rows, and landing in receipts and day summaries.
+- `tools/smoke_crew_missions.gd` exercises resolved local Parley starting a two-step crew mission, linked mission-demand receipts, mission completion rewards, and mission day-summary callouts.
 - `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, live crew-row motive signals, planning fallbacks, and preserved receipt context.
 - `tools/smoke_social_preference_work_orders.gd` exercises preference-driven demands preserving social context through NPC-authored work orders, assigned crew rows, receipts, and day summaries.
 - `tools/smoke_adversarial_reactions.gd` exercises local NPC irritation, sarcastic reactions, and crew UI expression state.
@@ -191,6 +194,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Agents react to meaningful events with lightweight template lines and can perform simple local work.
 - NPC world actions are recorded as receipts, including crop harvest value and brush clearing.
 - NPCs now carry deterministic daily intentions as a small local behavior layer over utility scoring, giving each crew member a visible plan without replacing social preferences or work orders.
+- Crew missions are the first deterministic mini-arc layer over demands: a resolved no-API Parley can produce ordered field-work steps, receipts, progress tracking, and completion consequences.
 - Resource gains are stored locally in the Godot runtime as the seed of the crafting economy.
 - Tile-authored work orders are the first bridge from crafted inventory back into NPC-driven world changes.
 - The crew priority loop now chooses between building, crafting support, and gathering missing resources for active orders.

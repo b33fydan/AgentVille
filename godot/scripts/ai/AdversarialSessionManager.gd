@@ -130,6 +130,7 @@ func _end_session(outcome: String) -> Dictionary:
 	result["agent_irritation_delta"] = _agent_irritation_delta_for(outcome)
 	result["crew_boost_seconds"] = _crew_boost_seconds_for(outcome)
 	result["patience_tax_orders"] = _patience_tax_orders_for(outcome)
+	result["crew_mission"] = _crew_mission_for(outcome, result)
 	result["crafting_demand"] = _crafting_demand_for(outcome, result)
 	result["choices"] = []
 	_session = result.duplicate(true)
@@ -475,6 +476,8 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 	var context: Dictionary = session.get("context", {})
 	var demand_hint := str(context.get("demand_hint", "deliver_fence_kit"))
 	match demand_hint:
+		"growth_run":
+			return {}
 		"deliver_agent_supply":
 			var preference_kind := _preference_followup_demand_kind(session)
 			if preference_kind != "":
@@ -491,6 +494,31 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 		"build_fence":
 			return _demand_template("build_fence", session)
 	return _demand_template("deliver_fence_kit", session)
+
+
+func _crew_mission_for(outcome: String, session: Dictionary) -> Dictionary:
+	if outcome != "resolved":
+		return {}
+
+	var context: Dictionary = session.get("context", {})
+	var mission_hint := str(context.get("mission_hint", "")).strip_edges()
+	if mission_hint == "":
+		mission_hint = str(context.get("demand_hint", "")).strip_edges()
+
+	match mission_hint:
+		"growth_run":
+			var agent_name := str(session.get("agent_name", "Crew"))
+			return {
+				"label": "%s Growth Run" % agent_name,
+				"steps": [
+					_demand_template("clear_brush", session),
+					_demand_template("harvest_crop", session)
+				],
+				"completion_resource_delta": {
+					"grain": 1
+				}
+			}
+	return {}
 
 
 func _preference_followup_demand_kind(session: Dictionary) -> String:
