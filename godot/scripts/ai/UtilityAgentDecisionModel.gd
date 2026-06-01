@@ -16,6 +16,10 @@ func decide(agent_state: Dictionary, world: Dictionary, memory) -> Dictionary:
 	if float(agent_state.get("energy", 70.0)) < 28.0:
 		candidates.append(_candidate("rest", 86.0, "energy is low", world.get("home_tile", Vector2i.ZERO)))
 
+	var daily_intention := _daily_intention_candidate(agent_state, world)
+	if not daily_intention.is_empty():
+		candidates.append(daily_intention)
+
 	if int(world.get("ready_crops", 0)) > 0:
 		candidates.append(_candidate("harvest_crop", 74.0, "ready crops nearby", world.get("ready_tile", world.get("home_tile", Vector2i.ZERO))))
 
@@ -39,6 +43,93 @@ func decide(agent_state: Dictionary, world: Dictionary, memory) -> Dictionary:
 		if float(candidate.get("score", 0.0)) > float(best.get("score", 0.0)):
 			best = candidate
 	return best
+
+
+func _daily_intention_candidate(agent_state: Dictionary, world: Dictionary) -> Dictionary:
+	var intention_id := str(agent_state.get("daily_intention_id", "")).strip_edges()
+	var intention_label := str(agent_state.get("daily_intention_label", "")).strip_edges()
+	var focus := str(agent_state.get("daily_intention_focus", "")).strip_edges()
+	if intention_id == "" or intention_label == "" or focus == "":
+		return {}
+
+	var metadata := _daily_intention_metadata(agent_state)
+	match focus:
+		"grow":
+			if int(world.get("ready_crops", 0)) > 0:
+				return _candidate(
+					"harvest_crop",
+					77.0,
+					"daily intention points toward harvest work: %s" % intention_label,
+					world.get("ready_tile", world.get("home_tile", Vector2i.ZERO)),
+					_daily_intention_line(agent_state, "harvest", intention_label),
+					metadata
+				)
+			if int(world.get("growing_crops", 0)) > 0:
+				return _candidate(
+					"inspect_ready_crop",
+					70.0,
+					"daily intention points toward crop watching: %s" % intention_label,
+					world.get("growing_tile", world.get("home_tile", Vector2i.ZERO)),
+					_daily_intention_line(agent_state, "crop_watch", intention_label),
+					metadata
+				)
+			if int(world.get("empty_soil", 0)) > 0:
+				return _candidate(
+					"inspect_soil",
+					68.0,
+					"daily intention points toward soil planning: %s" % intention_label,
+					world.get("soil_tile", world.get("home_tile", Vector2i.ZERO)),
+					_daily_intention_line(agent_state, "soil", intention_label),
+					metadata
+				)
+		"clear":
+			if int(world.get("brush_tiles", 0)) > 0:
+				return _candidate(
+					"clear_brush",
+					76.0,
+					"daily intention points toward clearing work: %s" % intention_label,
+					world.get("brush_tile", world.get("home_tile", Vector2i.ZERO)),
+					_daily_intention_line(agent_state, "brush", intention_label),
+					metadata
+				)
+			if int(world.get("structures", 0)) > 0:
+				return _candidate(
+					"inspect_structure",
+					65.0,
+					"daily intention points toward route checks: %s" % intention_label,
+					world.get("structure_tile", world.get("home_tile", Vector2i.ZERO)),
+					_daily_intention_line(agent_state, "route", intention_label),
+					metadata
+				)
+		"boundary":
+			if int(world.get("structures", 0)) > 0:
+				return _candidate(
+					"inspect_structure",
+					77.0,
+					"daily intention points toward boundary checks: %s" % intention_label,
+					world.get("structure_tile", world.get("home_tile", Vector2i.ZERO)),
+					_daily_intention_line(agent_state, "fence", intention_label),
+					metadata
+				)
+			if int(world.get("brush_tiles", 0)) > 0:
+				return _candidate(
+					"clear_brush",
+					72.0,
+					"daily intention points toward clearing boundary space: %s" % intention_label,
+					world.get("brush_tile", world.get("home_tile", Vector2i.ZERO)),
+					_daily_intention_line(agent_state, "brush", intention_label),
+					metadata
+				)
+			if int(world.get("empty_soil", 0)) > 0:
+				return _candidate(
+					"inspect_soil",
+					66.0,
+					"daily intention points toward boundary planning: %s" % intention_label,
+					world.get("soil_tile", world.get("home_tile", Vector2i.ZERO)),
+					_daily_intention_line(agent_state, "fence_space", intention_label),
+					metadata
+				)
+	return {}
 
 
 func _social_preference_candidate(agent_state: Dictionary, world: Dictionary) -> Dictionary:
@@ -156,6 +247,13 @@ func _social_preference_metadata(source: String, label: String) -> Dictionary:
 	}
 
 
+func _daily_intention_metadata(agent_state: Dictionary) -> Dictionary:
+	return {
+		"daily_intention_id": str(agent_state.get("daily_intention_id", "")).strip_edges(),
+		"daily_intention_label": str(agent_state.get("daily_intention_label", "")).strip_edges()
+	}
+
+
 func _label_matches_any(label: String, needles: Array[String]) -> bool:
 	for needle in needles:
 		if label.contains(needle):
@@ -215,6 +313,59 @@ func _social_preference_line(agent_state: Dictionary, source: String, focus: Str
 				"fence_space":
 					return "%s says %s. I am measuring imaginary fences." % [context, label]
 	return "%s says %s matters right now." % [context, label]
+
+
+func _daily_intention_line(agent_state: Dictionary, focus: String, label: String) -> String:
+	match str(agent_state.get("trait", "")):
+		"grizzled":
+			match focus:
+				"harvest":
+					return "%s means finishing what is ready." % label
+				"crop_watch":
+					return "%s means checking the crop before it complains." % label
+				"soil":
+					return "%s starts with a look at the dirt." % label
+				"brush":
+					return "%s means clearing a practical line." % label
+				"route":
+					return "%s starts with checking the route." % label
+				"fence":
+					return "%s means checking what still stands." % label
+				"fence_space":
+					return "%s means finding where a boundary could land." % label
+		"hopeful":
+			match focus:
+				"harvest":
+					return "%s can turn into a useful harvest." % label
+				"crop_watch":
+					return "%s gets a crop check-in first." % label
+				"soil":
+					return "%s starts with finding a good growing spot." % label
+				"brush":
+					return "%s can make room for something nicer." % label
+				"route":
+					return "%s starts by checking the path." % label
+				"fence":
+					return "%s can make the farm feel steadier." % label
+				"fence_space":
+					return "%s needs a sensible line." % label
+		"chaotic":
+			match focus:
+				"harvest":
+					return "%s has nominated the vegetables." % label
+				"crop_watch":
+					return "%s begins with crop surveillance." % label
+				"soil":
+					return "%s requires a dirt interview." % label
+				"brush":
+					return "%s has filed paperwork against these weeds." % label
+				"route":
+					return "%s is now a dramatic route inspection." % label
+				"fence":
+					return "%s has entered boundary inspection mode." % label
+				"fence_space":
+					return "%s requires imaginary fence math." % label
+	return "%s matters right now." % label
 
 
 func _reaction_candidate(agent_state: Dictionary, event: Dictionary) -> Dictionary:

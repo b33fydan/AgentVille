@@ -60,6 +60,7 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 	_skin_color = config.get("skin_color", _skin_color)
 	grid_manager = new_grid_manager
 	event_log = new_event_log
+	var daily_intention := _daily_intention_for_trait(personality_trait)
 	state = {
 		"id": agent_id,
 		"name": display_name,
@@ -83,6 +84,9 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"truce_absorbed_today": 0,
 		"active_social_preference_source": "",
 		"active_social_preference_label": "",
+		"daily_intention_id": str(daily_intention.get("id", "")),
+		"daily_intention_label": str(daily_intention.get("label", "")),
+		"daily_intention_focus": str(daily_intention.get("focus", "")),
 		"current_action": "idle",
 		"current_phase": "idle"
 	}
@@ -121,6 +125,7 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 		state["recent_spent_favor_label"] = ""
 		state["memory_discussed_today"] = 0
 		state["recent_discussed_memory_label"] = ""
+		_refresh_daily_intention()
 		_decision_timer = minf(_decision_timer, 0.8)
 		state_changed.emit(get_snapshot())
 		return
@@ -208,6 +213,7 @@ func _start_decision(decision: Dictionary) -> void:
 			"energy": float(state.get("energy", 0.0))
 		}
 		_add_social_preference_metadata(action_event, decision)
+		_add_daily_intention_metadata(action_event, decision)
 		event_log.record_event("agent_action", action_event)
 
 	var comment := str(decision.get("comment", ""))
@@ -239,6 +245,9 @@ func get_snapshot() -> Dictionary:
 		"truce_absorbed_today": int(state.get("truce_absorbed_today", 0)),
 		"active_social_preference_source": str(state.get("active_social_preference_source", "")),
 		"active_social_preference_label": str(state.get("active_social_preference_label", "")),
+		"daily_intention_id": str(state.get("daily_intention_id", "")),
+		"daily_intention_label": str(state.get("daily_intention_label", "")),
+		"daily_intention_focus": str(state.get("daily_intention_focus", "")),
 		"morale_boost": _morale_boost_timer,
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
@@ -669,6 +678,7 @@ func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, 
 		"work_order_id": work_order_id
 	}
 	_add_social_preference_metadata(world_action, _active_decision)
+	_add_daily_intention_metadata(world_action, _active_decision)
 	world_action_performed.emit(world_action)
 
 	if success:
@@ -684,6 +694,49 @@ func _add_social_preference_metadata(payload: Dictionary, decision: Dictionary) 
 		return
 	payload["social_preference_source"] = source
 	payload["social_preference_label"] = label
+
+
+func _add_daily_intention_metadata(payload: Dictionary, decision: Dictionary) -> void:
+	var intention_id := str(decision.get("daily_intention_id", "")).strip_edges()
+	var intention_label := str(decision.get("daily_intention_label", "")).strip_edges()
+	if intention_id == "" or intention_label == "":
+		return
+	payload["daily_intention_id"] = intention_id
+	payload["daily_intention_label"] = intention_label
+
+
+func _refresh_daily_intention() -> void:
+	var daily_intention := _daily_intention_for_trait(personality_trait)
+	state["daily_intention_id"] = str(daily_intention.get("id", ""))
+	state["daily_intention_label"] = str(daily_intention.get("label", ""))
+	state["daily_intention_focus"] = str(daily_intention.get("focus", ""))
+
+
+func _daily_intention_for_trait(trait_name: String) -> Dictionary:
+	match trait_name:
+		"grizzled":
+			return {
+				"id": "shore_boundaries",
+				"label": "Shore Boundaries",
+				"focus": "boundary"
+			}
+		"hopeful":
+			return {
+				"id": "tend_growth",
+				"label": "Tend Growth",
+				"focus": "grow"
+			}
+		"chaotic":
+			return {
+				"id": "clear_paths",
+				"label": "Clear the Way",
+				"focus": "clear"
+			}
+	return {
+		"id": "keep_watch",
+		"label": "Keep Watch",
+		"focus": "clear"
+	}
 
 
 func _set_active_social_preference(decision: Dictionary) -> void:

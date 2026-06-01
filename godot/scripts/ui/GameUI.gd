@@ -362,7 +362,7 @@ func add_field_log(message: String) -> void:
 		return
 
 	_field_log_entries.push_front(message)
-	while _field_log_entries.size() > 2:
+	while _field_log_entries.size() > 4:
 		_field_log_entries.pop_back()
 
 	for child in _field_log_stack.get_children():
@@ -1344,6 +1344,12 @@ func _format_active_social_preference_signal(source: String, label: String) -> S
 	return "%s: %s" % [prefix, label]
 
 
+func _format_daily_intention_signal(label: String) -> String:
+	if label == "":
+		return "Plan"
+	return "Plan: %s" % label
+
+
 func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants", detail: String = "") -> String:
 	match signal_state:
 		"memory":
@@ -1496,6 +1502,7 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var pending_demand_signal_state := str(_crew_pending_demand_signal_states.get(agent_id, "wants"))
 	var pending_demand_target_id := str(_crew_pending_demand_target_ids.get(agent_id, ""))
 	var remembered_help_label := str(snapshot.get("remembered_help_label", ""))
+	var daily_intention_label := str(snapshot.get("daily_intention_label", ""))
 	var social_label := row["social"] as Label
 	if helped_today > 0:
 		social_label.visible = true
@@ -1528,6 +1535,10 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	elif remembered_help_label != "":
 		social_label.visible = true
 		social_label.text = _format_memory_signal(remembered_help_label)
+		_configure_crew_social_target(social_label, "", "")
+	elif daily_intention_label != "":
+		social_label.visible = true
+		social_label.text = _format_daily_intention_signal(daily_intention_label)
 		_configure_crew_social_target(social_label, "", "")
 	else:
 		social_label.visible = false

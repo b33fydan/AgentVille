@@ -36,6 +36,7 @@ func build_day_summary(day: int) -> Dictionary:
 		"agent_actions": {},
 		"agent_world_actions": {},
 		"agent_social_preference_actions": {},
+		"agent_intention_actions": {},
 		"successful_player_actions": 0,
 		"failed_player_actions": 0,
 		"harvest_value": 0,
@@ -86,6 +87,7 @@ func build_day_summary(day: int) -> Dictionary:
 				summary["agent_harvest_value"] += int(event.get("value", 0))
 				_add_resource_summary(summary, event.get("resources", {}))
 				_add_agent_social_preference_summary(summary, event)
+				_add_agent_intention_summary(summary, event)
 			"craft_action":
 				var recipe_id := str(event.get("recipe_id", "recipe"))
 				summary["crafted_items"][recipe_id] = int(summary["crafted_items"].get(recipe_id, 0)) + 1
@@ -182,6 +184,31 @@ func _add_agent_social_preference_summary(summary: Dictionary, event: Dictionary
 	receipt["last_label"] = label
 	social_actions[agent_id] = receipt
 	summary["agent_social_preference_actions"] = social_actions
+
+
+func _add_agent_intention_summary(summary: Dictionary, event: Dictionary) -> void:
+	if not bool(event.get("success", false)):
+		return
+
+	var intention_id := str(event.get("daily_intention_id", "")).strip_edges()
+	var intention_label := str(event.get("daily_intention_label", "")).strip_edges()
+	var agent_id := str(event.get("agent_id", ""))
+	if intention_id == "" or intention_label == "" or agent_id == "":
+		return
+
+	var intention_actions: Dictionary = summary["agent_intention_actions"]
+	var receipt: Dictionary = intention_actions.get(agent_id, {
+		"name": str(event.get("agent_name", "Crew")),
+		"actions": 0,
+		"last_intention_id": "",
+		"last_intention_label": ""
+	})
+	receipt["name"] = str(event.get("agent_name", receipt.get("name", "Crew")))
+	receipt["actions"] = int(receipt.get("actions", 0)) + 1
+	receipt["last_intention_id"] = intention_id
+	receipt["last_intention_label"] = intention_label
+	intention_actions[agent_id] = receipt
+	summary["agent_intention_actions"] = intention_actions
 
 
 func _add_called_favor_summary(summary: Dictionary, event: Dictionary) -> void:
