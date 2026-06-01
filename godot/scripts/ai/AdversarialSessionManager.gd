@@ -479,7 +479,7 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 	var context: Dictionary = session.get("context", {})
 	var demand_hint := str(context.get("demand_hint", "deliver_fence_kit"))
 	match demand_hint:
-		"growth_run":
+		"growth_run", "boundary_run", "cleanup_run":
 			return {}
 		"deliver_agent_supply":
 			var preference_kind := _preference_followup_demand_kind(session)
@@ -519,6 +519,30 @@ func _crew_mission_for(outcome: String, session: Dictionary) -> Dictionary:
 				],
 				"completion_resource_delta": {
 					"grain": 1
+				}
+			}
+		"boundary_run":
+			var agent_name := str(session.get("agent_name", "Crew"))
+			return {
+				"label": "%s Boundary Run" % agent_name,
+				"steps": [
+					_demand_template("clear_brush", session),
+					_demand_template("build_fence", session)
+				],
+				"completion_resource_delta": {
+					"fiber": 1
+				}
+			}
+		"cleanup_run":
+			var agent_name := str(session.get("agent_name", "Crew"))
+			return {
+				"label": "%s Cleanup Sprint" % agent_name,
+				"steps": [
+					_demand_template("clear_brush", session),
+					_demand_template("clear_brush", session)
+				],
+				"completion_resource_delta": {
+					"fiber": 1
 				}
 			}
 	return {}
