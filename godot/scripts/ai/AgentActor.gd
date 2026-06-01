@@ -37,6 +37,9 @@ var _head: MeshInstance3D
 var _mood_pip: MeshInstance3D
 var _face_label: Label3D
 var _reason_badge: Label3D
+var _reason_badge_plate: MeshInstance3D
+var _reason_badge_last_text: String = ""
+var _reason_badge_pulse: float = 0.0
 var _target_position := Vector3.ZERO
 var _decision_timer: float = 1.5
 var _pending_focus_event: Dictionary = {}
@@ -977,6 +980,7 @@ func _update_visual_motion(delta: float) -> void:
 		state["reaction_intensity"] = maxf(0.0, intensity - delta * 0.42)
 	_face_camera_if_judging()
 	_refresh_reason_badge()
+	_update_reason_badge_pop(delta)
 	_visual_root.position = Vector3(shake, bob, 0.0)
 
 
@@ -1010,6 +1014,9 @@ func _build_visual() -> void:
 	_face_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_face_label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_visual_root.add_child(_face_label)
+
+	_reason_badge_plate = VoxelFactory.cube("ReasonBadgePlate", Vector3(0.48, 0.14, 0.035), Color("#fff8df"), Vector3(0.0, 1.14, -0.018))
+	_visual_root.add_child(_reason_badge_plate)
 
 	_reason_badge = Label3D.new()
 	_reason_badge.name = "ReasonBadge"
@@ -1048,11 +1055,37 @@ func _refresh_reason_badge() -> void:
 
 	var badge := _reason_badge_context()
 	_reason_badge.visible = not badge.is_empty()
+	if _reason_badge_plate:
+		_reason_badge_plate.visible = not badge.is_empty()
 	if badge.is_empty():
 		return
 
-	_reason_badge.text = str(badge.get("text", "Plan"))
-	_reason_badge.modulate = badge.get("color", Color("#5f7fb5"))
+	var next_text := str(badge.get("text", "Plan"))
+	if next_text != _reason_badge_last_text:
+		_reason_badge_pulse = 1.0
+		_reason_badge_last_text = next_text
+	_reason_badge.text = next_text
+	var color: Color = badge.get("color", Color("#5f7fb5"))
+	_reason_badge.modulate = color
+	if _reason_badge_plate:
+		_reason_badge_plate.material_override = VoxelFactory.material(color.lightened(0.48))
+
+
+func _update_reason_badge_pop(delta: float) -> void:
+	if _reason_badge == null:
+		return
+
+	if _reason_badge_pulse <= 0.0:
+		_reason_badge.scale = Vector3.ONE
+		if _reason_badge_plate:
+			_reason_badge_plate.scale = Vector3.ONE
+		return
+
+	var pop := 1.0 + 0.14 * _reason_badge_pulse
+	_reason_badge.scale = Vector3.ONE * pop
+	if _reason_badge_plate:
+		_reason_badge_plate.scale = Vector3(pop, pop, 1.0)
+	_reason_badge_pulse = maxf(0.0, _reason_badge_pulse - delta * 4.0)
 
 
 func _reason_badge_context() -> Dictionary:

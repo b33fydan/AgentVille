@@ -54,6 +54,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Crew rows now surface active `Memory work` or `Truce work` context while socially biased NPC autonomy is walking or working, then clear that live signal when the job ends.
 - Repeated help, completed NPC-authored orders, ignored asks, and held truces now roll into a one-day consequence memory that can reshape the next daily `Plan` or NPC ask.
 - NPCs now show a compact in-world reason badge above their voxel rig, switching between `Plan`, social-memory work, and active `Mission` work as their current motive changes.
+- Reason badges now have a small backing plate and motive-change pop so NPC plans and mission/social work read better in motion.
 - Local vibe scoring and NPC end-day verdicts now notice socially biased autonomous work instead of treating those quiet days as neglect.
 - Parley sessions with unused social credit now expose a one-use `Call favor` response that names the remembered help.
 - Calling a Parley favor spends that NPC's same-day help credit, changes the crew-row signal to a spent-favor marker, and prevents same-day reuse.
@@ -114,6 +115,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_crew_missions.gd` exercises resolved local Parley starting a two-step crew mission, linked mission-demand receipts, mission completion rewards, and mission day-summary callouts.
 - `tools/smoke_memory_consequences.gd` exercises repeated help, completed NPC-authored orders, ignored asks, and held truces rolling into next-day consequence intentions or asks.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
+- `tools/smoke_visual_polish.gd` exercises the reason-badge backing plate, readable outline, and motive-change pop.
 - `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, live crew-row motive signals, planning fallbacks, and preserved receipt context.
 - `tools/smoke_social_preference_work_orders.gd` exercises preference-driven demands preserving social context through NPC-authored work orders, assigned crew rows, receipts, and day summaries.
 - `tools/smoke_adversarial_reactions.gd` exercises local NPC irritation, sarcastic reactions, and crew UI expression state.
@@ -201,6 +203,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Crew missions are the first deterministic mini-arc layer over demands: a resolved no-API Parley can produce ordered field-work steps, receipts, progress tracking, and completion consequences.
 - Memory consequences now sit between raw receipts and future behavior: repeated help, completed authored work, ignored asks, and held truces can become a short-lived local signal for tomorrow's plan or ask.
 - In-world reason badges make the observer loop more legible without opening another panel: idle intention, relationship-driven work, and mission work now have compact visual signals on the NPCs themselves.
+- The first juice pass is intentionally small: clearer NPC reason badges, a readable plate, and a quick pop on motive changes to make the current plan feel alive without an art overhaul.
 - Resource gains are stored locally in the Godot runtime as the seed of the crafting economy.
 - Tile-authored work orders are the first bridge from crafted inventory back into NPC-driven world changes.
 - The crew priority loop now chooses between building, crafting support, and gathering missing resources for active orders.
