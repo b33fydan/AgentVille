@@ -36,6 +36,7 @@ var _visual_root: Node3D
 var _head: MeshInstance3D
 var _mood_pip: MeshInstance3D
 var _face_label: Label3D
+var _reason_badge: Label3D
 var _target_position := Vector3.ZERO
 var _decision_timer: float = 1.5
 var _pending_focus_event: Dictionary = {}
@@ -160,6 +161,13 @@ func start_work_order(order: Dictionary) -> void:
 	if source != "" and label != "":
 		extra["social_preference_source"] = source
 		extra["social_preference_label"] = label
+	var mission_id := str(order.get("mission_id", "")).strip_edges()
+	if mission_id != "":
+		extra["mission_id"] = mission_id
+		extra["mission_label"] = str(order.get("mission_label", "Crew Mission"))
+		extra["mission_step_index"] = int(order.get("mission_step_index", -1))
+		extra["mission_total_steps"] = int(order.get("mission_total_steps", 0))
+		extra["mission_step_label"] = str(order.get("mission_step_label", ""))
 	start_directive("build_fence_order", target_tile, "crew work order: %s" % str(order.get("label", "farm task")), extra)
 
 
@@ -764,6 +772,7 @@ func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, 
 	}
 	_add_social_preference_metadata(world_action, _active_decision)
 	_add_daily_intention_metadata(world_action, _active_decision)
+	_add_mission_metadata(world_action, _active_decision)
 	world_action_performed.emit(world_action)
 
 	if success:
@@ -788,6 +797,17 @@ func _add_daily_intention_metadata(payload: Dictionary, decision: Dictionary) ->
 		return
 	payload["daily_intention_id"] = intention_id
 	payload["daily_intention_label"] = intention_label
+
+
+func _add_mission_metadata(payload: Dictionary, decision: Dictionary) -> void:
+	var mission_id := str(decision.get("mission_id", "")).strip_edges()
+	if mission_id == "":
+		return
+	payload["mission_id"] = mission_id
+	payload["mission_label"] = str(decision.get("mission_label", "Crew Mission"))
+	payload["mission_step_index"] = int(decision.get("mission_step_index", -1))
+	payload["mission_total_steps"] = int(decision.get("mission_total_steps", 0))
+	payload["mission_step_label"] = str(decision.get("mission_step_label", ""))
 
 
 func _refresh_daily_intention() -> void:
@@ -956,6 +976,7 @@ func _update_visual_motion(delta: float) -> void:
 		shake = sin(_reaction_shake_phase) * 0.03 * intensity
 		state["reaction_intensity"] = maxf(0.0, intensity - delta * 0.42)
 	_face_camera_if_judging()
+	_refresh_reason_badge()
 	_visual_root.position = Vector3(shake, bob, 0.0)
 
 
@@ -989,6 +1010,21 @@ func _build_visual() -> void:
 	_face_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_face_label.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_visual_root.add_child(_face_label)
+
+	_reason_badge = Label3D.new()
+	_reason_badge.name = "ReasonBadge"
+	_reason_badge.text = "Plan"
+	_reason_badge.font_size = 16
+	_reason_badge.pixel_size = 0.008
+	_reason_badge.position = Vector3(0.0, 1.14, 0.0)
+	_reason_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_reason_badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_reason_badge.modulate = Color("#5f7fb5")
+	_reason_badge.outline_size = 4
+	_reason_badge.outline_modulate = Color("#fff8df")
+	_reason_badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_reason_badge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_visual_root.add_child(_reason_badge)
 	_update_expression_visuals()
 
 
@@ -1003,6 +1039,72 @@ func _update_expression_visuals() -> void:
 		_head.material_override = VoxelFactory.material(_skin_color.lerp(Color("#ff8a68"), heat * 0.68))
 	if _mood_pip:
 		_mood_pip.material_override = VoxelFactory.material(_accent_color.lerp(Color("#ff5348"), heat))
+	_refresh_reason_badge()
+
+
+func _refresh_reason_badge() -> void:
+	if _reason_badge == null:
+		return
+
+	var badge := _reason_badge_context()
+	_reason_badge.visible = not badge.is_empty()
+	if badge.is_empty():
+		return
+
+	_reason_badge.text = str(badge.get("text", "Plan"))
+	_reason_badge.modulate = badge.get("color", Color("#5f7fb5"))
+
+
+func _reason_badge_context() -> Dictionary:
+	var mission_label := str(_active_decision.get("mission_label", "")).strip_edges()
+	if mission_label != "":
+		return {
+			"text": "Mission",
+			"color": Color("#d9a83c")
+		}
+
+	var source := str(_active_decision.get("social_preference_source", state.get("active_social_preference_source", ""))).strip_edges()
+	if source != "":
+		return {
+			"text": _reason_badge_text_for_social_source(source),
+			"color": _reason_badge_color_for_social_source(source)
+		}
+
+	var intention_label := str(state.get("daily_intention_label", "")).strip_edges()
+	if intention_label != "":
+		return {
+			"text": "Plan",
+			"color": Color("#5f7fb5")
+		}
+	return {}
+
+
+func _reason_badge_text_for_social_source(source: String) -> String:
+	match source:
+		"truce":
+			return "Truce"
+		"repeated_help":
+			return "Streak"
+		"completed_order":
+			return "Follow"
+		"ignored_ask":
+			return "Ask"
+		"held_truce":
+			return "Held"
+	return "Memory"
+
+
+func _reason_badge_color_for_social_source(source: String) -> Color:
+	match source:
+		"truce", "held_truce":
+			return Color("#8d75c5")
+		"ignored_ask":
+			return Color("#c86f74")
+		"completed_order":
+			return Color("#4f9e8f")
+		"repeated_help":
+			return Color("#79a95c")
+	return Color("#6f9f5d")
 
 
 func _face_text(expression: String) -> String:

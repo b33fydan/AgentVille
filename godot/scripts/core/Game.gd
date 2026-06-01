@@ -1508,6 +1508,7 @@ func _create_npc_authored_work_order(action_id: String, grid_pos: Vector2i, dema
 		"author_agent_name": author_name
 	}
 	_add_preference_context_to_order(order, demand)
+	_add_mission_context_to_order(order, demand)
 	work_orders[order_id] = order
 	work_order_ids.append(order_id)
 	_refresh_work_orders()
@@ -1529,6 +1530,17 @@ func _add_preference_context_to_order(order: Dictionary, demand: Dictionary) -> 
 	order["preference_label"] = preference_label
 	order["social_preference_source"] = _social_preference_source_for_order(preference_source)
 	order["social_preference_label"] = preference_label
+
+
+func _add_mission_context_to_order(order: Dictionary, demand: Dictionary) -> void:
+	var mission_id := str(demand.get("mission_id", "")).strip_edges()
+	if mission_id == "":
+		return
+	order["mission_id"] = mission_id
+	order["mission_label"] = str(demand.get("mission_label", "Crew Mission"))
+	order["mission_step_index"] = int(demand.get("mission_step_index", -1))
+	order["mission_total_steps"] = int(demand.get("mission_total_steps", 0))
+	order["mission_step_label"] = str(demand.get("mission_step_label", ""))
 
 
 func _social_preference_source_for_order(preference_source: String) -> String:
@@ -2080,6 +2092,13 @@ func _work_order_directive_extra(order_id: String, order: Dictionary) -> Diction
 	if source != "" and label != "":
 		extra["social_preference_source"] = source
 		extra["social_preference_label"] = label
+	var mission_id := str(order.get("mission_id", "")).strip_edges()
+	if mission_id != "":
+		extra["mission_id"] = mission_id
+		extra["mission_label"] = str(order.get("mission_label", "Crew Mission"))
+		extra["mission_step_index"] = int(order.get("mission_step_index", -1))
+		extra["mission_total_steps"] = int(order.get("mission_total_steps", 0))
+		extra["mission_step_label"] = str(order.get("mission_step_label", ""))
 	return extra
 
 
@@ -2420,6 +2439,11 @@ func _record_work_order_event(order_id: String, status: String) -> void:
 		"preference_label": str(order.get("preference_label", "")),
 		"social_preference_source": str(order.get("social_preference_source", "")),
 		"social_preference_label": str(order.get("social_preference_label", "")),
+		"mission_id": str(order.get("mission_id", "")),
+		"mission_label": str(order.get("mission_label", "")),
+		"mission_step_index": int(order.get("mission_step_index", -1)),
+		"mission_total_steps": int(order.get("mission_total_steps", 0)),
+		"mission_step_label": str(order.get("mission_step_label", "")),
 		"incentive_label": str(order.get("incentive_label", "")),
 		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
 		"incentive_claimed": bool(order.get("incentive_claimed", false))
@@ -2449,6 +2473,11 @@ func _record_removed_work_order_event(order: Dictionary, status: String) -> void
 		"preference_label": str(order.get("preference_label", "")),
 		"social_preference_source": str(order.get("social_preference_source", "")),
 		"social_preference_label": str(order.get("social_preference_label", "")),
+		"mission_id": str(order.get("mission_id", "")),
+		"mission_label": str(order.get("mission_label", "")),
+		"mission_step_index": int(order.get("mission_step_index", -1)),
+		"mission_total_steps": int(order.get("mission_total_steps", 0)),
+		"mission_step_label": str(order.get("mission_step_label", "")),
 		"incentive_label": str(order.get("incentive_label", "")),
 		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
 		"incentive_claimed": bool(order.get("incentive_claimed", false))
