@@ -2132,7 +2132,6 @@ func _refresh_inventory_and_orders() -> void:
 	game_ui.set_inventory(resources, _available_crafted_items_snapshot())
 	_refresh_crafting_demands()
 	_refresh_work_orders()
-	_refresh_crew_missions()
 
 
 func _refresh_crafting_demands() -> void:
@@ -2143,6 +2142,7 @@ func _refresh_crafting_demands() -> void:
 func _refresh_work_orders() -> void:
 	_refresh_order_markers()
 	game_ui.set_work_orders(_work_order_snapshots())
+	_refresh_crew_missions()
 
 
 func _refresh_crew_missions() -> void:
@@ -2566,7 +2566,8 @@ func _crew_mission_snapshot(mission_id: String) -> Dictionary:
 		return mission
 
 	var display_step := clampi(current_step_index + 1, 1, maxi(1, total_steps))
-	mission["status_text"] = "Step %s/%s" % [display_step, maxi(1, total_steps)]
+	var progress_text := "%s/%s" % [display_step, maxi(1, total_steps)]
+	var status_prefix := "Step"
 	var step_label := ""
 	var current_demand_id := str(mission.get("current_demand_id", ""))
 	mission["current_order_id"] = ""
@@ -2574,14 +2575,38 @@ func _crew_mission_snapshot(mission_id: String) -> Dictionary:
 		var demand: Dictionary = crafting_demands[current_demand_id]
 		step_label = str(demand.get("mission_step_label", "")).strip_edges()
 		mission["current_order_id"] = str(demand.get("authored_order_id", ""))
+		status_prefix = _mission_tracker_order_status_prefix(str(mission.get("current_order_id", "")))
 	if step_label == "":
 		var steps: Array = mission.get("steps", [])
 		if current_step_index >= 0 and current_step_index < steps.size() and typeof(steps[current_step_index]) == TYPE_DICTIONARY:
 			step_label = str((steps[current_step_index] as Dictionary).get("label", "")).strip_edges()
 	if step_label == "":
 		step_label = "Active"
+	mission["status_text"] = "%s %s" % [status_prefix, progress_text]
 	mission["current_step_label"] = step_label
 	return mission
+
+
+func _mission_tracker_order_status_prefix(order_id: String) -> String:
+	if order_id == "":
+		return "Step"
+	if not work_orders.has(order_id):
+		return "Queued"
+
+	var order: Dictionary = work_orders[order_id]
+	if int(order.get("escalation_count", 0)) > 0:
+		var incentive: Dictionary = order.get("incentive_resource_delta", {})
+		if not incentive.is_empty() and not bool(order.get("incentive_claimed", false)):
+			return "Bonus"
+		return "Escalated"
+	match str(order.get("status", "ready")):
+		"queued", "gathering":
+			return "Sent"
+		"waiting":
+			return "Waiting"
+		"done":
+			return "Done"
+	return "Queued"
 
 
 func _crew_mission_snapshots() -> Array:
