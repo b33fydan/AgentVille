@@ -49,6 +49,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Resolved local Parley results can now start a multi-step crew mission, beginning with Marigold's two-step Growth Run of clearing brush and harvesting a crop.
 - Crew mission steps are tracked as linked demand receipts, resolve into existing NPC goodwill and resource rewards, and appear in day summaries when completed.
 - Crew missions now have personality-flavored variants: Bert can push a Boundary Run, Marigold can push a Growth Run, and Chuck can push a Cleanup Sprint.
+- Mission demand rows and crew rows now show compact step progress like `Step 1/2` and `Mission 1/2`, so active mini-arcs stay readable while they advance.
 - Remembered help and active truces now bias autonomous NPC utility choices toward related farm behavior, so social context can change what they decide to do next.
 - Socially biased autonomy now falls back to relevant planning checks, such as watching growing crops, checking routes, or inspecting open ground when immediate work is unavailable.
 - Socially biased autonomous NPC work now carries `Memory` or `Truce` context into agent receipts, Field Log text, and day summaries.
@@ -114,6 +115,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_agents.gd` exercises NPC harvesting, coin updates, and brush clearing.
 - `tools/smoke_agent_daily_intentions.gd` exercises daily NPC plans biasing utility choices, surfacing in crew rows, and landing in receipts and day summaries.
 - `tools/smoke_crew_missions.gd` exercises resolved local Parley starting a two-step crew mission, linked mission-demand receipts, mission completion rewards, and mission day-summary callouts.
+- `tools/smoke_mission_ui.gd` exercises mission progress chips in demand rows and step-progress mission signals in crew rows.
 - `tools/smoke_mission_variety.gd` exercises Bert's Boundary Run and Chuck's Cleanup Sprint as distinct multi-step mission arcs.
 - `tools/smoke_memory_consequences.gd` exercises repeated help, completed NPC-authored orders, ignored asks, and held truces rolling into next-day consequence intentions or asks.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
@@ -204,6 +206,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - NPCs now carry deterministic daily intentions as a small local behavior layer over utility scoring, giving each crew member a visible plan without replacing social preferences or work orders.
 - Crew missions are the first deterministic mini-arc layer over demands: a resolved no-API Parley can produce ordered field-work steps, receipts, progress tracking, and completion consequences.
 - Mission variety stays local and deterministic too: personality-flavored mission hints now map to different ordered step templates without live API calls.
+- Mission progress now appears in the existing crew and demand UI surfaces, keeping the mini-arc layer readable without opening a new mission screen yet.
 - Memory consequences now sit between raw receipts and future behavior: repeated help, completed authored work, ignored asks, and held truces can become a short-lived local signal for tomorrow's plan or ask.
 - In-world reason badges make the observer loop more legible without opening another panel: idle intention, relationship-driven work, and mission work now have compact visual signals on the NPCs themselves.
 - The first juice pass is intentionally small: clearer NPC reason badges, a readable plate, and a quick pop on motive changes to make the current plan feel alive without an art overhaul.

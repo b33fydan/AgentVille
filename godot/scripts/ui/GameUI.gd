@@ -959,6 +959,16 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 	preference.tooltip_text = _demand_preference_tooltip(demand)
 	row.add_child(preference)
 
+	var mission := Label.new()
+	mission.text = _demand_mission_context_text(demand)
+	mission.visible = mission.text != ""
+	mission.custom_minimum_size = Vector2(52, 0)
+	mission.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	mission.add_theme_font_size_override("font_size", 9)
+	mission.add_theme_color_override("font_color", Color("#6b6aa8"))
+	mission.tooltip_text = _demand_mission_tooltip(demand)
+	row.add_child(mission)
+
 	var reward := Label.new()
 	reward.text = str(demand.get("reward_text", ""))
 	reward.visible = reward.text != ""
@@ -1024,6 +1034,7 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 		"label": label,
 		"status": status,
 		"preference": preference,
+		"mission": mission,
 		"reward": reward,
 		"button": action_button
 	}
@@ -1062,6 +1073,38 @@ func _demand_preference_tooltip(demand: Dictionary) -> String:
 		"held_truce":
 			return "Held truce: %s" % label if label != "" else "Influenced by a held truce"
 	return str(demand.get("reason", ""))
+
+
+func _demand_mission_context_text(demand: Dictionary) -> String:
+	if str(demand.get("mission_id", "")).strip_edges() == "":
+		return ""
+	var progress := _demand_mission_progress_fraction(demand)
+	if progress == "":
+		return "Mission"
+	return "Step %s" % progress
+
+
+func _demand_mission_tooltip(demand: Dictionary) -> String:
+	var mission_label := str(demand.get("mission_label", "")).strip_edges()
+	var step_label := str(demand.get("mission_step_label", "")).strip_edges()
+	var context_text := _demand_mission_context_text(demand)
+	if mission_label == "" and step_label == "":
+		return context_text
+	if mission_label == "":
+		return "%s: %s" % [context_text, step_label]
+	if step_label == "":
+		return "%s: %s" % [mission_label, context_text]
+	return "%s: %s - %s" % [mission_label, context_text, step_label]
+
+
+func _demand_mission_progress_fraction(demand: Dictionary) -> String:
+	if str(demand.get("mission_id", "")).strip_edges() == "":
+		return ""
+	var total_steps := int(demand.get("mission_total_steps", 0))
+	var step_index := int(demand.get("mission_step_index", -1))
+	if total_steps <= 0 or step_index < 0:
+		return ""
+	return "%s/%s" % [step_index + 1, total_steps]
 
 
 func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
@@ -1368,6 +1411,9 @@ func _format_daily_intention_signal(label: String) -> String:
 
 func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants", detail: String = "") -> String:
 	match signal_state:
+		"mission":
+			var suffix := " %s" % detail if detail != "" else ""
+			return "Mission%s: %s" % [suffix, demand_label]
 		"memory":
 			return "Memory: %s" % demand_label
 		"truce":
@@ -1396,7 +1442,11 @@ func _pending_demand_details_from(demands: Array) -> Dictionary:
 		var agent_id := str(demand.get("agent_id", ""))
 		if agent_id == "" or details.has(agent_id):
 			continue
-		details[agent_id] = _clean_pending_demand_status_detail(str(demand.get("status_text", "")))
+		var mission_progress := _demand_mission_progress_fraction(demand)
+		if mission_progress != "":
+			details[agent_id] = mission_progress
+		else:
+			details[agent_id] = _clean_pending_demand_status_detail(str(demand.get("status_text", "")))
 	return details
 
 
@@ -1410,7 +1460,11 @@ func _pending_demand_labels_from(demands: Array) -> Dictionary:
 		var agent_id := str(demand.get("agent_id", ""))
 		if agent_id == "" or labels.has(agent_id):
 			continue
-		labels[agent_id] = str(demand.get("label", "Crew Demand"))
+		var mission_label := str(demand.get("mission_label", "")).strip_edges()
+		if str(demand.get("mission_id", "")).strip_edges() != "" and mission_label != "":
+			labels[agent_id] = mission_label
+		else:
+			labels[agent_id] = str(demand.get("label", "Crew Demand"))
 	return labels
 
 
@@ -1451,6 +1505,8 @@ func _pending_demand_signal_states_from(demands: Array) -> Dictionary:
 			states[agent_id] = "waiting"
 		elif str(demand.get("authored_order_id", "")) != "":
 			states[agent_id] = "queued"
+		elif str(demand.get("mission_id", "")).strip_edges() != "":
+			states[agent_id] = "mission"
 		elif str(demand.get("preference_source", "")) == "remembered_help":
 			states[agent_id] = "memory"
 		elif str(demand.get("preference_source", "")) == "truce":
@@ -1517,10 +1573,15 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var pending_demand_order_id := str(_crew_pending_demand_order_ids.get(agent_id, ""))
 	var pending_demand_signal_state := str(_crew_pending_demand_signal_states.get(agent_id, "wants"))
 	var pending_demand_target_id := str(_crew_pending_demand_target_ids.get(agent_id, ""))
+	var pending_mission_active := pending_demand_label != "" and pending_demand_signal_state == "mission"
 	var remembered_help_label := str(snapshot.get("remembered_help_label", ""))
 	var daily_intention_label := str(snapshot.get("daily_intention_label", ""))
 	var social_label := row["social"] as Label
-	if helped_today > 0:
+	if pending_mission_active and helped_today > 0:
+		social_label.visible = true
+		social_label.text = _format_pending_demand_signal(pending_demand_label, pending_demand_signal_state, pending_demand_detail)
+		_configure_crew_social_target(social_label, pending_demand_target_id, pending_demand_order_id)
+	elif helped_today > 0:
 		social_label.visible = true
 		social_label.text = _format_social_signal(helped_today, recent_help_label)
 		_configure_crew_social_target(social_label, "", "")
