@@ -973,6 +973,10 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 	var row_panel := PanelContainer.new()
 	row_panel.custom_minimum_size = Vector2(0, 38)
 	row_panel.add_theme_stylebox_override("panel", _crew_mission_row_style(mission))
+	_configure_crew_mission_row_target(row_panel, str(mission.get("current_demand_id", "")), str(mission.get("current_order_id", "")))
+	row_panel.gui_input.connect(func(event: InputEvent) -> void:
+		_on_crew_mission_row_input(mission_id, event)
+	)
 	parent.add_child(row_panel)
 
 	var margin := MarginContainer.new()
@@ -992,6 +996,7 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 
 	var label := Label.new()
 	label.text = str(mission.get("label", "Crew Mission"))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_font_size_override("font_size", 11)
 	label.add_theme_color_override("font_color", Color("#3f372d"))
@@ -999,6 +1004,7 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 
 	var status := Label.new()
 	status.text = str(mission.get("status_text", "Step"))
+	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	status.add_theme_font_size_override("font_size", 10)
 	status.add_theme_color_override("font_color", _crew_mission_status_color(mission))
@@ -1010,6 +1016,7 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 
 	var agent := Label.new()
 	agent.text = str(mission.get("agent_name", "Crew"))
+	agent.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	agent.custom_minimum_size = Vector2(62, 0)
 	agent.add_theme_font_size_override("font_size", 9)
 	agent.add_theme_color_override("font_color", Color("#7a6f60"))
@@ -1017,6 +1024,7 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 
 	var step := Label.new()
 	step.text = str(mission.get("current_step_label", ""))
+	step.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	step.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	step.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	step.add_theme_font_size_override("font_size", 9)
@@ -1030,6 +1038,19 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 		"status": status,
 		"step": step
 	}
+
+
+func _configure_crew_mission_row_target(row_panel: PanelContainer, demand_id: String, order_id: String = "") -> void:
+	row_panel.set_meta("mission_demand_id", demand_id)
+	row_panel.set_meta("mission_order_id", order_id)
+	if demand_id == "":
+		row_panel.tooltip_text = ""
+		row_panel.mouse_default_cursor_shape = Control.CURSOR_ARROW
+		row_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+		return
+	row_panel.tooltip_text = "Focus step and send order" if order_id != "" else "Focus mission step"
+	row_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	row_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void:
@@ -1775,6 +1796,31 @@ func _on_crew_social_signal_input(agent_id: String, event: InputEvent) -> void:
 		return
 	crafting_demand_target_requested.emit(demand_id)
 	var order_id := str(social_label.get_meta("crew_order_id", ""))
+	if order_id != "":
+		work_order_requested.emit(order_id)
+	var viewport := get_viewport()
+	if viewport != null:
+		viewport.set_input_as_handled()
+
+
+func _on_crew_mission_row_input(mission_id: String, event: InputEvent) -> void:
+	if not event is InputEventMouseButton:
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var row: Dictionary = _crew_mission_rows.get(mission_id, {})
+	if not row.has("panel"):
+		return
+	var row_panel := row["panel"] as PanelContainer
+	if row_panel == null:
+		return
+	var demand_id := str(row_panel.get_meta("mission_demand_id", ""))
+	if demand_id == "":
+		return
+	sound_requested.emit("ui_click")
+	crafting_demand_target_requested.emit(demand_id)
+	var order_id := str(row_panel.get_meta("mission_order_id", ""))
 	if order_id != "":
 		work_order_requested.emit(order_id)
 	var viewport := get_viewport()

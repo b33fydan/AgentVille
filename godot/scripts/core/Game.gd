@@ -645,6 +645,7 @@ func _age_open_crafting_demands() -> void:
 					"agent_irritation_delta": 5.0
 				})
 	_refresh_crafting_demands()
+	_refresh_crew_missions()
 
 
 func _create_crafting_demand(template: Dictionary, source_event: Dictionary) -> String:
@@ -2568,9 +2569,11 @@ func _crew_mission_snapshot(mission_id: String) -> Dictionary:
 	mission["status_text"] = "Step %s/%s" % [display_step, maxi(1, total_steps)]
 	var step_label := ""
 	var current_demand_id := str(mission.get("current_demand_id", ""))
+	mission["current_order_id"] = ""
 	if crafting_demands.has(current_demand_id):
 		var demand: Dictionary = crafting_demands[current_demand_id]
 		step_label = str(demand.get("mission_step_label", "")).strip_edges()
+		mission["current_order_id"] = str(demand.get("authored_order_id", ""))
 	if step_label == "":
 		var steps: Array = mission.get("steps", [])
 		if current_step_index >= 0 and current_step_index < steps.size() and typeof(steps[current_step_index]) == TYPE_DICTIONARY:
