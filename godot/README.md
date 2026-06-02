@@ -55,6 +55,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Resolved local Parley results can now start a multi-step crew mission, beginning with Marigold's two-step Growth Run of clearing brush and harvesting a crop.
 - Crew mission steps are tracked as linked demand receipts, resolve into existing NPC goodwill and resource rewards, and appear in day summaries when completed.
 - Crew missions now have personality-flavored variants: Bert can push a Boundary Run, Marigold can push a Growth Run, and Chuck can push a Cleanup Sprint.
+- Generic preference-driven mission hints now choose Growth, Boundary, or Cleanup arcs from remembered help, truces, or one-day consequence memory.
 - Mission demand rows and crew rows now show compact step progress like `Step 1/2` and `Mission 1/2`, so active mini-arcs stay readable while they advance.
 - The crew panel now keeps a compact mission tracker with current step details and recent completion state.
 - Clicking an active mission tracker row focuses the current mission target, and sends its linked drafted crew order when one exists.
@@ -131,6 +132,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_mission_tracker_actions.gd` exercises clicking mission tracker rows to focus current mission targets and send linked drafted orders.
 - `tools/smoke_mission_tracker_order_state.gd` exercises mission tracker status text following drafted and sent linked order states.
 - `tools/smoke_mission_variety.gd` exercises Bert's Boundary Run and Chuck's Cleanup Sprint as distinct multi-step mission arcs.
+- `tools/smoke_preference_mission_selection.gd` exercises memory/truce/consequence context selecting a deterministic mission arc from a generic mission hint.
 - `tools/smoke_mission_consequences.gd` exercises completed missions becoming next-day mission-momentum consequences and Parley ask context.
 - `tools/smoke_mission_momentum_signal.gd` exercises mission-momentum crew-row copy and the in-world `Momentum` reason badge.
 - `tools/smoke_memory_consequences.gd` exercises repeated help, completed NPC-authored orders, ignored asks, and held truces rolling into next-day consequence intentions or asks.
@@ -234,6 +236,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Mission tracker state text now reuses linked order state, keeping mission UI and crew-demand UI in sync as orders are drafted, assigned, or escalated.
 - Completed missions now feed the local memory-consequence loop, so deterministic mini-arcs can influence tomorrow's intention and ask without live API calls.
 - Mission momentum now surfaces as a distinct local observer signal in both the crew row and NPC reason badge.
+- Preference-selected mission hints let remembered help, truces, and consequence memory choose deterministic mini-arcs before any live model is involved.
 - Memory consequences now sit between raw receipts and future behavior: repeated help, completed authored work, ignored asks, and held truces can become a short-lived local signal for tomorrow's plan or ask.
 - Consequence ask ranking now considers both source and label, so local memory can create different follow-up shapes without live API calls.
 - Consequence memory can now enter autonomous utility choices as social preference context, so source-specific local memory affects both asked-for tasks and voluntary NPC work.

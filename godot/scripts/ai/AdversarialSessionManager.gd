@@ -479,7 +479,7 @@ func _crafting_demand_for(outcome: String, session: Dictionary) -> Dictionary:
 	var context: Dictionary = session.get("context", {})
 	var demand_hint := str(context.get("demand_hint", "deliver_fence_kit"))
 	match demand_hint:
-		"growth_run", "boundary_run", "cleanup_run":
+		"growth_run", "boundary_run", "cleanup_run", "preference_run":
 			return {}
 		"deliver_agent_supply":
 			var preference_kind := _preference_followup_demand_kind(session)
@@ -507,6 +507,8 @@ func _crew_mission_for(outcome: String, session: Dictionary) -> Dictionary:
 	var mission_hint := str(context.get("mission_hint", "")).strip_edges()
 	if mission_hint == "":
 		mission_hint = str(context.get("demand_hint", "")).strip_edges()
+	if mission_hint == "preference_run":
+		mission_hint = _preference_mission_hint(session)
 
 	match mission_hint:
 		"growth_run":
@@ -546,6 +548,27 @@ func _crew_mission_for(outcome: String, session: Dictionary) -> Dictionary:
 				}
 			}
 	return {}
+
+
+func _preference_mission_hint(session: Dictionary) -> String:
+	var preference := _active_preference_signal(session)
+	if not preference.is_empty():
+		var label := str(preference.get("label", "")).to_lower()
+		if label.contains("seed") or label.contains("spring") or label.contains("growth") or label.contains("harvest") or label.contains("crop"):
+			return "growth_run"
+		if label.contains("fence") or label.contains("boundary"):
+			return "boundary_run"
+		if label.contains("rush") or label.contains("hustle") or label.contains("cleanup") or label.contains("clear") or label.contains("brush") or label.contains("fiber"):
+			return "cleanup_run"
+
+	match str(session.get("agent_id", "")):
+		"marigold":
+			return "growth_run"
+		"bert":
+			return "boundary_run"
+		"chuck":
+			return "cleanup_run"
+	return ""
 
 
 func _preference_followup_demand_kind(session: Dictionary) -> String:
