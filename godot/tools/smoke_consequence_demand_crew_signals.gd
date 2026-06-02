@@ -27,7 +27,8 @@ func _test_consequence_demands_surface_source_in_crew_rows() -> void:
 	])
 	await process_frame
 
-	_assert_crew_signal(scene, "marigold", "Mission", "Deliver Seed Bundle")
+	_assert_crew_signal(scene, "marigold", "Momentum", "Deliver Seed Bundle")
+	_assert_demand_preference(game_ui, "mission_seed", "Momentum", "Marigold Growth Run")
 	_assert_crew_signal(scene, "chuck", "Pressure", "Deliver Rush Kit")
 	_assert_crew_signal(scene, "bert", "Follow-up", "Deliver Fence Kit")
 	if _failed:
@@ -86,6 +87,25 @@ func _crew_social_label(scene: Node, agent_id: String) -> Label:
 		return null
 	var row: Dictionary = rows[agent_id]
 	return row.get("social", null) as Label
+
+
+func _assert_demand_preference(game_ui, demand_id: String, expected_text: String, expected_tooltip_detail: String) -> void:
+	if _failed:
+		return
+	var rows: Dictionary = game_ui.get("_crafting_demand_rows")
+	if not rows.has(demand_id):
+		_fail("Demand row missing for %s." % demand_id)
+		return
+	var row: Dictionary = rows[demand_id]
+	var preference := row.get("preference", null) as Label
+	if preference == null or not preference.visible:
+		_fail("Demand row for %s did not expose consequence preference context." % demand_id)
+		return
+	if str(preference.text) != expected_text:
+		_fail("Demand row for %s showed %s, expected %s." % [demand_id, str(preference.text), expected_text])
+		return
+	if not str(preference.tooltip_text).contains(expected_tooltip_detail):
+		_fail("Demand row for %s tooltip did not preserve %s. saw=%s" % [demand_id, expected_tooltip_detail, str(preference.tooltip_text)])
 
 
 func _fail(message: String) -> void:

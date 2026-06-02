@@ -1183,7 +1183,7 @@ func _demand_preference_context_text(demand: Dictionary) -> String:
 		"completed_order":
 			return "Follow-up"
 		"completed_mission":
-			return "Mission"
+			return "Momentum"
 		"ignored_ask":
 			return "Pressure"
 		"held_truce":
@@ -1203,7 +1203,7 @@ func _demand_preference_tooltip(demand: Dictionary) -> String:
 		"completed_order":
 			return "Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order"
 		"completed_mission":
-			return "Completed mission: %s" % label if label != "" else "Influenced by a completed mission"
+			return "Mission momentum: %s" % label if label != "" else "Influenced by mission momentum"
 		"ignored_ask":
 			return "Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask"
 		"held_truce":
@@ -1657,7 +1657,7 @@ func _format_pending_demand_signal(demand_label: String, signal_state: String = 
 		"follow_up":
 			return "Follow-up: %s" % demand_label
 		"mission_memory":
-			return "Mission: %s" % demand_label
+			return "Momentum: %s" % demand_label
 		"pressure":
 			return "Pressure: %s" % demand_label
 		"held":

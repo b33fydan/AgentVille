@@ -46,7 +46,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - NPC-authored work orders spawned from preference-driven demands now carry that `Memory` or `Truce` context into the assigned crew action and receipts.
 - Memory-consequence asks now use the consequence source too: mission momentum can restock a signature kit, ignored asks can repeat the exact request, and completed orders can request supporting supplies.
 - Memory-consequence state can also bias autonomous NPC work, preserving `Momentum`, `Pressure`, `Follow-up`, `Held`, or `Streak` source metadata when agents choose their next farm task.
-- Crew-row demand signals now surface consequence ask context as `Mission`, `Pressure`, `Follow-up`, `Held`, or `Streak` instead of flattening those asks to `Wants`.
+- Crew-row demand signals now surface consequence ask context as `Momentum`, `Pressure`, `Follow-up`, `Held`, or `Streak` instead of flattening those asks to `Wants`.
 - Work-order rows now keep queued consequence context visible as `Momentum`, `Pressure`, `Follow-up`, `Held`, or `Streak` before the crew is sent.
 - Active consequence-driven NPC work now keeps that context in crew rows and reason badges as `Momentum`, `Pressure`, `Follow-up`, `Held`, or `Streak` work.
 - Field Log receipts, day summaries, vibe reasons, and NPC comments now use the same readable consequence labels instead of raw source IDs.
