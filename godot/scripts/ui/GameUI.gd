@@ -229,6 +229,13 @@ func _update_work_order_row(order: Dictionary) -> void:
 	(row["label"] as Label).text = label
 	row["intent"] = "send"
 
+	var preference := row.get("preference", null) as Label
+	if preference != null:
+		preference.text = _work_order_preference_context_text(order)
+		preference.visible = preference.text != ""
+		preference.tooltip_text = _work_order_preference_tooltip(order)
+		preference.add_theme_color_override("font_color", _work_order_preference_color(order))
+
 	match status:
 		"done":
 			(row["status"] as Label).text = "Done"
@@ -1236,6 +1243,70 @@ func _demand_mission_progress_fraction(demand: Dictionary) -> String:
 	return "%s/%s" % [step_index + 1, total_steps]
 
 
+func _work_order_preference_context_text(order: Dictionary) -> String:
+	match _work_order_preference_source(order):
+		"remembered_help", "memory":
+			return "Memory"
+		"truce":
+			return "Truce"
+		"repeated_help":
+			return "Streak"
+		"completed_order":
+			return "Follow-up"
+		"completed_mission":
+			return "Momentum"
+		"ignored_ask":
+			return "Pressure"
+		"held_truce":
+			return "Held"
+	return ""
+
+
+func _work_order_preference_tooltip(order: Dictionary) -> String:
+	var label := _work_order_preference_label(order)
+	match _work_order_preference_source(order):
+		"remembered_help", "memory":
+			return "Remembered help: %s" % label if label != "" else "Influenced by remembered help"
+		"truce":
+			return "Active truce: %s" % label if label != "" else "Influenced by an active truce"
+		"repeated_help":
+			return "Repeated help: %s" % label if label != "" else "Influenced by repeated help"
+		"completed_order":
+			return "Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order"
+		"completed_mission":
+			return "Mission momentum: %s" % label if label != "" else "Influenced by mission momentum"
+		"ignored_ask":
+			return "Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask"
+		"held_truce":
+			return "Held truce: %s" % label if label != "" else "Influenced by a held truce"
+	return ""
+
+
+func _work_order_preference_color(order: Dictionary) -> Color:
+	match _work_order_preference_source(order):
+		"truce", "held_truce":
+			return Color("#7b5aa6")
+		"ignored_ask":
+			return Color("#8a503e")
+		"completed_order", "completed_mission":
+			return Color("#4f6f8f")
+	return Color("#5f7f39")
+
+
+func _work_order_preference_source(order: Dictionary) -> String:
+	var source := str(order.get("preference_source", "")).strip_edges()
+	if source == "":
+		source = str(order.get("social_preference_source", "")).strip_edges()
+	return source
+
+
+func _work_order_preference_label(order: Dictionary) -> String:
+	var label := str(order.get("preference_label", "")).strip_edges()
+	if label == "":
+		label = str(order.get("social_preference_label", "")).strip_edges()
+	return label
+
+
 func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
 	var order_id := str(order.get("id", ""))
 	var row := HBoxContainer.new()
@@ -1256,6 +1327,16 @@ func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
 	status.add_theme_color_override("font_color", Color("#746b5f"))
 	row.add_child(status)
 
+	var preference := Label.new()
+	preference.text = _work_order_preference_context_text(order)
+	preference.visible = preference.text != ""
+	preference.custom_minimum_size = Vector2(54, 0)
+	preference.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	preference.add_theme_font_size_override("font_size", 9)
+	preference.add_theme_color_override("font_color", _work_order_preference_color(order))
+	preference.tooltip_text = _work_order_preference_tooltip(order)
+	row.add_child(preference)
+
 	var button := Button.new()
 	button.text = "Ask"
 	button.custom_minimum_size = Vector2(56, 19)
@@ -1275,6 +1356,7 @@ func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
 	_work_order_rows[order_id] = {
 		"label": label,
 		"status": status,
+		"preference": preference,
 		"button": button,
 		"intent": "send"
 	}

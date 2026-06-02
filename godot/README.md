@@ -46,6 +46,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - NPC-authored work orders spawned from preference-driven demands now carry that `Memory` or `Truce` context into the assigned crew action and receipts.
 - Memory-consequence asks now use the consequence source too: mission momentum can restock a signature kit, ignored asks can repeat the exact request, and completed orders can request supporting supplies.
 - Crew-row demand signals now surface consequence ask context as `Mission`, `Pressure`, `Follow-up`, `Held`, or `Streak` instead of flattening those asks to `Wants`.
+- Work-order rows now keep queued consequence context visible as `Momentum`, `Pressure`, `Follow-up`, `Held`, or `Streak` before the crew is sent.
 - Active consequence-driven NPC work now keeps that context in crew rows and reason badges as `Momentum`, `Pressure`, `Follow-up`, `Held`, or `Streak` work.
 - Field Log receipts, day summaries, vibe reasons, and NPC comments now use the same readable consequence labels instead of raw source IDs.
 - Each NPC now wakes with a lightweight daily `Plan`, such as Bert shoring boundaries, Marigold tending growth, or Chuck clearing the way.
@@ -134,6 +135,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_memory_consequences.gd` exercises repeated help, completed NPC-authored orders, ignored asks, and held truces rolling into next-day consequence intentions or asks.
 - `tools/smoke_memory_consequence_ask_depth.gd` exercises source-specific follow-up ask rankings for mission momentum, ignored asks, completed orders, and held truces.
 - `tools/smoke_consequence_demand_crew_signals.gd` exercises consequence-driven demand context staying visible in crew-row demand signals.
+- `tools/smoke_consequence_work_order_row_signals.gd` exercises consequence source labels staying visible in queued work-order rows.
 - `tools/smoke_consequence_active_work_signals.gd` exercises consequence-driven active work context in crew rows and NPC reason badges.
 - `tools/smoke_consequence_receipt_language.gd` exercises readable consequence source labels in Field Log receipts, day summaries, vibe reasons, and NPC comments.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
@@ -233,6 +235,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Memory consequences now sit between raw receipts and future behavior: repeated help, completed authored work, ignored asks, and held truces can become a short-lived local signal for tomorrow's plan or ask.
 - Consequence ask ranking now considers both source and label, so local memory can create different follow-up shapes without live API calls.
 - Crew-row demand signals now preserve those consequence sources, keeping local observer context visible before the player acts.
+- Work-order rows preserve consequence sources too, keeping queued delegated tasks readable before they become active crew work.
 - Active work signals preserve consequence sources too, so the observer loop stays readable while NPCs are walking or working.
 - Receipt and summary text now share the same consequence-source vocabulary, keeping local observer outputs readable end to end.
 - In-world reason badges make the observer loop more legible without opening another panel: idle intention, relationship-driven work, and mission work now have compact visual signals on the NPCs themselves.
