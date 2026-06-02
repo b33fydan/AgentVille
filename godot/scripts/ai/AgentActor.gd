@@ -1153,8 +1153,10 @@ func _reason_badge_text_for_social_source(source: String) -> String:
 			return "Streak"
 		"completed_order":
 			return "Follow"
+		"completed_mission":
+			return "Momentum"
 		"ignored_ask":
-			return "Ask"
+			return "Pressure"
 		"held_truce":
 			return "Held"
 	return "Memory"
@@ -1166,6 +1168,8 @@ func _reason_badge_color_for_social_source(source: String) -> Color:
 			return Color("#8d75c5")
 		"ignored_ask":
 			return Color("#c86f74")
+		"completed_mission":
+			return Color("#c58e41")
 		"completed_order":
 			return Color("#4f9e8f")
 		"repeated_help":

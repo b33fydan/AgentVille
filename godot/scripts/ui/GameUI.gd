@@ -1524,12 +1524,27 @@ func _format_truce_signal(truce_label: String, truce_absorbed_today: int = 0) ->
 
 
 func _format_active_social_preference_signal(source: String, label: String) -> String:
-	var prefix := "Memory work"
-	if source == "truce":
-		prefix = "Truce work"
+	var prefix := _active_social_preference_signal_prefix(source)
 	if label == "":
 		return prefix
 	return "%s: %s" % [prefix, label]
+
+
+func _active_social_preference_signal_prefix(source: String) -> String:
+	match source:
+		"truce":
+			return "Truce work"
+		"repeated_help":
+			return "Streak work"
+		"completed_order":
+			return "Follow-up work"
+		"completed_mission":
+			return "Momentum work"
+		"ignored_ask":
+			return "Pressure work"
+		"held_truce":
+			return "Held work"
+	return "Memory work"
 
 
 func _format_daily_intention_signal(label: String, intention_id: String = "", memory_consequence_label: String = "") -> String:
