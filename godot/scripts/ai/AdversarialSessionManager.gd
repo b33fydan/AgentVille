@@ -558,9 +558,21 @@ func _preference_followup_demand_kind(session: Dictionary) -> String:
 
 func _preference_followup_demand_kinds(session: Dictionary, preference: Dictionary) -> Array[String]:
 	var label := str(preference.get("label", "")).to_lower()
-	if label.contains("seed") or label.contains("spring") or label.contains("harvest") or label.contains("crop"):
+	match str(preference.get("source", "")):
+		"completed_mission":
+			return _completed_mission_followup_demand_kinds(session, label)
+		"completed_order":
+			return _completed_order_followup_demand_kinds(session, label)
+		"ignored_ask":
+			return _ignored_ask_followup_demand_kinds(session, label)
+
+	return _field_first_preference_demand_kinds(session, label)
+
+
+func _field_first_preference_demand_kinds(session: Dictionary, label: String) -> Array[String]:
+	if label.contains("seed") or label.contains("spring") or label.contains("growth") or label.contains("harvest") or label.contains("crop"):
 		return ["harvest_crop", "deliver_seed_bundle", "clear_brush"]
-	if label.contains("rush") or label.contains("hustle") or label.contains("clear") or label.contains("brush") or label.contains("fiber"):
+	if label.contains("rush") or label.contains("hustle") or label.contains("cleanup") or label.contains("clear") or label.contains("brush") or label.contains("fiber"):
 		return ["clear_brush", "deliver_rush_kit", "harvest_crop"]
 	if label.contains("fence") or label.contains("boundary"):
 		return ["build_fence", "clear_brush", "deliver_fence_kit"]
@@ -573,6 +585,52 @@ func _preference_followup_demand_kinds(session: Dictionary, preference: Dictiona
 		"bert":
 			return ["build_fence", "clear_brush", "deliver_fence_kit"]
 	return []
+
+
+func _completed_mission_followup_demand_kinds(session: Dictionary, label: String) -> Array[String]:
+	if label.contains("seed") or label.contains("spring") or label.contains("growth") or label.contains("harvest") or label.contains("crop"):
+		return ["deliver_seed_bundle", "harvest_crop", "clear_brush"]
+	if label.contains("rush") or label.contains("hustle") or label.contains("cleanup") or label.contains("clear") or label.contains("brush") or label.contains("fiber"):
+		return ["deliver_rush_kit", "clear_brush", "harvest_crop"]
+	if label.contains("fence") or label.contains("boundary"):
+		return ["deliver_fence_kit", "build_fence", "clear_brush"]
+	return _prepend_unique_demand_kind(_agent_supply_demand_kind(session), _field_first_preference_demand_kinds(session, label))
+
+
+func _completed_order_followup_demand_kinds(session: Dictionary, label: String) -> Array[String]:
+	if label.contains("seed") or label.contains("spring") or label.contains("growth") or label.contains("harvest") or label.contains("crop"):
+		return ["deliver_seed_bundle", "harvest_crop", "clear_brush"]
+	if label.contains("rush") or label.contains("hustle") or label.contains("cleanup") or label.contains("clear") or label.contains("brush") or label.contains("fiber"):
+		return ["deliver_rush_kit", "clear_brush", "harvest_crop"]
+	if label.contains("fence") or label.contains("boundary"):
+		return ["deliver_fence_kit", "build_fence", "clear_brush"]
+	return _prepend_unique_demand_kind(_agent_supply_demand_kind(session), _field_first_preference_demand_kinds(session, label))
+
+
+func _ignored_ask_followup_demand_kinds(session: Dictionary, label: String) -> Array[String]:
+	if label.contains("seed bundle") or label.contains("spring"):
+		return ["deliver_seed_bundle", "harvest_crop", "clear_brush"]
+	if label.contains("rush kit") or label.contains("hustle"):
+		return ["deliver_rush_kit", "clear_brush", "harvest_crop"]
+	if label.contains("fence kit"):
+		return ["deliver_fence_kit", "build_fence", "clear_brush"]
+	if label.contains("harvest") or label.contains("crop") or label.contains("seed") or label.contains("growth"):
+		return ["harvest_crop", "deliver_seed_bundle", "clear_brush"]
+	if label.contains("clear") or label.contains("brush") or label.contains("rush") or label.contains("cleanup") or label.contains("fiber"):
+		return ["clear_brush", "deliver_rush_kit", "harvest_crop"]
+	if label.contains("build") or label.contains("fence") or label.contains("boundary"):
+		return ["build_fence", "deliver_fence_kit", "clear_brush"]
+	return _field_first_preference_demand_kinds(session, label)
+
+
+func _prepend_unique_demand_kind(first_kind: String, ranked_kinds: Array[String]) -> Array[String]:
+	var result: Array[String] = []
+	if first_kind != "":
+		result.append(first_kind)
+	for demand_kind in ranked_kinds:
+		if not result.has(demand_kind):
+			result.append(demand_kind)
+	return result
 
 
 func _first_unblocked_preference_kind(ranked_kinds: Array[String], session: Dictionary) -> String:
