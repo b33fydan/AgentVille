@@ -1555,6 +1555,16 @@ func _format_pending_demand_signal(demand_label: String, signal_state: String = 
 			return "Memory: %s" % demand_label
 		"truce":
 			return "Truce: %s" % demand_label
+		"streak":
+			return "Streak: %s" % demand_label
+		"follow_up":
+			return "Follow-up: %s" % demand_label
+		"mission_memory":
+			return "Mission: %s" % demand_label
+		"pressure":
+			return "Pressure: %s" % demand_label
+		"held":
+			return "Held: %s" % demand_label
 		"bonus":
 			var suffix := " %s" % detail if detail != "" else ""
 			return "Bonus: %s%s" % [demand_label, suffix]
@@ -1648,6 +1658,16 @@ func _pending_demand_signal_states_from(demands: Array) -> Dictionary:
 			states[agent_id] = "memory"
 		elif str(demand.get("preference_source", "")) == "truce":
 			states[agent_id] = "truce"
+		elif str(demand.get("preference_source", "")) == "repeated_help":
+			states[agent_id] = "streak"
+		elif str(demand.get("preference_source", "")) == "completed_order":
+			states[agent_id] = "follow_up"
+		elif str(demand.get("preference_source", "")) == "completed_mission":
+			states[agent_id] = "mission_memory"
+		elif str(demand.get("preference_source", "")) == "ignored_ask":
+			states[agent_id] = "pressure"
+		elif str(demand.get("preference_source", "")) == "held_truce":
+			states[agent_id] = "held"
 		else:
 			states[agent_id] = "wants"
 	return states
