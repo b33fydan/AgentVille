@@ -1532,10 +1532,18 @@ func _format_active_social_preference_signal(source: String, label: String) -> S
 	return "%s: %s" % [prefix, label]
 
 
-func _format_daily_intention_signal(label: String) -> String:
-	if label == "":
+func _format_daily_intention_signal(label: String, intention_id: String = "", memory_consequence_label: String = "") -> String:
+	var clean_label := label.strip_edges()
+	if intention_id == "mission_momentum":
+		var mission_label := memory_consequence_label.strip_edges()
+		if mission_label == "":
+			mission_label = clean_label
+		if mission_label == "":
+			return "Mission momentum"
+		return "Mission momentum: %s" % mission_label
+	if clean_label == "":
 		return "Plan"
-	return "Plan: %s" % label
+	return "Plan: %s" % clean_label
 
 
 func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants", detail: String = "") -> String:
@@ -1704,6 +1712,8 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var pending_demand_target_id := str(_crew_pending_demand_target_ids.get(agent_id, ""))
 	var pending_mission_active := pending_demand_label != "" and pending_demand_signal_state == "mission"
 	var remembered_help_label := str(snapshot.get("remembered_help_label", ""))
+	var memory_consequence_label := str(snapshot.get("memory_consequence_label", ""))
+	var daily_intention_id := str(snapshot.get("daily_intention_id", ""))
 	var daily_intention_label := str(snapshot.get("daily_intention_label", ""))
 	var social_label := row["social"] as Label
 	if pending_mission_active and helped_today > 0:
@@ -1744,7 +1754,7 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 		_configure_crew_social_target(social_label, "", "")
 	elif daily_intention_label != "":
 		social_label.visible = true
-		social_label.text = _format_daily_intention_signal(daily_intention_label)
+		social_label.text = _format_daily_intention_signal(daily_intention_label, daily_intention_id, memory_consequence_label)
 		_configure_crew_social_target(social_label, "", "")
 	else:
 		social_label.visible = false

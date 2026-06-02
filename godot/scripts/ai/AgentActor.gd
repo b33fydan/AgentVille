@@ -1130,8 +1130,14 @@ func _reason_badge_context() -> Dictionary:
 			"color": _reason_badge_color_for_social_source(source)
 		}
 
+	var intention_id := str(state.get("daily_intention_id", "")).strip_edges()
 	var intention_label := str(state.get("daily_intention_label", "")).strip_edges()
 	if intention_label != "":
+		if intention_id == "mission_momentum":
+			return {
+				"text": "Momentum",
+				"color": Color("#c58e41")
+			}
 		return {
 			"text": "Plan",
 			"color": Color("#5f7fb5")
