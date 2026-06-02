@@ -2835,7 +2835,7 @@ func _format_agent_social_preference_names(social_actions) -> String:
 		var receipt: Dictionary = social_actions.get(agent_id, {})
 		var name := str(receipt.get("name", str(agent_id).capitalize()))
 		var label := str(receipt.get("last_label", ""))
-		var source := str(receipt.get("last_source", "")).capitalize()
+		var source := _readable_social_preference_source(str(receipt.get("last_source", "")))
 		if name == "" or label == "":
 			continue
 		var detail := "%s's %s" % [name, label]
@@ -2855,7 +2855,26 @@ func _format_social_preference_suffix(event: Dictionary) -> String:
 	var label := str(event.get("social_preference_label", "")).strip_edges()
 	if source == "" or label == "":
 		return ""
-	return " [%s: %s]" % [source.capitalize(), label]
+	return " [%s: %s]" % [_readable_social_preference_source(source), label]
+
+
+func _readable_social_preference_source(source: String) -> String:
+	match source.strip_edges():
+		"memory", "remembered_help":
+			return "Memory"
+		"truce":
+			return "Truce"
+		"repeated_help":
+			return "Streak"
+		"completed_order":
+			return "Follow-up"
+		"completed_mission":
+			return "Momentum"
+		"ignored_ask":
+			return "Pressure"
+		"held_truce":
+			return "Held"
+	return source.replace("_", " ").capitalize()
 
 
 func _join_names(names: Array[String]) -> String:

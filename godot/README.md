@@ -47,6 +47,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Memory-consequence asks now use the consequence source too: mission momentum can restock a signature kit, ignored asks can repeat the exact request, and completed orders can request supporting supplies.
 - Crew-row demand signals now surface consequence ask context as `Mission`, `Pressure`, `Follow-up`, `Held`, or `Streak` instead of flattening those asks to `Wants`.
 - Active consequence-driven NPC work now keeps that context in crew rows and reason badges as `Momentum`, `Pressure`, `Follow-up`, `Held`, or `Streak` work.
+- Field Log receipts, day summaries, vibe reasons, and NPC comments now use the same readable consequence labels instead of raw source IDs.
 - Each NPC now wakes with a lightweight daily `Plan`, such as Bert shoring boundaries, Marigold tending growth, or Chuck clearing the way.
 - Daily plans can bias autonomous utility choices, show in idle crew rows, and land in agent receipts and day-summary intention counts.
 - Resolved local Parley results can now start a multi-step crew mission, beginning with Marigold's two-step Growth Run of clearing brush and harvesting a crop.
@@ -134,6 +135,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_memory_consequence_ask_depth.gd` exercises source-specific follow-up ask rankings for mission momentum, ignored asks, completed orders, and held truces.
 - `tools/smoke_consequence_demand_crew_signals.gd` exercises consequence-driven demand context staying visible in crew-row demand signals.
 - `tools/smoke_consequence_active_work_signals.gd` exercises consequence-driven active work context in crew rows and NPC reason badges.
+- `tools/smoke_consequence_receipt_language.gd` exercises readable consequence source labels in Field Log receipts, day summaries, vibe reasons, and NPC comments.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
 - `tools/smoke_visual_polish.gd` exercises the reason-badge backing plate, readable outline, and motive-change pop.
 - `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, live crew-row motive signals, planning fallbacks, and preserved receipt context.
@@ -232,6 +234,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Consequence ask ranking now considers both source and label, so local memory can create different follow-up shapes without live API calls.
 - Crew-row demand signals now preserve those consequence sources, keeping local observer context visible before the player acts.
 - Active work signals preserve consequence sources too, so the observer loop stays readable while NPCs are walking or working.
+- Receipt and summary text now share the same consequence-source vocabulary, keeping local observer outputs readable end to end.
 - In-world reason badges make the observer loop more legible without opening another panel: idle intention, relationship-driven work, and mission work now have compact visual signals on the NPCs themselves.
 - The first juice pass is intentionally small: clearer NPC reason badges, a readable plate, and a quick pop on motive changes to make the current plan feel alive without an art overhaul.
 - Resource gains are stored locally in the Godot runtime as the seed of the crafting economy.
