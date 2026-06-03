@@ -2135,6 +2135,15 @@ func _work_order_directive_extra(order_id: String, order: Dictionary) -> Diction
 	if source != "" and label != "":
 		extra["social_preference_source"] = source
 		extra["social_preference_label"] = label
+		var origin_source := str(order.get("social_preference_origin_source", "")).strip_edges()
+		var origin_label := str(order.get("social_preference_origin_label", "")).strip_edges()
+		if origin_source == "":
+			origin_source = str(order.get("preference_origin_source", "")).strip_edges()
+		if origin_label == "":
+			origin_label = str(order.get("preference_origin_label", "")).strip_edges()
+		if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
+			extra["social_preference_origin_source"] = origin_source
+			extra["social_preference_origin_label"] = origin_label
 	var mission_id := str(order.get("mission_id", "")).strip_edges()
 	if mission_id != "":
 		extra["mission_id"] = mission_id
@@ -2888,6 +2897,9 @@ func _format_agent_social_preference_names(social_actions) -> String:
 		var detail := "%s's %s" % [name, label]
 		if source != "":
 			detail += " %s" % source
+		var origin_detail := _format_social_preference_origin_detail(receipt)
+		if origin_detail != "":
+			detail += " (%s)" % origin_detail
 		var count := int(receipt.get("actions", 0))
 		if count > 1:
 			detail += " x%s" % count
@@ -2935,7 +2947,20 @@ func _format_social_preference_suffix(event: Dictionary) -> String:
 	var label := str(event.get("social_preference_label", "")).strip_edges()
 	if source == "" or label == "":
 		return ""
-	return " [%s: %s]" % [_readable_social_preference_source(source), label]
+	var suffix := " [%s: %s]" % [_readable_social_preference_source(source), label]
+	var origin_source := str(event.get("social_preference_origin_source", "")).strip_edges()
+	var origin_label := str(event.get("social_preference_origin_label", "")).strip_edges()
+	if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
+		suffix += " [%s: %s]" % [_readable_social_preference_source(origin_source), origin_label]
+	return suffix
+
+
+func _format_social_preference_origin_detail(receipt: Dictionary) -> String:
+	var origin_source := str(receipt.get("last_origin_source", "")).strip_edges()
+	var origin_label := str(receipt.get("last_origin_label", "")).strip_edges()
+	if origin_source == "" or origin_label == "":
+		return ""
+	return "%s: %s" % [_readable_social_preference_source(origin_source), origin_label]
 
 
 func _readable_social_preference_source(source: String) -> String:

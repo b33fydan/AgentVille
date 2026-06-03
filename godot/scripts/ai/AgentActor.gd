@@ -174,6 +174,15 @@ func start_work_order(order: Dictionary) -> void:
 	if source != "" and label != "":
 		extra["social_preference_source"] = source
 		extra["social_preference_label"] = label
+		var origin_source := str(order.get("social_preference_origin_source", "")).strip_edges()
+		var origin_label := str(order.get("social_preference_origin_label", "")).strip_edges()
+		if origin_source == "":
+			origin_source = str(order.get("preference_origin_source", "")).strip_edges()
+		if origin_label == "":
+			origin_label = str(order.get("preference_origin_label", "")).strip_edges()
+		if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
+			extra["social_preference_origin_source"] = origin_source
+			extra["social_preference_origin_label"] = origin_label
 	var mission_id := str(order.get("mission_id", "")).strip_edges()
 	if mission_id != "":
 		extra["mission_id"] = mission_id
@@ -832,6 +841,11 @@ func _add_social_preference_metadata(payload: Dictionary, decision: Dictionary) 
 		return
 	payload["social_preference_source"] = source
 	payload["social_preference_label"] = label
+	var origin_source := str(decision.get("social_preference_origin_source", "")).strip_edges()
+	var origin_label := str(decision.get("social_preference_origin_label", "")).strip_edges()
+	if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
+		payload["social_preference_origin_source"] = origin_source
+		payload["social_preference_origin_label"] = origin_label
 
 
 func _add_daily_intention_metadata(payload: Dictionary, decision: Dictionary) -> void:

@@ -172,6 +172,8 @@ func _add_agent_social_preference_summary(summary: Dictionary, event: Dictionary
 
 	var source := str(event.get("social_preference_source", "")).strip_edges()
 	var label := str(event.get("social_preference_label", "")).strip_edges()
+	var origin_source := str(event.get("social_preference_origin_source", "")).strip_edges()
+	var origin_label := str(event.get("social_preference_origin_label", "")).strip_edges()
 	var agent_id := str(event.get("agent_id", ""))
 	if source == "" or label == "" or agent_id == "":
 		return
@@ -181,12 +183,16 @@ func _add_agent_social_preference_summary(summary: Dictionary, event: Dictionary
 		"name": str(event.get("agent_name", "Crew")),
 		"actions": 0,
 		"last_source": "",
-		"last_label": ""
+		"last_label": "",
+		"last_origin_source": "",
+		"last_origin_label": ""
 	})
 	receipt["name"] = str(event.get("agent_name", receipt.get("name", "Crew")))
 	receipt["actions"] = int(receipt.get("actions", 0)) + 1
 	receipt["last_source"] = source
 	receipt["last_label"] = label
+	receipt["last_origin_source"] = origin_source
+	receipt["last_origin_label"] = origin_label
 	social_actions[agent_id] = receipt
 	summary["agent_social_preference_actions"] = social_actions
 

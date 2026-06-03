@@ -162,6 +162,9 @@ func _format_agent_social_preference_names(social_actions: Dictionary) -> String
 		var detail := "%s's %s" % [name, label]
 		if source != "":
 			detail += " %s" % source
+		var origin_detail := _format_social_preference_origin_detail(receipt)
+		if origin_detail != "":
+			detail += " (%s)" % origin_detail
 		var count := int(receipt.get("actions", 0))
 		if count > 1:
 			detail += " x%s" % count
@@ -171,6 +174,14 @@ func _format_agent_social_preference_names(social_actions: Dictionary) -> String
 	if names.is_empty():
 		return ""
 	return _join_names(names)
+
+
+func _format_social_preference_origin_detail(receipt: Dictionary) -> String:
+	var origin_source := str(receipt.get("last_origin_source", "")).strip_edges()
+	var origin_label := str(receipt.get("last_origin_label", "")).strip_edges()
+	if origin_source == "" or origin_label == "":
+		return ""
+	return "%s: %s" % [_readable_social_preference_source(origin_source), origin_label]
 
 
 func _format_completed_crew_mission_names(crew_missions) -> String:
