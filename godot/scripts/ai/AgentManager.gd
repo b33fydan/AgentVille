@@ -182,14 +182,14 @@ func acknowledge_completed_authored_order(agent_id: String, order_label: String)
 		return
 
 
-func acknowledge_completed_mission(agent_id: String, mission_label: String) -> void:
+func acknowledge_completed_mission(agent_id: String, mission_label: String, origin_source: String = "", origin_label: String = "") -> void:
 	if agent_id == "":
 		return
 
 	for agent in agents:
 		if str(agent.get("agent_id")) != agent_id:
 			continue
-		agent.call("acknowledge_completed_mission", mission_label)
+		agent.call("acknowledge_completed_mission", mission_label, origin_source, origin_label)
 		crew_updated.emit(get_agent_snapshots())
 		return
 

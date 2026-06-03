@@ -1691,7 +1691,13 @@ func _active_social_preference_signal_prefix(source: String) -> String:
 	return "Memory work"
 
 
-func _format_daily_intention_signal(label: String, intention_id: String = "", memory_consequence_label: String = "") -> String:
+func _format_daily_intention_signal(
+	label: String,
+	intention_id: String = "",
+	memory_consequence_label: String = "",
+	memory_consequence_origin_source: String = "",
+	memory_consequence_origin_label: String = ""
+) -> String:
 	var clean_label := label.strip_edges()
 	if intention_id == "mission_momentum":
 		var mission_label := memory_consequence_label.strip_edges()
@@ -1699,10 +1705,43 @@ func _format_daily_intention_signal(label: String, intention_id: String = "", me
 			mission_label = clean_label
 		if mission_label == "":
 			return "Mission momentum"
-		return "Mission momentum: %s" % mission_label
+		var signal_text := "Mission momentum: %s" % mission_label
+		var origin_context := _mission_momentum_origin_context_text(memory_consequence_origin_source, memory_consequence_origin_label)
+		if origin_context != "":
+			signal_text += " [%s]" % origin_context
+		return signal_text
 	if clean_label == "":
 		return "Plan"
 	return "Plan: %s" % clean_label
+
+
+func _mission_momentum_origin_context_text(source: String, label: String) -> String:
+	var source_text := _readable_preference_source(source)
+	var clean_label := label.strip_edges()
+	if source_text == "":
+		return clean_label
+	if clean_label == "":
+		return source_text
+	return "%s: %s" % [source_text, clean_label]
+
+
+func _readable_preference_source(source: String) -> String:
+	match source.strip_edges():
+		"remembered_help", "memory":
+			return "Memory"
+		"truce":
+			return "Truce"
+		"repeated_help":
+			return "Streak"
+		"completed_order":
+			return "Follow-up"
+		"completed_mission":
+			return "Momentum"
+		"ignored_ask":
+			return "Pressure"
+		"held_truce":
+			return "Held"
+	return ""
 
 
 func _format_pending_demand_signal(demand_label: String, signal_state: String = "wants", detail: String = "") -> String:
@@ -1892,6 +1931,8 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var pending_mission_active := pending_demand_label != "" and pending_demand_signal_state == "mission"
 	var remembered_help_label := str(snapshot.get("remembered_help_label", ""))
 	var memory_consequence_label := str(snapshot.get("memory_consequence_label", ""))
+	var memory_consequence_origin_source := str(snapshot.get("memory_consequence_origin_source", ""))
+	var memory_consequence_origin_label := str(snapshot.get("memory_consequence_origin_label", ""))
 	var daily_intention_id := str(snapshot.get("daily_intention_id", ""))
 	var daily_intention_label := str(snapshot.get("daily_intention_label", ""))
 	var social_label := row["social"] as Label
@@ -1927,13 +1968,29 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 		social_label.visible = true
 		social_label.text = _format_truce_signal(truce_label)
 		_configure_crew_social_target(social_label, "", "")
+	elif daily_intention_id == "mission_momentum":
+		social_label.visible = true
+		social_label.text = _format_daily_intention_signal(
+			daily_intention_label,
+			daily_intention_id,
+			memory_consequence_label,
+			memory_consequence_origin_source,
+			memory_consequence_origin_label
+		)
+		_configure_crew_social_target(social_label, "", "")
 	elif remembered_help_label != "":
 		social_label.visible = true
 		social_label.text = _format_memory_signal(remembered_help_label)
 		_configure_crew_social_target(social_label, "", "")
 	elif daily_intention_label != "":
 		social_label.visible = true
-		social_label.text = _format_daily_intention_signal(daily_intention_label, daily_intention_id, memory_consequence_label)
+		social_label.text = _format_daily_intention_signal(
+			daily_intention_label,
+			daily_intention_id,
+			memory_consequence_label,
+			memory_consequence_origin_source,
+			memory_consequence_origin_label
+		)
 		_configure_crew_social_target(social_label, "", "")
 	else:
 		social_label.visible = false

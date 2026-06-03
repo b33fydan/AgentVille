@@ -69,6 +69,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Crew rows now surface active `Memory work` or `Truce work` context while socially biased NPC autonomy is walking or working, then clear that live signal when the job ends.
 - Repeated help, completed NPC-authored orders, ignored asks, and held truces now roll into a one-day consequence memory that can reshape the next daily `Plan` or NPC ask.
 - Completed crew missions now roll into a one-day `Mission Momentum` consequence that can shape the next daily plan or follow-up ask.
+- Source-backed completed missions preserve their original context in next-day `Mission Momentum` crew-plan copy, such as `Pressure: Rush Kit`.
 - Mission Momentum now has its own crew-row signal and in-world `Momentum` badge instead of reading as a generic plan.
 - NPCs now show a compact in-world reason badge above their voxel rig, switching between `Plan`, social-memory work, and active `Mission` work as their current motive changes.
 - Reason badges now have a small backing plate and motive-change pop so NPC plans and mission/social work read better in motion.
@@ -141,6 +142,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_mission_completion_context_commentary.gd` exercises completed source-backed missions using readable context in Field Log completion lines, vibe reasons, day summaries, and NPC verdicts.
 - `tools/smoke_mission_consequences.gd` exercises completed missions becoming next-day mission-momentum consequences and Parley ask context.
 - `tools/smoke_mission_momentum_signal.gd` exercises mission-momentum crew-row copy and the in-world `Momentum` reason badge.
+- `tools/smoke_mission_momentum_source_context.gd` exercises source-backed completed missions preserving original context into next-day Mission Momentum crew-plan copy.
 - `tools/smoke_memory_consequences.gd` exercises repeated help, completed NPC-authored orders, ignored asks, and held truces rolling into next-day consequence intentions or asks.
 - `tools/smoke_memory_consequence_ask_depth.gd` exercises source-specific follow-up ask rankings for mission momentum, ignored asks, completed orders, and held truces.
 - `tools/smoke_consequence_autonomy_preferences.gd` exercises consequence memory biasing autonomous NPC work with readable source context.
@@ -255,6 +257,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Live Parley context now uses that selector for active consequence memory, while ordinary remembered-help context keeps its existing follow-up ask path.
 - Preference-selected missions keep the same observer context vocabulary through mission state, step demands, tracker chips, and day-summary receipts.
 - Completed preference-selected missions now keep that observer vocabulary in completion commentary too, so early mission runs leave readable source-aware receipts.
+- Next-day Mission Momentum now keeps that source-aware receipt context in crew-plan copy before the future Skill Forge layer turns mission runs into explicit learning objectives.
 - Memory consequences now sit between raw receipts and future behavior: repeated help, completed authored work, ignored asks, and held truces can become a short-lived local signal for tomorrow's plan or ask.
 - Consequence ask ranking now considers both source and label, so local memory can create different follow-up shapes without live API calls.
 - Consequence memory can now enter autonomous utility choices as social preference context, so source-specific local memory affects both asked-for tasks and voluntary NPC work.

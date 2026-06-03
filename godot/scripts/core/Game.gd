@@ -1033,7 +1033,13 @@ func _complete_crew_mission(mission_id: String) -> void:
 			"agent_mood_delta": 2.0,
 			"agent_irritation_delta": -4.0
 		})
-		_agent_manager.call("acknowledge_completed_mission", str(mission.get("agent_id", "")), str(mission.get("label", "Crew Mission")))
+		_agent_manager.call(
+			"acknowledge_completed_mission",
+			str(mission.get("agent_id", "")),
+			str(mission.get("label", "Crew Mission")),
+			str(mission.get("preference_source", "")),
+			str(mission.get("preference_label", ""))
+		)
 
 	var resource_delta: Dictionary = mission.get("completion_resource_delta", {})
 	var accepted := _add_resources(resource_delta)

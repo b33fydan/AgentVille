@@ -90,10 +90,14 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"recent_completed_order_label": "",
 		"completed_mission_today": 0,
 		"recent_completed_mission_label": "",
+		"recent_completed_mission_origin_source": "",
+		"recent_completed_mission_origin_label": "",
 		"ignored_ask_today": 0,
 		"recent_ignored_ask_label": "",
 		"memory_consequence_source": "",
 		"memory_consequence_label": "",
+		"memory_consequence_origin_source": "",
+		"memory_consequence_origin_label": "",
 		"memory_consequence_days": 0,
 		"active_social_preference_source": "",
 		"active_social_preference_label": "",
@@ -142,6 +146,8 @@ func observe_event(event: Dictionary, focus: bool = false) -> void:
 		state["recent_completed_order_label"] = ""
 		state["completed_mission_today"] = 0
 		state["recent_completed_mission_label"] = ""
+		state["recent_completed_mission_origin_source"] = ""
+		state["recent_completed_mission_origin_label"] = ""
 		state["ignored_ask_today"] = 0
 		state["recent_ignored_ask_label"] = ""
 		_refresh_daily_intention()
@@ -273,10 +279,14 @@ func get_snapshot() -> Dictionary:
 		"recent_completed_order_label": str(state.get("recent_completed_order_label", "")),
 		"completed_mission_today": int(state.get("completed_mission_today", 0)),
 		"recent_completed_mission_label": str(state.get("recent_completed_mission_label", "")),
+		"recent_completed_mission_origin_source": str(state.get("recent_completed_mission_origin_source", "")),
+		"recent_completed_mission_origin_label": str(state.get("recent_completed_mission_origin_label", "")),
 		"ignored_ask_today": int(state.get("ignored_ask_today", 0)),
 		"recent_ignored_ask_label": str(state.get("recent_ignored_ask_label", "")),
 		"memory_consequence_source": str(state.get("memory_consequence_source", "")),
 		"memory_consequence_label": str(state.get("memory_consequence_label", "")),
+		"memory_consequence_origin_source": str(state.get("memory_consequence_origin_source", "")),
+		"memory_consequence_origin_label": str(state.get("memory_consequence_origin_label", "")),
 		"memory_consequence_days": int(state.get("memory_consequence_days", 0)),
 		"active_social_preference_source": str(state.get("active_social_preference_source", "")),
 		"active_social_preference_label": str(state.get("active_social_preference_label", "")),
@@ -353,7 +363,9 @@ func _next_memory_consequence() -> Dictionary:
 	if int(state.get("completed_mission_today", 0)) > 0 and completed_mission_label != "":
 		return {
 			"source": "completed_mission",
-			"label": completed_mission_label
+			"label": completed_mission_label,
+			"origin_source": str(state.get("recent_completed_mission_origin_source", "")).strip_edges(),
+			"origin_label": str(state.get("recent_completed_mission_origin_label", "")).strip_edges()
 		}
 
 	var remembered_label := str(state.get("remembered_help_label", "")).strip_edges()
@@ -370,6 +382,8 @@ func _apply_memory_consequence(consequence: Dictionary) -> void:
 	if not consequence.is_empty():
 		state["memory_consequence_source"] = str(consequence.get("source", ""))
 		state["memory_consequence_label"] = str(consequence.get("label", ""))
+		state["memory_consequence_origin_source"] = str(consequence.get("origin_source", ""))
+		state["memory_consequence_origin_label"] = str(consequence.get("origin_label", ""))
 		state["memory_consequence_days"] = 1
 		return
 
@@ -377,6 +391,8 @@ func _apply_memory_consequence(consequence: Dictionary) -> void:
 	if consequence_days <= 0:
 		state["memory_consequence_source"] = ""
 		state["memory_consequence_label"] = ""
+		state["memory_consequence_origin_source"] = ""
+		state["memory_consequence_origin_label"] = ""
 		return
 
 	consequence_days -= 1
@@ -384,6 +400,8 @@ func _apply_memory_consequence(consequence: Dictionary) -> void:
 	if consequence_days <= 0:
 		state["memory_consequence_source"] = ""
 		state["memory_consequence_label"] = ""
+		state["memory_consequence_origin_source"] = ""
+		state["memory_consequence_origin_label"] = ""
 
 
 func apply_adversarial_result(result: Dictionary) -> void:
@@ -471,9 +489,11 @@ func acknowledge_completed_authored_order(order_label: String) -> void:
 	state_changed.emit(get_snapshot())
 
 
-func acknowledge_completed_mission(mission_label: String) -> void:
+func acknowledge_completed_mission(mission_label: String, origin_source: String = "", origin_label: String = "") -> void:
 	state["completed_mission_today"] = int(state.get("completed_mission_today", 0)) + 1
 	state["recent_completed_mission_label"] = mission_label
+	state["recent_completed_mission_origin_source"] = origin_source.strip_edges()
+	state["recent_completed_mission_origin_label"] = origin_label.strip_edges()
 	state["mood"] = clampf(float(state.get("mood", 50.0)) + 1.0, 0.0, 100.0)
 	state["irritation"] = clampf(float(state.get("irritation", 0.0)) - 1.0, 0.0, 100.0)
 	state_changed.emit(get_snapshot())
