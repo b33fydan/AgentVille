@@ -14,6 +14,7 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
 	var social_preference_actions: Dictionary = summary.get("agent_social_preference_actions", {})
+	var completed_mission_names := _format_completed_crew_mission_names(summary.get("crew_missions", {}))
 	var work_order_events: Dictionary = summary.get("work_order_events", {})
 	var truce_delayed_orders := int(work_order_events.get("truce_delayed", 0))
 	var reasons: Array[String] = []
@@ -21,6 +22,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	var label := "quiet"
 
 	if total == 0:
+		if completed_mission_names != "":
+			reasons.append("completed %s" % completed_mission_names)
+			return _result("careful", 55, reasons)
 		if not remembered_help_sessions.is_empty():
 			reasons.append("remembered %s during Parley" % _format_remembered_help_session_names(remembered_help_sessions))
 			return _result("careful", 54, reasons)
@@ -64,6 +68,9 @@ func score_summary(summary: Dictionary) -> Dictionary:
 	if not social_preference_actions.is_empty():
 		score += mini(6, social_preference_actions.size() * 3)
 		reasons.append("crew followed %s" % _format_agent_social_preference_names(social_preference_actions))
+	if completed_mission_names != "":
+		score += mini(10, int(summary.get("completed_crew_missions", 0)) * 4)
+		reasons.append("completed %s" % completed_mission_names)
 	if failed > 0:
 		reasons.append("%s missed actions" % failed)
 
@@ -161,6 +168,38 @@ func _format_agent_social_preference_names(social_actions: Dictionary) -> String
 		if not names.has(detail):
 			names.append(detail)
 	names.sort()
+	if names.is_empty():
+		return ""
+	return _join_names(names)
+
+
+func _format_completed_crew_mission_names(crew_missions) -> String:
+	if typeof(crew_missions) != TYPE_DICTIONARY:
+		return ""
+
+	var names: Array[String] = []
+	for mission_id in crew_missions.keys():
+		var receipt: Dictionary = crew_missions.get(mission_id, {})
+		if str(receipt.get("status", "")) != "done":
+			continue
+		var mission_label := str(receipt.get("label", "Crew Mission")).strip_edges()
+		var agent_name := str(receipt.get("agent_name", "")).strip_edges()
+		var detail := mission_label if mission_label != "" else "Crew Mission"
+		if agent_name != "" and not detail.contains(agent_name):
+			detail = "%s's %s" % [agent_name, detail]
+		var source := _readable_social_preference_source(str(receipt.get("preference_source", "")))
+		var label := str(receipt.get("preference_label", "")).strip_edges()
+		if source != "" and label != "":
+			detail += " [%s: %s]" % [source, label]
+		elif source != "":
+			detail += " [%s]" % source
+		elif label != "":
+			detail += " [%s]" % label
+		if not names.has(detail):
+			names.append(detail)
+	names.sort()
+	if names.is_empty():
+		return ""
 	return _join_names(names)
 
 

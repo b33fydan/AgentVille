@@ -280,6 +280,7 @@ func _summary_comment(summary: Dictionary) -> String:
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
 	var memory_names := _format_remembered_help_session_names(remembered_help_sessions)
 	var social_autonomy_names := _format_agent_social_preference_names(summary.get("agent_social_preference_actions", {}))
+	var completed_mission_names := _format_completed_crew_mission_names(summary.get("crew_missions", {}))
 	var work_order_events: Dictionary = summary.get("work_order_events", {})
 	var truce_delayed_orders := int(work_order_events.get("truce_delayed", 0))
 
@@ -301,6 +302,15 @@ func _summary_comment(summary: Dictionary) -> String:
 				return "%s: \"Remembered %s during Parley. That kind of care keeps the room warmer.\"" % [name, memory_names]
 			"chaotic":
 				return "%s: \"Remembered %s during Parley. Friendship ledger glittered, allegedly.\"" % [name, memory_names]
+
+	if completed_mission_names != "":
+		match personality:
+			"grizzled":
+				return "%s: \"Mission complete: %s. Source context held all the way through.\"" % [name, completed_mission_names]
+			"hopeful":
+				return "%s: \"Mission complete: %s. That is a real run with a clean receipt.\"" % [name, completed_mission_names]
+			"chaotic":
+				return "%s: \"Mission complete: %s. Tiny plan, actual follow-through. Thrilling.\"" % [name, completed_mission_names]
 
 	if social_autonomy_names != "":
 		match personality:
@@ -459,6 +469,34 @@ func _format_agent_social_preference_names(social_actions) -> String:
 		var count := int(receipt.get("actions", 0))
 		if count > 1:
 			detail += " x%s" % count
+		if not names.has(detail):
+			names.append(detail)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_completed_crew_mission_names(crew_missions) -> String:
+	if typeof(crew_missions) != TYPE_DICTIONARY:
+		return ""
+
+	var names: Array[String] = []
+	for mission_id in crew_missions.keys():
+		var receipt: Dictionary = crew_missions.get(mission_id, {})
+		if str(receipt.get("status", "")) != "done":
+			continue
+		var mission_label := str(receipt.get("label", "Crew Mission")).strip_edges()
+		var agent_name := str(receipt.get("agent_name", "")).strip_edges()
+		var detail := mission_label if mission_label != "" else "Crew Mission"
+		if agent_name != "" and not detail.contains(agent_name):
+			detail = "%s's %s" % [agent_name, detail]
+		var source := _readable_social_preference_source(str(receipt.get("preference_source", "")))
+		var label := str(receipt.get("preference_label", "")).strip_edges()
+		if source != "" and label != "":
+			detail += " [%s: %s]" % [source, label]
+		elif source != "":
+			detail += " [%s]" % source
+		elif label != "":
+			detail += " [%s]" % label
 		if not names.has(detail):
 			names.append(detail)
 	names.sort()

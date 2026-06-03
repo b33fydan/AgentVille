@@ -1040,7 +1040,11 @@ func _complete_crew_mission(mission_id: String) -> void:
 	if not accepted.is_empty():
 		game_ui.add_field_log("%s complete: +%s." % [str(mission.get("label", "Crew Mission")), _format_resource_list(accepted)])
 
-	game_ui.add_field_log("%s completed mission: %s." % [str(mission.get("agent_name", "Crew")), str(mission.get("label", "Crew Mission"))])
+	game_ui.add_field_log("%s completed mission: %s%s." % [
+		str(mission.get("agent_name", "Crew")),
+		str(mission.get("label", "Crew Mission")),
+		_format_mission_preference_suffix(mission)
+	])
 	_record_crew_mission_event(mission_id, "done")
 	_refresh_crew_missions()
 
@@ -2698,6 +2702,7 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var remembered_context_text := _format_remembered_help_session_names(remembered_help_sessions)
 	var social_autonomy_text := _format_agent_social_preference_names(summary.get("agent_social_preference_actions", {}))
 	var completed_crew_missions := int(summary.get("completed_crew_missions", 0))
+	var completed_mission_text := _format_completed_crew_mission_names(summary.get("crew_missions", {}))
 	var top_action := str(summary.get("top_action", "none"))
 	var vibe: Dictionary = summary.get("vibe", {})
 	var vibe_label := str(vibe.get("label", "mixed"))
@@ -2713,6 +2718,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 			empty_line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 		if completed_crew_missions > 0:
 			empty_line += ", completed %s mission%s" % [completed_crew_missions, "" if completed_crew_missions == 1 else "s"]
+			if completed_mission_text != "":
+				empty_line += ": %s" % completed_mission_text
 		return empty_line + "."
 
 	var line := "Day %s: %s vibe (%s), %s actions, %s missed" % [int(summary.get("day", 1)), vibe_label, vibe_score, total, failed]
@@ -2732,6 +2739,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 	if completed_crew_missions > 0:
 		line += ", completed %s mission%s" % [completed_crew_missions, "" if completed_crew_missions == 1 else "s"]
+		if completed_mission_text != "":
+			line += ": %s" % completed_mission_text
 	if craft_count > 0:
 		line += ", %s craft%s" % [craft_count, "" if craft_count == 1 else "s"]
 	if supply_deliveries > 0:
@@ -2868,6 +2877,39 @@ func _format_agent_social_preference_names(social_actions) -> String:
 			names.append(detail)
 	names.sort()
 	return _join_names(names)
+
+
+func _format_completed_crew_mission_names(crew_missions) -> String:
+	if typeof(crew_missions) != TYPE_DICTIONARY:
+		return ""
+
+	var names: Array[String] = []
+	for mission_id in crew_missions.keys():
+		var receipt: Dictionary = crew_missions.get(mission_id, {})
+		if str(receipt.get("status", "")) != "done":
+			continue
+		var mission_label := str(receipt.get("label", "Crew Mission")).strip_edges()
+		var agent_name := str(receipt.get("agent_name", "")).strip_edges()
+		var detail := mission_label if mission_label != "" else "Crew Mission"
+		if agent_name != "" and not detail.contains(agent_name):
+			detail = "%s's %s" % [agent_name, detail]
+		detail += _format_mission_preference_suffix(receipt)
+		if not names.has(detail):
+			names.append(detail)
+	names.sort()
+	return _join_names(names)
+
+
+func _format_mission_preference_suffix(mission: Dictionary) -> String:
+	var source := str(mission.get("preference_source", "")).strip_edges()
+	var label := str(mission.get("preference_label", "")).strip_edges()
+	if source == "" and label == "":
+		return ""
+	if source == "":
+		return " [%s]" % label
+	if label == "":
+		return " [%s]" % _readable_social_preference_source(source)
+	return " [%s: %s]" % [_readable_social_preference_source(source), label]
 
 
 func _format_social_preference_suffix(event: Dictionary) -> String:
