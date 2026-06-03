@@ -1029,6 +1029,17 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 	agent.add_theme_color_override("font_color", Color("#7a6f60"))
 	bottom.add_child(agent)
 
+	var context := Label.new()
+	context.text = _mission_preference_context_text(mission)
+	context.visible = context.text != ""
+	context.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	context.custom_minimum_size = Vector2(52, 0)
+	context.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	context.add_theme_font_size_override("font_size", 9)
+	context.add_theme_color_override("font_color", _mission_preference_color(mission))
+	context.tooltip_text = _mission_preference_tooltip(mission)
+	bottom.add_child(context)
+
 	var step := Label.new()
 	step.text = str(mission.get("current_step_label", ""))
 	step.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1042,6 +1053,7 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 		"panel": row_panel,
 		"label": label,
 		"agent": agent,
+		"context": context,
 		"status": status,
 		"step": step
 	}
@@ -1189,6 +1201,56 @@ func _demand_preference_context_text(demand: Dictionary) -> String:
 		"held_truce":
 			return "Held"
 	return ""
+
+
+func _mission_preference_context_text(mission: Dictionary) -> String:
+	match str(mission.get("preference_source", "")):
+		"remembered_help":
+			return "Memory"
+		"truce":
+			return "Truce"
+		"repeated_help":
+			return "Streak"
+		"completed_order":
+			return "Follow-up"
+		"completed_mission":
+			return "Momentum"
+		"ignored_ask":
+			return "Pressure"
+		"held_truce":
+			return "Held"
+	return ""
+
+
+func _mission_preference_tooltip(mission: Dictionary) -> String:
+	var label := str(mission.get("preference_label", "")).strip_edges()
+	match str(mission.get("preference_source", "")):
+		"remembered_help":
+			return "Remembered help: %s" % label if label != "" else "Influenced by remembered help"
+		"truce":
+			return "Active truce: %s" % label if label != "" else "Influenced by an active truce"
+		"repeated_help":
+			return "Repeated help: %s" % label if label != "" else "Influenced by repeated help"
+		"completed_order":
+			return "Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order"
+		"completed_mission":
+			return "Mission momentum: %s" % label if label != "" else "Influenced by mission momentum"
+		"ignored_ask":
+			return "Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask"
+		"held_truce":
+			return "Held truce: %s" % label if label != "" else "Influenced by a held truce"
+	return ""
+
+
+func _mission_preference_color(mission: Dictionary) -> Color:
+	match str(mission.get("preference_source", "")):
+		"truce", "held_truce":
+			return Color("#7b5aa6")
+		"ignored_ask":
+			return Color("#8a503e")
+		"completed_order", "completed_mission":
+			return Color("#4f6f8f")
+	return Color("#5f7f39")
 
 
 func _demand_preference_tooltip(demand: Dictionary) -> String:

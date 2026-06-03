@@ -229,6 +229,8 @@ func _add_crew_mission_summary(summary: Dictionary, event: Dictionary) -> void:
 		"status": "",
 		"completed_steps": 0,
 		"total_steps": 0,
+		"preference_source": "",
+		"preference_label": "",
 		"counted_done": false
 	})
 	receipt["label"] = str(event.get("label", receipt.get("label", "Crew Mission")))
@@ -237,6 +239,12 @@ func _add_crew_mission_summary(summary: Dictionary, event: Dictionary) -> void:
 	receipt["status"] = str(event.get("status", receipt.get("status", "")))
 	receipt["completed_steps"] = maxi(int(receipt.get("completed_steps", 0)), int(event.get("completed_steps", 0)))
 	receipt["total_steps"] = maxi(int(receipt.get("total_steps", 0)), int(event.get("total_steps", 0)))
+	var preference_source := str(event.get("preference_source", receipt.get("preference_source", ""))).strip_edges()
+	var preference_label := str(event.get("preference_label", receipt.get("preference_label", ""))).strip_edges()
+	if preference_source != "":
+		receipt["preference_source"] = preference_source
+	if preference_label != "":
+		receipt["preference_label"] = preference_label
 	if str(event.get("status", "")) == "done" and not bool(receipt.get("counted_done", false)):
 		summary["completed_crew_missions"] = int(summary.get("completed_crew_missions", 0)) + 1
 		receipt["counted_done"] = true

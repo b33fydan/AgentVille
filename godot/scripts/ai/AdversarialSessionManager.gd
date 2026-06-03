@@ -510,10 +510,11 @@ func _crew_mission_for(outcome: String, session: Dictionary) -> Dictionary:
 	if mission_hint == "preference_run":
 		mission_hint = _preference_mission_hint(session)
 
+	var mission := {}
 	match mission_hint:
 		"growth_run":
 			var agent_name := str(session.get("agent_name", "Crew"))
-			return {
+			mission = {
 				"label": "%s Growth Run" % agent_name,
 				"steps": [
 					_demand_template("clear_brush", session),
@@ -525,7 +526,7 @@ func _crew_mission_for(outcome: String, session: Dictionary) -> Dictionary:
 			}
 		"boundary_run":
 			var agent_name := str(session.get("agent_name", "Crew"))
-			return {
+			mission = {
 				"label": "%s Boundary Run" % agent_name,
 				"steps": [
 					_demand_template("clear_brush", session),
@@ -537,7 +538,7 @@ func _crew_mission_for(outcome: String, session: Dictionary) -> Dictionary:
 			}
 		"cleanup_run":
 			var agent_name := str(session.get("agent_name", "Crew"))
-			return {
+			mission = {
 				"label": "%s Cleanup Sprint" % agent_name,
 				"steps": [
 					_demand_template("clear_brush", session),
@@ -547,7 +548,9 @@ func _crew_mission_for(outcome: String, session: Dictionary) -> Dictionary:
 					"fiber": 1
 				}
 			}
-	return {}
+	if mission.is_empty():
+		return {}
+	return _with_preference_mission_context(mission, session)
 
 
 func _preference_mission_hint(session: Dictionary) -> String:
@@ -823,6 +826,17 @@ func _with_preference_context(template: Dictionary, session: Dictionary) -> Dict
 			enriched["reason"] = "%s Ignored ask %s kept pressure on %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
 		"held_truce":
 			enriched["reason"] = "%s Held truce over %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+	return enriched
+
+
+func _with_preference_mission_context(template: Dictionary, session: Dictionary) -> Dictionary:
+	var preference := _active_preference_signal(session)
+	if preference.is_empty():
+		return template
+
+	var enriched := template.duplicate(true)
+	enriched["preference_source"] = str(preference.get("source", ""))
+	enriched["preference_label"] = str(preference.get("label", ""))
 	return enriched
 
 

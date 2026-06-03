@@ -745,6 +745,12 @@ func _start_next_crew_mission_step(mission_id: String) -> String:
 	step["mission_step_index"] = step_index
 	step["mission_total_steps"] = steps.size()
 	step["mission_step_label"] = str(step.get("label", "Step %s" % (step_index + 1)))
+	var mission_preference_source := str(mission.get("preference_source", "")).strip_edges()
+	var mission_preference_label := str(mission.get("preference_label", "")).strip_edges()
+	if mission_preference_source != "" and str(step.get("preference_source", "")).strip_edges() == "":
+		step["preference_source"] = mission_preference_source
+	if mission_preference_label != "" and str(step.get("preference_label", "")).strip_edges() == "":
+		step["preference_label"] = mission_preference_label
 
 	var demand_id := _create_crafting_demand(step, {
 		"agent_id": str(mission.get("agent_id", "")),
@@ -1354,6 +1360,8 @@ func _record_crew_mission_event(mission_id: String, status: String, demand: Dict
 		"completed_steps": int(mission.get("completed_steps", 0)),
 		"total_steps": int(mission.get("total_steps", 0)),
 		"current_demand_id": str(mission.get("current_demand_id", "")),
+		"preference_source": str(mission.get("preference_source", "")),
+		"preference_label": str(mission.get("preference_label", "")),
 		"step_demand_id": str(demand.get("id", "")),
 		"mission_step_index": int(demand.get("mission_step_index", -1)),
 		"completion_resource_delta": mission.get("completion_resource_delta", {})
