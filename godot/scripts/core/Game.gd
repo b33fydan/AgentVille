@@ -342,7 +342,7 @@ func _on_adversarial_encounter_requested(agent_id: String = "") -> void:
 		sound_manager.play_stamp("error_soft")
 		return
 
-	var session: Dictionary = _adversarial_session.call("start_session", agent_snapshot, _build_adversarial_context())
+	var session: Dictionary = _adversarial_session.call("start_session", agent_snapshot, _build_adversarial_context(agent_snapshot))
 	_clear_adversarial_grievance()
 	game_ui.set_adversarial_session(session)
 	game_ui.add_field_log("%s raised a grievance." % str(session.get("agent_name", "Crew")))
@@ -387,7 +387,7 @@ func _select_adversarial_agent(agent_id: String = "") -> Dictionary:
 	return selected
 
 
-func _build_adversarial_context() -> Dictionary:
+func _build_adversarial_context(agent_snapshot: Dictionary = {}) -> Dictionary:
 	var recent_events: Array = _event_log.call("get_recent_events", 16) if _event_log else []
 	var failed_actions: Dictionary = {}
 	var recent_failures := 0
@@ -408,7 +408,8 @@ func _build_adversarial_context() -> Dictionary:
 			top_failed_action = str(action)
 			top_failed_count = count
 
-	return {
+	var demand_hint := "preference_run" if _agent_snapshot_prefers_mission(agent_snapshot) else "deliver_agent_supply"
+	var context := {
 		"day": grid_manager.day,
 		"recent_events": recent_events,
 		"recent_failures": recent_failures,
@@ -418,8 +419,19 @@ func _build_adversarial_context() -> Dictionary:
 		"resources": resources.duplicate(true),
 		"crafted_items": crafted_items.duplicate(true),
 		"demand_history": _crafting_demand_history_for_context(),
-		"demand_hint": "deliver_agent_supply"
-	}.merged(_queued_grievance_context, true)
+		"demand_hint": demand_hint
+	}
+	if demand_hint == "preference_run":
+		context["mission_hint"] = "preference_run"
+	return context.merged(_queued_grievance_context, true)
+
+
+func _agent_snapshot_prefers_mission(agent_snapshot: Dictionary) -> bool:
+	if agent_snapshot.is_empty():
+		return false
+	if int(agent_snapshot.get("memory_consequence_days", 0)) <= 0:
+		return false
+	return str(agent_snapshot.get("memory_consequence_source", "")).strip_edges() != "" and str(agent_snapshot.get("memory_consequence_label", "")).strip_edges() != ""
 
 
 func _crafting_demand_history_for_context(limit: int = 8) -> Array[Dictionary]:
