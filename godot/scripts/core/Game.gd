@@ -1342,6 +1342,8 @@ func _record_crafting_demand_event(demand_id: String, status: String) -> void:
 		"age_days": int(demand.get("age_days", 0)),
 		"preference_source": str(demand.get("preference_source", "")),
 		"preference_label": str(demand.get("preference_label", "")),
+		"preference_origin_source": str(demand.get("preference_origin_source", "")),
+		"preference_origin_label": str(demand.get("preference_origin_label", "")),
 		"mission_id": str(demand.get("mission_id", "")),
 		"mission_label": str(demand.get("mission_label", "")),
 		"mission_step_index": int(demand.get("mission_step_index", -1)),
@@ -1565,6 +1567,12 @@ func _add_preference_context_to_order(order: Dictionary, demand: Dictionary) -> 
 	order["preference_label"] = preference_label
 	order["social_preference_source"] = _social_preference_source_for_order(preference_source)
 	order["social_preference_label"] = preference_label
+	var origin_source := str(demand.get("preference_origin_source", "")).strip_edges()
+	var origin_label := str(demand.get("preference_origin_label", "")).strip_edges()
+	if origin_source != "":
+		order["preference_origin_source"] = origin_source
+	if origin_label != "":
+		order["preference_origin_label"] = origin_label
 
 
 func _add_mission_context_to_order(order: Dictionary, demand: Dictionary) -> void:
@@ -2477,6 +2485,8 @@ func _record_work_order_event(order_id: String, status: String) -> void:
 		"truce_label": str(order.get("truce_label", "")),
 		"preference_source": str(order.get("preference_source", "")),
 		"preference_label": str(order.get("preference_label", "")),
+		"preference_origin_source": str(order.get("preference_origin_source", "")),
+		"preference_origin_label": str(order.get("preference_origin_label", "")),
 		"social_preference_source": str(order.get("social_preference_source", "")),
 		"social_preference_label": str(order.get("social_preference_label", "")),
 		"mission_id": str(order.get("mission_id", "")),
@@ -2511,6 +2521,8 @@ func _record_removed_work_order_event(order: Dictionary, status: String) -> void
 		"truce_label": str(order.get("truce_label", "")),
 		"preference_source": str(order.get("preference_source", "")),
 		"preference_label": str(order.get("preference_label", "")),
+		"preference_origin_source": str(order.get("preference_origin_source", "")),
+		"preference_origin_label": str(order.get("preference_origin_label", "")),
 		"social_preference_source": str(order.get("social_preference_source", "")),
 		"social_preference_label": str(order.get("social_preference_label", "")),
 		"mission_id": str(order.get("mission_id", "")),

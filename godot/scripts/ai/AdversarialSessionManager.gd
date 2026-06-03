@@ -61,6 +61,8 @@ func start_session(agent_snapshot: Dictionary, context: Dictionary = {}) -> Dict
 		"truce_days": int(agent_snapshot.get("truce_days", context.get("truce_days", 0))),
 		"memory_consequence_source": str(agent_snapshot.get("memory_consequence_source", context.get("memory_consequence_source", ""))).strip_edges(),
 		"memory_consequence_label": str(agent_snapshot.get("memory_consequence_label", context.get("memory_consequence_label", ""))).strip_edges(),
+		"memory_consequence_origin_source": str(agent_snapshot.get("memory_consequence_origin_source", context.get("memory_consequence_origin_source", ""))).strip_edges(),
+		"memory_consequence_origin_label": str(agent_snapshot.get("memory_consequence_origin_label", context.get("memory_consequence_origin_label", ""))).strip_edges(),
 		"memory_consequence_days": int(agent_snapshot.get("memory_consequence_days", context.get("memory_consequence_days", 0))),
 		"resolution_meter": 0.0,
 		"turn_count": 0,
@@ -725,7 +727,9 @@ func _active_preference_signal(session: Dictionary) -> Dictionary:
 	if consequence_source != "" and consequence_label != "" and int(session.get("memory_consequence_days", 0)) > 0:
 		return {
 			"source": consequence_source,
-			"label": consequence_label
+			"label": consequence_label,
+			"origin_source": str(session.get("memory_consequence_origin_source", "")).strip_edges(),
+			"origin_label": str(session.get("memory_consequence_origin_label", "")).strip_edges()
 		}
 
 	var remembered_label := str(session.get("remembered_help_label", "")).strip_edges()
@@ -809,8 +813,15 @@ func _with_preference_context(template: Dictionary, session: Dictionary) -> Dict
 	var enriched := template.duplicate(true)
 	var source := str(preference.get("source", ""))
 	var label := str(preference.get("label", ""))
+	var origin_source := str(preference.get("origin_source", "")).strip_edges()
+	var origin_label := str(preference.get("origin_label", "")).strip_edges()
+	var origin_context := _preference_origin_context_text(origin_source, origin_label)
 	enriched["preference_source"] = source
 	enriched["preference_label"] = label
+	if origin_source != "":
+		enriched["preference_origin_source"] = origin_source
+	if origin_label != "":
+		enriched["preference_origin_label"] = origin_label
 	match source:
 		"truce":
 			enriched["reason"] = "%s Truce over %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
@@ -822,6 +833,8 @@ func _with_preference_context(template: Dictionary, session: Dictionary) -> Dict
 			enriched["reason"] = "%s Completed crew order %s turned the ask toward %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
 		"completed_mission":
 			enriched["reason"] = "%s Completed mission %s kept momentum pointed at %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
+			if origin_context != "":
+				enriched["reason"] = "%s Original context: %s." % [str(enriched.get("reason", "")), origin_context]
 		"ignored_ask":
 			enriched["reason"] = "%s Ignored ask %s kept pressure on %s." % [str(enriched.get("reason", "")), label, str(enriched.get("label", "the next job"))]
 		"held_truce":
@@ -837,7 +850,42 @@ func _with_preference_mission_context(template: Dictionary, session: Dictionary)
 	var enriched := template.duplicate(true)
 	enriched["preference_source"] = str(preference.get("source", ""))
 	enriched["preference_label"] = str(preference.get("label", ""))
+	var origin_source := str(preference.get("origin_source", "")).strip_edges()
+	var origin_label := str(preference.get("origin_label", "")).strip_edges()
+	if origin_source != "":
+		enriched["preference_origin_source"] = origin_source
+	if origin_label != "":
+		enriched["preference_origin_label"] = origin_label
 	return enriched
+
+
+func _preference_origin_context_text(source: String, label: String) -> String:
+	var source_text := _readable_preference_source(source)
+	var clean_label := label.strip_edges()
+	if source_text == "":
+		return clean_label
+	if clean_label == "":
+		return source_text
+	return "%s: %s" % [source_text, clean_label]
+
+
+func _readable_preference_source(source: String) -> String:
+	match source.strip_edges():
+		"remembered_help", "memory":
+			return "Memory"
+		"truce":
+			return "Truce"
+		"repeated_help":
+			return "Streak"
+		"completed_order":
+			return "Follow-up"
+		"completed_mission":
+			return "Momentum"
+		"ignored_ask":
+			return "Pressure"
+		"held_truce":
+			return "Held"
+	return ""
 
 
 func _count_recent_failures(events) -> int:

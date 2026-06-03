@@ -1255,22 +1255,39 @@ func _mission_preference_color(mission: Dictionary) -> Color:
 
 func _demand_preference_tooltip(demand: Dictionary) -> String:
 	var label := str(demand.get("preference_label", "")).strip_edges()
+	var origin_suffix := _preference_origin_tooltip_suffix(demand)
 	match str(demand.get("preference_source", "")):
 		"remembered_help":
-			return "Remembered help: %s" % label if label != "" else "Influenced by remembered help"
+			return _with_origin_suffix("Remembered help: %s" % label if label != "" else "Influenced by remembered help", origin_suffix)
 		"truce":
-			return "Active truce: %s" % label if label != "" else "Influenced by an active truce"
+			return _with_origin_suffix("Active truce: %s" % label if label != "" else "Influenced by an active truce", origin_suffix)
 		"repeated_help":
-			return "Repeated help: %s" % label if label != "" else "Influenced by repeated help"
+			return _with_origin_suffix("Repeated help: %s" % label if label != "" else "Influenced by repeated help", origin_suffix)
 		"completed_order":
-			return "Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order"
+			return _with_origin_suffix("Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order", origin_suffix)
 		"completed_mission":
-			return "Mission momentum: %s" % label if label != "" else "Influenced by mission momentum"
+			return _with_origin_suffix("Mission momentum: %s" % label if label != "" else "Influenced by mission momentum", origin_suffix)
 		"ignored_ask":
-			return "Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask"
+			return _with_origin_suffix("Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask", origin_suffix)
 		"held_truce":
-			return "Held truce: %s" % label if label != "" else "Influenced by a held truce"
+			return _with_origin_suffix("Held truce: %s" % label if label != "" else "Influenced by a held truce", origin_suffix)
 	return str(demand.get("reason", ""))
+
+
+func _preference_origin_tooltip_suffix(source: Dictionary) -> String:
+	var origin_context := _mission_momentum_origin_context_text(
+		str(source.get("preference_origin_source", "")),
+		str(source.get("preference_origin_label", ""))
+	)
+	if origin_context == "":
+		return ""
+	return "from %s" % origin_context
+
+
+func _with_origin_suffix(base_text: String, origin_suffix: String) -> String:
+	if origin_suffix == "":
+		return base_text
+	return "%s (%s)" % [base_text, origin_suffix]
 
 
 func _demand_mission_context_text(demand: Dictionary) -> String:
@@ -1326,21 +1343,22 @@ func _work_order_preference_context_text(order: Dictionary) -> String:
 
 func _work_order_preference_tooltip(order: Dictionary) -> String:
 	var label := _work_order_preference_label(order)
+	var origin_suffix := _preference_origin_tooltip_suffix(order)
 	match _work_order_preference_source(order):
 		"remembered_help", "memory":
-			return "Remembered help: %s" % label if label != "" else "Influenced by remembered help"
+			return _with_origin_suffix("Remembered help: %s" % label if label != "" else "Influenced by remembered help", origin_suffix)
 		"truce":
-			return "Active truce: %s" % label if label != "" else "Influenced by an active truce"
+			return _with_origin_suffix("Active truce: %s" % label if label != "" else "Influenced by an active truce", origin_suffix)
 		"repeated_help":
-			return "Repeated help: %s" % label if label != "" else "Influenced by repeated help"
+			return _with_origin_suffix("Repeated help: %s" % label if label != "" else "Influenced by repeated help", origin_suffix)
 		"completed_order":
-			return "Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order"
+			return _with_origin_suffix("Completed crew order: %s" % label if label != "" else "Influenced by a completed crew order", origin_suffix)
 		"completed_mission":
-			return "Mission momentum: %s" % label if label != "" else "Influenced by mission momentum"
+			return _with_origin_suffix("Mission momentum: %s" % label if label != "" else "Influenced by mission momentum", origin_suffix)
 		"ignored_ask":
-			return "Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask"
+			return _with_origin_suffix("Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask", origin_suffix)
 		"held_truce":
-			return "Held truce: %s" % label if label != "" else "Influenced by a held truce"
+			return _with_origin_suffix("Held truce: %s" % label if label != "" else "Influenced by a held truce", origin_suffix)
 	return ""
 
 
