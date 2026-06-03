@@ -1685,11 +1685,48 @@ func _format_truce_signal(truce_label: String, truce_absorbed_today: int = 0) ->
 	return "%s: %s" % [prefix, truce_label]
 
 
-func _format_active_social_preference_signal(source: String, label: String) -> String:
+func _format_active_social_preference_signal(source: String, label: String, origin_source: String = "", origin_label: String = "") -> String:
 	var prefix := _active_social_preference_signal_prefix(source)
+	var text := prefix
 	if label == "":
-		return prefix
-	return "%s: %s" % [prefix, label]
+		text = prefix
+	else:
+		text = "%s: %s" % [prefix, label]
+	var origin_detail := _format_social_preference_origin_detail(source, label, origin_source, origin_label)
+	if origin_detail != "":
+		text += " (%s)" % origin_detail
+	return text
+
+
+func _format_social_preference_origin_detail(source: String, label: String, origin_source: String, origin_label: String) -> String:
+	source = source.strip_edges()
+	label = label.strip_edges()
+	origin_source = origin_source.strip_edges()
+	origin_label = origin_label.strip_edges()
+	if origin_source == "" or origin_label == "":
+		return ""
+	if origin_source == source and origin_label == label:
+		return ""
+	return "%s: %s" % [_active_social_preference_origin_prefix(origin_source), origin_label]
+
+
+func _active_social_preference_origin_prefix(source: String) -> String:
+	match source:
+		"memory", "remembered_help":
+			return "Memory"
+		"truce":
+			return "Truce"
+		"repeated_help":
+			return "Streak"
+		"completed_order":
+			return "Follow-up"
+		"completed_mission":
+			return "Momentum"
+		"ignored_ask":
+			return "Pressure"
+		"held_truce":
+			return "Held"
+	return source.replace("_", " ").capitalize()
 
 
 func _active_social_preference_signal_prefix(source: String) -> String:
@@ -1941,6 +1978,8 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 	var truce_absorbed_today := int(snapshot.get("truce_absorbed_today", 0))
 	var active_social_preference_source := str(snapshot.get("active_social_preference_source", ""))
 	var active_social_preference_label := str(snapshot.get("active_social_preference_label", ""))
+	var active_social_preference_origin_source := str(snapshot.get("active_social_preference_origin_source", ""))
+	var active_social_preference_origin_label := str(snapshot.get("active_social_preference_origin_label", ""))
 	var pending_demand_detail := str(_crew_pending_demand_details.get(agent_id, ""))
 	var pending_demand_label := str(_crew_pending_demand_labels.get(agent_id, ""))
 	var pending_demand_order_id := str(_crew_pending_demand_order_ids.get(agent_id, ""))
@@ -1972,7 +2011,7 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 		_configure_crew_social_target(social_label, "", "")
 	elif active_social_preference_source != "" and active_social_preference_label != "":
 		social_label.visible = true
-		social_label.text = _format_active_social_preference_signal(active_social_preference_source, active_social_preference_label)
+		social_label.text = _format_active_social_preference_signal(active_social_preference_source, active_social_preference_label, active_social_preference_origin_source, active_social_preference_origin_label)
 		_configure_crew_social_target(social_label, "", "")
 	elif pending_demand_label != "":
 		social_label.visible = true

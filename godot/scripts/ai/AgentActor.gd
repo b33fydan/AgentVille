@@ -101,6 +101,8 @@ func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
 		"memory_consequence_days": 0,
 		"active_social_preference_source": "",
 		"active_social_preference_label": "",
+		"active_social_preference_origin_source": "",
+		"active_social_preference_origin_label": "",
 		"daily_intention_id": str(daily_intention.get("id", "")),
 		"daily_intention_label": str(daily_intention.get("label", "")),
 		"daily_intention_focus": str(daily_intention.get("focus", "")),
@@ -299,6 +301,8 @@ func get_snapshot() -> Dictionary:
 		"memory_consequence_days": int(state.get("memory_consequence_days", 0)),
 		"active_social_preference_source": str(state.get("active_social_preference_source", "")),
 		"active_social_preference_label": str(state.get("active_social_preference_label", "")),
+		"active_social_preference_origin_source": str(state.get("active_social_preference_origin_source", "")),
+		"active_social_preference_origin_label": str(state.get("active_social_preference_origin_label", "")),
 		"daily_intention_id": str(state.get("daily_intention_id", "")),
 		"daily_intention_label": str(state.get("daily_intention_label", "")),
 		"daily_intention_focus": str(state.get("daily_intention_focus", "")),
@@ -957,11 +961,15 @@ func _daily_intention_for_trait(trait_name: String) -> Dictionary:
 func _set_active_social_preference(decision: Dictionary) -> void:
 	state["active_social_preference_source"] = str(decision.get("social_preference_source", "")).strip_edges()
 	state["active_social_preference_label"] = str(decision.get("social_preference_label", "")).strip_edges()
+	state["active_social_preference_origin_source"] = str(decision.get("social_preference_origin_source", "")).strip_edges()
+	state["active_social_preference_origin_label"] = str(decision.get("social_preference_origin_label", "")).strip_edges()
 
 
 func _clear_active_social_preference() -> void:
 	state["active_social_preference_source"] = ""
 	state["active_social_preference_label"] = ""
+	state["active_social_preference_origin_source"] = ""
+	state["active_social_preference_origin_label"] = ""
 
 
 func _tile_subject(tile) -> String:

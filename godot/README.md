@@ -72,6 +72,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Source-backed completed missions preserve their original context in next-day `Mission Momentum` crew-plan copy, such as `Pressure: Rush Kit`.
 - Mission Momentum follow-up asks also preserve that original context in ask reasons and demand/work-order tooltips.
 - Mission Momentum work spawned from those asks now carries the original context into executed crew receipts, day summaries, vibe reasons, and NPC verdicts.
+- Active Mission Momentum crew-row work signals also show that original context, so `Momentum work` can read back to the earlier `Pressure` while the run is underway.
 - Mission Momentum now has its own crew-row signal and in-world `Momentum` badge instead of reading as a generic plan.
 - NPCs now show a compact in-world reason badge above their voxel rig, switching between `Plan`, social-memory work, and active `Mission` work as their current motive changes.
 - Reason badges now have a small backing plate and motive-change pop so NPC plans and mission/social work read better in motion.
@@ -147,6 +148,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_mission_momentum_source_context.gd` exercises source-backed completed missions preserving original context into next-day Mission Momentum crew-plan copy.
 - `tools/smoke_mission_momentum_ask_source_context.gd` exercises Mission Momentum follow-up asks preserving original source context in reasons and demand-row tooltips.
 - `tools/smoke_mission_momentum_work_receipts.gd` exercises Mission Momentum follow-up work preserving original source context in agent receipts, day summaries, vibe reasons, and NPC verdicts.
+- `tools/smoke_mission_momentum_active_origin_signal.gd` exercises active Mission Momentum crew-row work signals preserving readable original source context.
 - `tools/smoke_memory_consequences.gd` exercises repeated help, completed NPC-authored orders, ignored asks, and held truces rolling into next-day consequence intentions or asks.
 - `tools/smoke_memory_consequence_ask_depth.gd` exercises source-specific follow-up ask rankings for mission momentum, ignored asks, completed orders, and held truces.
 - `tools/smoke_consequence_autonomy_preferences.gd` exercises consequence memory biasing autonomous NPC work with readable source context.
@@ -264,6 +266,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Next-day Mission Momentum now keeps that source-aware receipt context in crew-plan copy before the future Skill Forge layer turns mission runs into explicit learning objectives.
 - Mission Momentum follow-up asks now keep the same source-aware context too, making the next ask read like the next step in a traced local run.
 - Executed Mission Momentum follow-up work now keeps that original context in the same agent-action summary path used by autonomous social work, so receipts and verdicts can trace why the run happened.
+- Live crew snapshots now expose active social-work origin context too, letting the crew panel show why a source-backed run is happening before the receipt lands.
 - Memory consequences now sit between raw receipts and future behavior: repeated help, completed authored work, ignored asks, and held truces can become a short-lived local signal for tomorrow's plan or ask.
 - Consequence ask ranking now considers both source and label, so local memory can create different follow-up shapes without live API calls.
 - Consequence memory can now enter autonomous utility choices as social preference context, so source-specific local memory affects both asked-for tasks and voluntary NPC work.
@@ -324,6 +327,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Crew snapshots expose active social-autonomy source and label separately from durable memory/truce state, letting the UI show why an NPC is acting right now without consuming the underlying relationship context.
 - Preference-driven NPC-authored orders now translate demand context into the same active social-autonomy receipt shape, so delegated tasks and voluntary NPC work share one future observer signal.
 - Preference-driven orders can also preserve an original source/label, letting Mission Momentum work read as both the current run and the earlier pressure that produced it.
+- Active social-autonomy snapshots can surface that original source/label in crew-row copy, keeping Mission Momentum work readable before completion.
 - The local vibe scorer and NPC summary comments read those social-autonomy receipts, giving future observer prompts a cleaner signal for relationship-motivated NPC work.
 - NPC summary comments now read remembered-help Parley receipts too, so next-day memory can affect commentary without becoming a gameplay coupon.
 - The threshold-based vibe scorer also reads spent-goodwill receipts, so future observer prompts can inherit named social context from local scoring.
