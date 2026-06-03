@@ -2739,7 +2739,9 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var favored_agents: Dictionary = summary.get("favored_agents", {})
 	var remembered_help_sessions: Dictionary = summary.get("remembered_help_sessions", {})
 	var remembered_context_text := _format_remembered_help_session_names(remembered_help_sessions)
-	var social_autonomy_text := _format_agent_social_preference_names(summary.get("agent_social_preference_actions", {}))
+	var social_preference_actions: Dictionary = summary.get("agent_social_preference_actions", {})
+	var social_autonomy_text := _format_agent_social_preference_names(social_preference_actions)
+	var social_run_recap_text := _format_agent_social_preference_run_recaps(social_preference_actions)
 	var completed_crew_missions := int(summary.get("completed_crew_missions", 0))
 	var completed_mission_text := _format_completed_crew_mission_names(summary.get("crew_missions", {}))
 	var top_action := str(summary.get("top_action", "none"))
@@ -2753,6 +2755,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 			empty_line += ", remembered %s" % remembered_context_text
 		if social_autonomy_text != "":
 			empty_line += ", crew followed %s" % social_autonomy_text
+		if social_run_recap_text != "":
+			empty_line += ", run recap %s" % social_run_recap_text
 		if truce_delayed_orders > 0:
 			empty_line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 		if completed_crew_missions > 0:
@@ -2774,6 +2778,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", remembered %s" % remembered_context_text
 	if social_autonomy_text != "":
 		line += ", crew followed %s" % social_autonomy_text
+	if social_run_recap_text != "":
+		line += ", run recap %s" % social_run_recap_text
 	if truce_delayed_orders > 0:
 		line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 	if completed_crew_missions > 0:
@@ -2919,6 +2925,29 @@ func _format_agent_social_preference_names(social_actions) -> String:
 			names.append(detail)
 	names.sort()
 	return _join_names(names)
+
+
+func _format_agent_social_preference_run_recaps(social_actions: Dictionary) -> String:
+	var recaps: Array[String] = []
+	for agent_id in social_actions.keys():
+		var receipt: Dictionary = social_actions.get(agent_id, {})
+		if str(receipt.get("last_source", "")).strip_edges() != "completed_mission":
+			continue
+		var name := str(receipt.get("name", str(agent_id).capitalize())).strip_edges()
+		var run_label := str(receipt.get("last_label", "")).strip_edges()
+		if name == "" or run_label == "":
+			continue
+		var detail := "%s ran %s" % [name, run_label]
+		var origin_detail := _format_social_preference_origin_detail(receipt)
+		if origin_detail != "":
+			detail += " from %s" % origin_detail
+		var count := int(receipt.get("actions", 0))
+		if count > 1:
+			detail += " x%s" % count
+		if not recaps.has(detail):
+			recaps.append(detail)
+	recaps.sort()
+	return _join_names(recaps)
 
 
 func _format_completed_crew_mission_names(crew_missions) -> String:
