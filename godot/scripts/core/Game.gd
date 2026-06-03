@@ -2804,7 +2804,7 @@ func _format_agent_receipt(event: Dictionary) -> String:
 	var social_context := _format_social_preference_suffix(event)
 
 	if not success:
-		return "%s missed %s at %s." % [name, action.replace("_", " "), target]
+		return "%s missed %s at %s%s." % [name, action.replace("_", " "), target, social_context]
 
 	match action:
 		"build_fence_order":
