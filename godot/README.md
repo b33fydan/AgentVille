@@ -221,6 +221,15 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/capture_placement_preview.gd` captures `artifacts/screenshots/agentville-placement-preview.png`.
 - `tools/capture_receipts_screenshot.gd` captures `artifacts/screenshots/agentville-receipts.png`.
 
+## Post-Foundation Priority
+
+Once the core farm, NPC, mission, memory, Parley, and verification loops feel stable, the next top-priority direction is **Skill Forge**: a cozy agent-harness learning mode where players write small skill specs and watch NPCs or helper bots execute them on the farm.
+
+- This should teach agent-skill building rather than general programming: triggers, context, tools, steps, receipts, verification, memory, and failure handling.
+- The first version should stay deterministic and local, using safe structured skill specs instead of arbitrary runtime code.
+- Skill runs should reuse existing AgentVille systems: missions become learning objectives, work orders become tool calls, Field Log entries become receipts, and smoke-style checks become visible pass/fail validation.
+- The farm should show the skill in motion, making agent harness concepts nostalgic, visual, and playful without interrupting the current foundation work.
+
 ## AI Direction
 
 The Godot prototype follows the observer-agent pattern from the architecture notes:
