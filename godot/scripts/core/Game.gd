@@ -1982,7 +1982,7 @@ func _queue_build_order(order_id: String, quiet: bool = false) -> bool:
 	if not quiet:
 		game_ui.show_message("Crew assigned: %s." % str(order.get("label", "Work order")))
 		sound_manager.play_stamp("tool_select")
-	game_ui.add_field_log("Work order queued: %s." % str(order.get("label", "Crew task")))
+	game_ui.add_field_log("Work order queued: %s%s." % [str(order.get("label", "Crew task")), _format_work_order_social_preference_suffix(order)])
 	_record_work_order_event(order_id, "queued")
 
 	var assigned := bool(_agent_manager.call("assign_work_order", order.duplicate(true)))
@@ -2016,7 +2016,7 @@ func _queue_directive_order(order_id: String, quiet: bool = false) -> bool:
 	if not quiet:
 		game_ui.show_message("Crew assigned: %s." % str(order.get("label", "Work order")))
 		sound_manager.play_stamp("tool_select")
-	game_ui.add_field_log("Work order queued: %s." % str(order.get("label", "Crew task")))
+	game_ui.add_field_log("Work order queued: %s%s." % [str(order.get("label", "Crew task")), _format_work_order_social_preference_suffix(order)])
 	_record_work_order_event(order_id, "queued")
 
 	var directive_extra := _work_order_directive_extra(order_id, order)
@@ -2062,7 +2062,7 @@ func _queue_supply_for_order(order_id: String, quiet: bool = false) -> bool:
 	work_orders[order_id] = order
 	_refresh_work_orders()
 	_refresh_crafting_demands()
-	game_ui.add_field_log("Crew gathering %s for %s." % [supply_label, str(order.get("label", "work order"))])
+	game_ui.add_field_log("Crew gathering %s for %s%s." % [supply_label, str(order.get("label", "work order")), _format_work_order_social_preference_suffix(order)])
 	if not quiet:
 		game_ui.show_message("Crew gathering %s." % supply_label)
 		sound_manager.play_stamp("tool_select")
@@ -2126,24 +2126,9 @@ func _work_order_directive_extra(order_id: String, order: Dictionary) -> Diction
 	var extra := {
 		"work_order_id": order_id
 	}
-	var source := str(order.get("social_preference_source", "")).strip_edges()
-	var label := str(order.get("social_preference_label", "")).strip_edges()
-	if source == "":
-		source = _social_preference_source_for_order(str(order.get("preference_source", "")).strip_edges())
-	if label == "":
-		label = str(order.get("preference_label", "")).strip_edges()
-	if source != "" and label != "":
-		extra["social_preference_source"] = source
-		extra["social_preference_label"] = label
-		var origin_source := str(order.get("social_preference_origin_source", "")).strip_edges()
-		var origin_label := str(order.get("social_preference_origin_label", "")).strip_edges()
-		if origin_source == "":
-			origin_source = str(order.get("preference_origin_source", "")).strip_edges()
-		if origin_label == "":
-			origin_label = str(order.get("preference_origin_label", "")).strip_edges()
-		if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
-			extra["social_preference_origin_source"] = origin_source
-			extra["social_preference_origin_label"] = origin_label
+	var social_context := _work_order_social_preference_context(order)
+	for key in social_context.keys():
+		extra[key] = social_context[key]
 	var mission_id := str(order.get("mission_id", "")).strip_edges()
 	if mission_id != "":
 		extra["mission_id"] = mission_id
@@ -2152,6 +2137,33 @@ func _work_order_directive_extra(order_id: String, order: Dictionary) -> Diction
 		extra["mission_total_steps"] = int(order.get("mission_total_steps", 0))
 		extra["mission_step_label"] = str(order.get("mission_step_label", ""))
 	return extra
+
+
+func _format_work_order_social_preference_suffix(order: Dictionary) -> String:
+	return _format_social_preference_suffix(_work_order_social_preference_context(order))
+
+
+func _work_order_social_preference_context(order: Dictionary) -> Dictionary:
+	var context := {}
+	var source := str(order.get("social_preference_source", "")).strip_edges()
+	var label := str(order.get("social_preference_label", "")).strip_edges()
+	if source == "":
+		source = _social_preference_source_for_order(str(order.get("preference_source", "")).strip_edges())
+	if label == "":
+		label = str(order.get("preference_label", "")).strip_edges()
+	if source != "" and label != "":
+		context["social_preference_source"] = source
+		context["social_preference_label"] = label
+		var origin_source := str(order.get("social_preference_origin_source", "")).strip_edges()
+		var origin_label := str(order.get("social_preference_origin_label", "")).strip_edges()
+		if origin_source == "":
+			origin_source = str(order.get("preference_origin_source", "")).strip_edges()
+		if origin_label == "":
+			origin_label = str(order.get("preference_origin_label", "")).strip_edges()
+		if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
+			context["social_preference_origin_source"] = origin_source
+			context["social_preference_origin_label"] = origin_label
+	return context
 
 
 func _consume_crafted_cost(cost) -> Dictionary:
