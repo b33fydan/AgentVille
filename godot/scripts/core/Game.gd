@@ -2261,7 +2261,7 @@ func _queue_build_order(order_id: String, quiet: bool = false) -> bool:
 	if not quiet:
 		game_ui.show_message("Crew assigned: %s." % str(order.get("label", "Work order")))
 		sound_manager.play_stamp("tool_select")
-	game_ui.add_field_log("Work order queued: %s%s." % [str(order.get("label", "Crew task")), _format_work_order_social_preference_suffix(order)])
+	game_ui.add_field_log("Work order queued: %s%s." % [str(order.get("label", "Crew task")), _format_work_order_context_suffix(order)])
 	_record_work_order_event(order_id, "queued")
 
 	var assigned := bool(_agent_manager.call("assign_work_order", order.duplicate(true)))
@@ -2295,7 +2295,7 @@ func _queue_directive_order(order_id: String, quiet: bool = false) -> bool:
 	if not quiet:
 		game_ui.show_message("Crew assigned: %s." % str(order.get("label", "Work order")))
 		sound_manager.play_stamp("tool_select")
-	game_ui.add_field_log("Work order queued: %s%s." % [str(order.get("label", "Crew task")), _format_work_order_social_preference_suffix(order)])
+	game_ui.add_field_log("Work order queued: %s%s." % [str(order.get("label", "Crew task")), _format_work_order_context_suffix(order)])
 	_record_work_order_event(order_id, "queued")
 
 	var directive_extra := _work_order_directive_extra(order_id, order)
@@ -2341,7 +2341,7 @@ func _queue_supply_for_order(order_id: String, quiet: bool = false) -> bool:
 	work_orders[order_id] = order
 	_refresh_work_orders()
 	_refresh_crafting_demands()
-	game_ui.add_field_log("Crew gathering %s for %s%s." % [supply_label, str(order.get("label", "work order")), _format_work_order_social_preference_suffix(order)])
+	game_ui.add_field_log("Crew gathering %s for %s%s." % [supply_label, str(order.get("label", "work order")), _format_work_order_context_suffix(order)])
 	if not quiet:
 		game_ui.show_message("Crew gathering %s." % supply_label)
 		sound_manager.play_stamp("tool_select")
@@ -2408,6 +2408,9 @@ func _work_order_directive_extra(order_id: String, order: Dictionary) -> Diction
 	var social_context := _work_order_social_preference_context(order)
 	for key in social_context.keys():
 		extra[key] = social_context[key]
+	var forge_context := _work_order_skill_forge_context(order)
+	for key in forge_context.keys():
+		extra[key] = forge_context[key]
 	var mission_id := str(order.get("mission_id", "")).strip_edges()
 	if mission_id != "":
 		extra["mission_id"] = mission_id
@@ -2418,16 +2421,27 @@ func _work_order_directive_extra(order_id: String, order: Dictionary) -> Diction
 	return extra
 
 
+func _format_work_order_context_suffix(order: Dictionary) -> String:
+	return _format_work_order_social_preference_suffix(order) + _format_work_order_skill_forge_suffix(order)
+
+
 func _format_work_order_social_preference_suffix(order: Dictionary) -> String:
 	return _format_social_preference_suffix(_work_order_social_preference_context(order))
+
+
+func _format_work_order_skill_forge_suffix(order: Dictionary) -> String:
+	return _format_skill_forge_suffix(_work_order_skill_forge_context(order))
 
 
 func _work_order_social_preference_context(order: Dictionary) -> Dictionary:
 	var context := {}
 	var source := str(order.get("social_preference_source", "")).strip_edges()
 	var label := str(order.get("social_preference_label", "")).strip_edges()
+	var preference_source := str(order.get("preference_source", "")).strip_edges()
+	if source == "skill_forge" or preference_source == "skill_forge":
+		return context
 	if source == "":
-		source = _social_preference_source_for_order(str(order.get("preference_source", "")).strip_edges())
+		source = _social_preference_source_for_order(preference_source)
 	if label == "":
 		label = str(order.get("preference_label", "")).strip_edges()
 	if source != "" and label != "":
@@ -2442,6 +2456,27 @@ func _work_order_social_preference_context(order: Dictionary) -> Dictionary:
 		if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
 			context["social_preference_origin_source"] = origin_source
 			context["social_preference_origin_label"] = origin_label
+	return context
+
+
+func _work_order_skill_forge_context(order: Dictionary) -> Dictionary:
+	var forge_run_id := str(order.get("forge_run_id", "")).strip_edges()
+	var skill_name := str(order.get("skill_name", "")).strip_edges()
+	if skill_name == "":
+		skill_name = str(order.get("preference_label", "")).strip_edges()
+	if forge_run_id == "" and skill_name == "" and str(order.get("source", "")) != "skill_forge":
+		return {}
+
+	var context := {
+		"forge_run_id": forge_run_id,
+		"skill_id": str(order.get("skill_id", "")),
+		"skill_name": skill_name,
+		"directive_id": str(order.get("directive_id", "")),
+		"directive_kind": str(order.get("directive_kind", ""))
+	}
+	var source_context = order.get("source_context", {})
+	if typeof(source_context) == TYPE_DICTIONARY and not source_context.is_empty():
+		context["forge_source_context"] = source_context.duplicate(true)
 	return context
 
 
@@ -3034,6 +3069,7 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var social_autonomy_text := _format_agent_social_preference_names(social_preference_actions)
 	var social_run_recap_text := _format_agent_social_preference_run_recaps(social_preference_actions)
 	var skill_forge_run_recap_text := _format_skill_forge_run_recaps(summary.get("skill_forge_runs", {}))
+	var skill_forge_work_recap_text := _format_skill_forge_work_recaps(summary.get("agent_skill_forge_actions", {}))
 	var completed_crew_missions := int(summary.get("completed_crew_missions", 0))
 	var completed_mission_text := _format_completed_crew_mission_names(summary.get("crew_missions", {}))
 	var top_action := str(summary.get("top_action", "none"))
@@ -3051,6 +3087,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 			empty_line += ", run recap %s" % social_run_recap_text
 		if skill_forge_run_recap_text != "":
 			empty_line += ", forge recap %s" % skill_forge_run_recap_text
+		if skill_forge_work_recap_text != "":
+			empty_line += ", forge work %s" % skill_forge_work_recap_text
 		if truce_delayed_orders > 0:
 			empty_line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 		if completed_crew_missions > 0:
@@ -3076,6 +3114,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", run recap %s" % social_run_recap_text
 	if skill_forge_run_recap_text != "":
 		line += ", forge recap %s" % skill_forge_run_recap_text
+	if skill_forge_work_recap_text != "":
+		line += ", forge work %s" % skill_forge_work_recap_text
 	if truce_delayed_orders > 0:
 		line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 	if completed_crew_missions > 0:
@@ -3103,25 +3143,25 @@ func _format_agent_receipt(event: Dictionary) -> String:
 	var target := "(%s,%s)" % [grid_pos.x, grid_pos.y]
 	var success := bool(event.get("success", false))
 	var subject := str(event.get("subject", "tile"))
-	var social_context := _format_social_preference_suffix(event)
+	var context_suffix := _format_social_preference_suffix(event) + _format_skill_forge_suffix(event)
 
 	if not success:
-		return "%s missed %s at %s%s." % [name, action.replace("_", " "), target, social_context]
+		return "%s missed %s at %s%s." % [name, action.replace("_", " "), target, context_suffix]
 
 	match action:
 		"build_fence_order":
-			return "%s built fence at %s.%s%s" % [name, target, _format_crafted_cost_suffix(event.get("crafted_cost", {})), social_context]
+			return "%s built fence at %s.%s%s" % [name, target, _format_crafted_cost_suffix(event.get("crafted_cost", {})), context_suffix]
 		"harvest_crop":
-			return "%s harvested %s coins at %s.%s%s" % [name, int(event.get("value", 0)), target, _format_resource_suffix(event.get("resources", {})), social_context]
+			return "%s harvested %s coins at %s.%s%s" % [name, int(event.get("value", 0)), target, _format_resource_suffix(event.get("resources", {})), context_suffix]
 		"clear_brush":
-			return "%s cleared %s at %s.%s%s" % [name, subject, target, _format_resource_suffix(event.get("resources", {})), social_context]
+			return "%s cleared %s at %s.%s%s" % [name, subject, target, _format_resource_suffix(event.get("resources", {})), context_suffix]
 		"inspect_structure":
-			return "%s inspected %s at %s%s." % [name, subject, target, social_context]
+			return "%s inspected %s at %s%s." % [name, subject, target, context_suffix]
 		"inspect_ready_crop":
-			return "%s checked %s at %s%s." % [name, subject, target, social_context]
+			return "%s checked %s at %s%s." % [name, subject, target, context_suffix]
 		"inspect_soil":
-			return "%s checked open soil at %s%s." % [name, target, social_context]
-	return "%s completed %s at %s%s." % [name, action.replace("_", " "), target, social_context]
+			return "%s checked open soil at %s%s." % [name, target, context_suffix]
+	return "%s completed %s at %s%s." % [name, action.replace("_", " "), target, context_suffix]
 
 
 func _format_adversarial_result(result: Dictionary) -> String:
@@ -3272,6 +3312,31 @@ func _format_skill_forge_run_recaps(forge_runs) -> String:
 	return _join_names(recaps)
 
 
+func _format_skill_forge_work_recaps(forge_actions) -> String:
+	if typeof(forge_actions) != TYPE_DICTIONARY:
+		return ""
+
+	var recaps: Array[String] = []
+	for agent_id in forge_actions.keys():
+		var receipt: Dictionary = forge_actions.get(agent_id, {})
+		var completed_count := int(receipt.get("completed_actions", 0))
+		if completed_count <= 0:
+			continue
+		var agent_name := str(receipt.get("name", str(agent_id).capitalize())).strip_edges()
+		if agent_name == "":
+			agent_name = "Crew"
+		var skill_name := str(receipt.get("skill_name", "Skill Run")).strip_edges()
+		if skill_name == "":
+			skill_name = "Skill Run"
+		var detail := "%s ran %s" % [agent_name, skill_name]
+		if completed_count > 1:
+			detail += " x%s" % completed_count
+		if not recaps.has(detail):
+			recaps.append(detail)
+	recaps.sort()
+	return _join_names(recaps)
+
+
 func _format_completed_crew_mission_names(crew_missions) -> String:
 	if typeof(crew_missions) != TYPE_DICTIONARY:
 		return ""
@@ -3316,6 +3381,16 @@ func _format_social_preference_suffix(event: Dictionary) -> String:
 	if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
 		suffix += " [%s: %s]" % [_readable_social_preference_source(origin_source), origin_label]
 	return suffix
+
+
+func _format_skill_forge_suffix(event: Dictionary) -> String:
+	var forge_run_id := str(event.get("forge_run_id", "")).strip_edges()
+	var skill_name := str(event.get("skill_name", "")).strip_edges()
+	if forge_run_id == "" and skill_name == "":
+		return ""
+	if skill_name == "":
+		skill_name = "Skill Run"
+	return " [Forge: %s]" % skill_name
 
 
 func _format_social_preference_origin_detail(receipt: Dictionary) -> String:

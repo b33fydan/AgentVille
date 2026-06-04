@@ -256,6 +256,7 @@ func _start_decision(decision: Dictionary) -> void:
 			"energy": float(state.get("energy", 0.0))
 		}
 		_add_social_preference_metadata(action_event, decision)
+		_add_skill_forge_metadata(action_event, decision)
 		_add_daily_intention_metadata(action_event, decision)
 		event_log.record_event("agent_action", action_event)
 
@@ -828,6 +829,7 @@ func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, 
 		"work_order_id": work_order_id
 	}
 	_add_social_preference_metadata(world_action, _active_decision)
+	_add_skill_forge_metadata(world_action, _active_decision)
 	_add_daily_intention_metadata(world_action, _active_decision)
 	_add_mission_metadata(world_action, _active_decision)
 	world_action_performed.emit(world_action)
@@ -850,6 +852,21 @@ func _add_social_preference_metadata(payload: Dictionary, decision: Dictionary) 
 	if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
 		payload["social_preference_origin_source"] = origin_source
 		payload["social_preference_origin_label"] = origin_label
+
+
+func _add_skill_forge_metadata(payload: Dictionary, decision: Dictionary) -> void:
+	var run_id := str(decision.get("forge_run_id", "")).strip_edges()
+	var skill_name := str(decision.get("skill_name", "")).strip_edges()
+	if run_id == "" and skill_name == "":
+		return
+	payload["forge_run_id"] = run_id
+	payload["skill_id"] = str(decision.get("skill_id", ""))
+	payload["skill_name"] = skill_name
+	payload["directive_id"] = str(decision.get("directive_id", ""))
+	payload["directive_kind"] = str(decision.get("directive_kind", ""))
+	var source_context = decision.get("forge_source_context", {})
+	if typeof(source_context) == TYPE_DICTIONARY and not source_context.is_empty():
+		payload["forge_source_context"] = source_context.duplicate(true)
 
 
 func _add_daily_intention_metadata(payload: Dictionary, decision: Dictionary) -> void:
@@ -1163,6 +1180,13 @@ func _reason_badge_context() -> Dictionary:
 		return {
 			"text": "Mission",
 			"color": Color("#d9a83c")
+		}
+
+	var forge_skill := str(_active_decision.get("skill_name", "")).strip_edges()
+	if forge_skill != "" or str(_active_decision.get("forge_run_id", "")).strip_edges() != "":
+		return {
+			"text": "Forge",
+			"color": Color("#4f6f8f")
 		}
 
 	var source := str(_active_decision.get("social_preference_source", state.get("active_social_preference_source", ""))).strip_edges()

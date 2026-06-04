@@ -391,6 +391,13 @@ Mitigation: start with one or two farm skills and one manual trigger.
 - Keeps Tend Crops as a Forge-only directive until crop-tending has a real crew-order path.
 - Covered by `tools/smoke_skill_forge_work_order_directive.gd`.
 
+### Slice 9: Forge Work Receipts
+
+- Implemented in `scripts/core/Game.gd`, `scripts/ai/AgentActor.gd`, and `scripts/ai/GameEventLog.gd`.
+- Carries Forge metadata from a sent Forge-authored work order into agent action/world-action events, active in-world reason badges, completed work receipts, and day-summary `forge work` recaps.
+- Keeps Forge execution context separate from social preference context so a skill run does not appear as memory, truce, or Mission Momentum work.
+- Covered by `tools/smoke_skill_forge_work_receipts.gd`.
+
 ## Questionnaire For The Big PRD Session
 
 Use these questions when you sit down to think through the full Forge vision.

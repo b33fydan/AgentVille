@@ -168,6 +168,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_skill_forge_revision_loop.gd` exercises the visible Forge revision loop: blocked draft checks, Hallucination Drift copy, Fix reruns, and pass receipts.
 - `tools/smoke_skill_forge_spec_preview.gd` exercises structured starter-spec preview fields for trigger, context, ordered tools, steps, checks, and receipts.
 - `tools/smoke_skill_forge_work_order_directive.gd` exercises Clear Patch turning a Forge `work_order_directive` into a ready crew-order row while Tend Crops stays receipt-only.
+- `tools/smoke_skill_forge_work_receipts.gd` exercises sent Forge-authored crew work preserving Forge context in badges, receipts, events, and day-summary work recaps.
 - `tools/smoke_skill_forge_run_harness.gd` exercises manual Skill Forge starter runs turning valid specs into deterministic directives, start/pass/fail receipts, and blocked-run Hallucination Drift copy.
 - `tools/smoke_skill_forge_spec_validator.gd` exercises the first Skill Forge validator contract for manual task specs, allowlisted tools, templated receipts, and data-only Hallucination Drift signals.
 - `tools/smoke_skill_forge_templates.gd` exercises static Skill Forge starter templates for Tend Crops and Clear Patch, including validator-clean specs and compact preview data.
@@ -261,6 +262,7 @@ Once the core farm, NPC, mission, memory, Parley, and verification loops feel st
 - Starter previews now show the structured skill contract directly in the panel: trigger, context, tools, steps, success check, and receipt.
 - Skill Forge runs now land in day summaries as compact Forge recaps, including blocked-run Drift notes.
 - Clear Patch now bridges the run harness into the crew-order board: a valid Forge `work_order_directive` drafts a ready `clear_brush` row with a `Forge` chip, while Tend Crops remains receipt-only until crop-tending work orders exist.
+- Sent Forge-authored crew work now keeps Forge context through the active reason badge, queued Field Log receipt, agent action event, completed work receipt, and day-summary `forge work` recap without treating Forge as social memory.
 - This should teach agent-skill building rather than general programming: triggers, context, tools, steps, receipts, verification, memory, and failure handling.
 - The first version should stay deterministic and local, using safe structured skill specs instead of arbitrary runtime code.
 - Skill runs should reuse existing AgentVille systems: missions become learning objectives, work orders become tool calls, Field Log entries become receipts, and smoke-style checks become visible pass/fail validation.

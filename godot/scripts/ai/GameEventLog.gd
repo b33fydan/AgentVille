@@ -36,6 +36,7 @@ func build_day_summary(day: int) -> Dictionary:
 		"agent_actions": {},
 		"agent_world_actions": {},
 		"agent_social_preference_actions": {},
+		"agent_skill_forge_actions": {},
 		"agent_intention_actions": {},
 		"crew_missions": {},
 		"crew_mission_count": 0,
@@ -95,6 +96,7 @@ func build_day_summary(day: int) -> Dictionary:
 				summary["agent_harvest_value"] += int(event.get("value", 0))
 				_add_resource_summary(summary, event.get("resources", {}))
 				_add_agent_social_preference_summary(summary, event)
+				_add_agent_skill_forge_summary(summary, event)
 				_add_agent_intention_summary(summary, event)
 			"craft_action":
 				var recipe_id := str(event.get("recipe_id", "recipe"))
@@ -202,6 +204,40 @@ func _add_agent_social_preference_summary(summary: Dictionary, event: Dictionary
 	receipt["last_origin_label"] = origin_label
 	social_actions[agent_id] = receipt
 	summary["agent_social_preference_actions"] = social_actions
+
+
+func _add_agent_skill_forge_summary(summary: Dictionary, event: Dictionary) -> void:
+	var run_id := str(event.get("forge_run_id", "")).strip_edges()
+	var skill_name := str(event.get("skill_name", "")).strip_edges()
+	var agent_id := str(event.get("agent_id", ""))
+	if agent_id == "" or (run_id == "" and skill_name == ""):
+		return
+
+	var forge_actions: Dictionary = summary["agent_skill_forge_actions"]
+	var receipt: Dictionary = forge_actions.get(agent_id, {
+		"agent_id": agent_id,
+		"name": str(event.get("agent_name", "Crew")),
+		"actions": 0,
+		"completed_actions": 0,
+		"run_id": "",
+		"skill_id": "",
+		"skill_name": "Skill Run",
+		"last_action": "",
+		"directive_id": "",
+		"directive_kind": ""
+	})
+	receipt["name"] = str(event.get("agent_name", receipt.get("name", "Crew")))
+	receipt["actions"] = int(receipt.get("actions", 0)) + 1
+	if bool(event.get("success", false)):
+		receipt["completed_actions"] = int(receipt.get("completed_actions", 0)) + 1
+	receipt["run_id"] = run_id
+	receipt["skill_id"] = str(event.get("skill_id", receipt.get("skill_id", "")))
+	receipt["skill_name"] = skill_name if skill_name != "" else str(receipt.get("skill_name", "Skill Run"))
+	receipt["last_action"] = str(event.get("action", receipt.get("last_action", "")))
+	receipt["directive_id"] = str(event.get("directive_id", receipt.get("directive_id", "")))
+	receipt["directive_kind"] = str(event.get("directive_kind", receipt.get("directive_kind", "")))
+	forge_actions[agent_id] = receipt
+	summary["agent_skill_forge_actions"] = forge_actions
 
 
 func _add_agent_intention_summary(summary: Dictionary, event: Dictionary) -> void:
