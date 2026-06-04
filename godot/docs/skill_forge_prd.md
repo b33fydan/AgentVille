@@ -343,13 +343,14 @@ Mitigation: start with one or two farm skills and one manual trigger.
 
 ### Slice 2: Forge Template Data
 
-- Add starter templates for Tend Crops and Clear Patch.
-- Keep them static and local.
-- Validate templates in smoke.
+- Implemented in `scripts/systems/SkillForgeTemplateLibrary.gd`.
+- Adds static starter specs for Tend Crops and Clear Patch.
+- Provides compact template preview data for future UI without exposing full step data in preview rows.
+- Covered by `tools/smoke_skill_forge_templates.gd`, which validates every starter spec through `SkillSpecValidator.gd`.
 
 ### Slice 3: Manual Run Harness
 
-- Convert a valid Clear Patch spec into an existing work order or directive.
+- Convert a valid Tend Crops or Clear Patch spec into an existing work order or directive.
 - Record a Field Log start receipt.
 - Record pass/fail result.
 
