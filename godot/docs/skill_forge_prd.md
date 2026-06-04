@@ -365,9 +365,10 @@ Mitigation: start with one or two farm skills and one manual trigger.
 
 ### Slice 5: Revision Loop
 
-- Show validation errors and failure suggestions.
-- Let the player tweak one or two fields and rerun.
-- Keep this as the last bridge before full Skill Forge editing: visible enough to teach revision, still bounded enough to stay deterministic.
+- Implemented in `scripts/ui/GameUI.gd` and `scripts/core/Game.gd`.
+- Adds a bounded Check/Fix loop before the full editor: Check runs a flawed copy of the selected starter spec, shows the validator issue, Hallucination Drift state, and concrete revision suggestion, then Fix reruns the clean starter spec.
+- Records blocked and passed receipts through existing Field Log and event-log surfaces.
+- Covered by `tools/smoke_skill_forge_revision_loop.gd`.
 
 ## Questionnaire For The Big PRD Session
 

@@ -17,6 +17,8 @@ signal adversarial_response_selected(choice_id: String)
 signal crafting_demand_target_requested(demand_id: String)
 signal crafting_demand_requested(demand_id: String)
 signal skill_forge_run_requested(template_id: String)
+signal skill_forge_review_requested(template_id: String)
+signal skill_forge_revision_requested(template_id: String)
 
 const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
 
@@ -61,6 +63,9 @@ var _skill_forge_lesson_label: Label
 var _skill_forge_meta_label: Label
 var _skill_forge_result_label: Label
 var _skill_forge_run_button: Button
+var _skill_forge_review_button: Button
+var _skill_forge_revision_button: Button
+var _skill_forge_last_blocked_template_id: String = ""
 var _crew_status_label: Label
 var _parley_button: Button
 var _parley_prompt_active: bool = false
@@ -184,6 +189,8 @@ func set_skill_forge_result(result: Dictionary) -> void:
 	if result.is_empty():
 		_skill_forge_result_label.text = "Ready"
 		_skill_forge_result_label.add_theme_color_override("font_color", Color("#5f7f39"))
+		_skill_forge_last_blocked_template_id = ""
+		_refresh_skill_forge_panel()
 		return
 
 	var status := str(result.get("status", "ready")).strip_edges()
@@ -192,6 +199,11 @@ func set_skill_forge_result(result: Dictionary) -> void:
 	_skill_forge_result_label.text = "%s: %s" % [_skill_forge_status_text(status), skill_name]
 	_skill_forge_result_label.tooltip_text = _skill_forge_result_tooltip(result)
 	_skill_forge_result_label.add_theme_color_override("font_color", _skill_forge_status_color(status))
+	if status == "blocked":
+		_show_skill_forge_blocked_result(result)
+	else:
+		_skill_forge_last_blocked_template_id = ""
+		_refresh_skill_forge_panel()
 
 
 func set_work_order(order: Dictionary) -> void:
@@ -1057,6 +1069,34 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_run_button.pressed.connect(_on_skill_forge_run_pressed)
 	bottom.add_child(_skill_forge_run_button)
 
+	_skill_forge_review_button = Button.new()
+	_skill_forge_review_button.text = "Check"
+	_skill_forge_review_button.tooltip_text = "Check a flawed draft against the local validator"
+	_skill_forge_review_button.custom_minimum_size = Vector2(52, 19)
+	_skill_forge_review_button.focus_mode = Control.FOCUS_NONE
+	_skill_forge_review_button.add_theme_font_size_override("font_size", 10)
+	_skill_forge_review_button.add_theme_color_override("font_color", Color("#4b4337"))
+	_skill_forge_review_button.add_theme_stylebox_override("normal", _craft_button_style(true))
+	_skill_forge_review_button.add_theme_stylebox_override("hover", _craft_button_style(true))
+	_skill_forge_review_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+	_skill_forge_review_button.pressed.connect(_on_skill_forge_review_pressed)
+	bottom.add_child(_skill_forge_review_button)
+
+	_skill_forge_revision_button = Button.new()
+	_skill_forge_revision_button.text = "Fix"
+	_skill_forge_revision_button.tooltip_text = "Apply the suggested starter-spec revision"
+	_skill_forge_revision_button.custom_minimum_size = Vector2(42, 19)
+	_skill_forge_revision_button.focus_mode = Control.FOCUS_NONE
+	_skill_forge_revision_button.disabled = true
+	_skill_forge_revision_button.add_theme_font_size_override("font_size", 10)
+	_skill_forge_revision_button.add_theme_color_override("font_color", Color("#8c8274"))
+	_skill_forge_revision_button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+	_skill_forge_revision_button.add_theme_stylebox_override("normal", _craft_button_style(false))
+	_skill_forge_revision_button.add_theme_stylebox_override("hover", _craft_button_style(true))
+	_skill_forge_revision_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+	_skill_forge_revision_button.pressed.connect(_on_skill_forge_revision_pressed)
+	bottom.add_child(_skill_forge_revision_button)
+
 	_refresh_skill_forge_panel()
 
 
@@ -1098,6 +1138,11 @@ func _refresh_skill_forge_panel() -> void:
 		_skill_forge_run_button.disabled = not has_active
 		_skill_forge_run_button.add_theme_color_override("font_color", Color("#2d3b1d") if has_active else Color("#8c8274"))
 		_skill_forge_run_button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+	if _skill_forge_review_button:
+		_skill_forge_review_button.disabled = not has_active
+		_skill_forge_review_button.add_theme_color_override("font_color", Color("#4b4337") if has_active else Color("#8c8274"))
+		_skill_forge_review_button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+	_set_skill_forge_revision_button_enabled(has_active and _skill_forge_last_blocked_template_id == _active_skill_forge_template_id)
 
 	if not has_active:
 		if _skill_forge_summary_label:
@@ -1134,6 +1179,7 @@ func _on_skill_forge_template_pressed(template_id: String) -> void:
 	if not _skill_forge_template_previews.has(template_id):
 		return
 	_active_skill_forge_template_id = template_id
+	_skill_forge_last_blocked_template_id = ""
 	sound_requested.emit("ui_click")
 	_refresh_skill_forge_panel()
 
@@ -1143,6 +1189,62 @@ func _on_skill_forge_run_pressed() -> void:
 		return
 	sound_requested.emit("ui_click")
 	skill_forge_run_requested.emit(_active_skill_forge_template_id)
+
+
+func _on_skill_forge_review_pressed() -> void:
+	if _active_skill_forge_template_id == "" or not _skill_forge_template_previews.has(_active_skill_forge_template_id):
+		return
+	sound_requested.emit("ui_click")
+	skill_forge_review_requested.emit(_active_skill_forge_template_id)
+
+
+func _on_skill_forge_revision_pressed() -> void:
+	if _skill_forge_last_blocked_template_id == "":
+		return
+	sound_requested.emit("ui_click")
+	skill_forge_revision_requested.emit(_skill_forge_last_blocked_template_id)
+
+
+func _show_skill_forge_blocked_result(result: Dictionary) -> void:
+	var run: Dictionary = result.get("run", {})
+	_skill_forge_last_blocked_template_id = str(run.get("skill_id", _active_skill_forge_template_id)).strip_edges()
+	if _skill_forge_last_blocked_template_id == "":
+		_skill_forge_last_blocked_template_id = _active_skill_forge_template_id
+
+	if _skill_forge_summary_label:
+		_skill_forge_summary_label.text = _skill_forge_first_issue_text(result)
+	if _skill_forge_meta_label:
+		_skill_forge_meta_label.text = _skill_forge_revision_suggestion_text(result)
+	_set_skill_forge_revision_button_enabled(_skill_forge_last_blocked_template_id == _active_skill_forge_template_id)
+
+
+func _set_skill_forge_revision_button_enabled(is_enabled: bool) -> void:
+	if _skill_forge_revision_button == null:
+		return
+	_skill_forge_revision_button.disabled = not is_enabled
+	_skill_forge_revision_button.add_theme_stylebox_override("normal", _craft_button_style(is_enabled))
+	_skill_forge_revision_button.add_theme_stylebox_override("hover", _craft_button_style(true))
+	_skill_forge_revision_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+	_skill_forge_revision_button.add_theme_color_override("font_color", Color("#2d3b1d") if is_enabled else Color("#8c8274"))
+	_skill_forge_revision_button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+
+
+func _skill_forge_first_issue_text(result: Dictionary) -> String:
+	var validation: Dictionary = result.get("validation", {})
+	var errors = validation.get("errors", [])
+	if typeof(errors) == TYPE_ARRAY and not errors.is_empty():
+		var first_error = errors[0]
+		if typeof(first_error) == TYPE_DICTIONARY:
+			return str(first_error.get("message", "Revise the spec and try again."))
+	return "Revise the spec and try again."
+
+
+func _skill_forge_revision_suggestion_text(result: Dictionary) -> String:
+	var run: Dictionary = result.get("run", {})
+	var suggestion := str(run.get("failure_suggestion", "")).strip_edges()
+	if suggestion == "":
+		suggestion = "Revise the spec and try again."
+	return "Fix: %s" % suggestion
 
 
 func _skill_forge_status_text(status: String) -> String:

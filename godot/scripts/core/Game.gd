@@ -157,6 +157,8 @@ func _connect_systems() -> void:
 	game_ui.crafting_demand_target_requested.connect(_on_crafting_demand_target_requested)
 	game_ui.crafting_demand_requested.connect(_on_crafting_demand_requested)
 	game_ui.skill_forge_run_requested.connect(_on_skill_forge_run_requested)
+	game_ui.skill_forge_review_requested.connect(_on_skill_forge_review_requested)
+	game_ui.skill_forge_revision_requested.connect(_on_skill_forge_revision_requested)
 
 	if _agent_manager:
 		_agent_manager.agent_comment.connect(game_ui.show_message)
@@ -300,6 +302,35 @@ func _on_work_order_tool_selected(action_id: String) -> void:
 
 
 func _on_skill_forge_run_requested(template_id: String) -> void:
+	_run_skill_forge_template(template_id, _skill_forge_completion_detail(template_id), "Skill Forge run recorded.")
+
+
+func _on_skill_forge_revision_requested(template_id: String) -> void:
+	_run_skill_forge_template(template_id, _skill_forge_revision_completion_detail(template_id), "Skill Forge revision recorded.")
+
+
+func _on_skill_forge_review_requested(template_id: String) -> void:
+	if _skill_forge_templates == null or _skill_forge_run_harness == null:
+		return
+
+	var spec: Dictionary = _skill_forge_templates.get_template_spec(template_id)
+	if spec.is_empty():
+		game_ui.show_message("Unknown Forge template.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var draft_spec := _skill_forge_blocked_draft_for_template(template_id, spec)
+	var blocked_result: Dictionary = _skill_forge_run_harness.start_manual_run(draft_spec, _skill_forge_request_for_template(template_id))
+	_apply_skill_forge_result(blocked_result)
+	if str(blocked_result.get("status", "")) == "blocked":
+		game_ui.show_message("Skill Forge found a revision.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	game_ui.show_message("Skill Forge draft passed.")
+
+
+func _run_skill_forge_template(template_id: String, result_detail: String, success_message: String) -> void:
 	if _skill_forge_templates == null or _skill_forge_run_harness == null:
 		return
 
@@ -317,10 +348,45 @@ func _on_skill_forge_run_requested(template_id: String) -> void:
 		return
 
 	var completion_result: Dictionary = _skill_forge_run_harness.complete_run(start_result, true, {
-		"result_detail": _skill_forge_completion_detail(template_id)
+		"result_detail": result_detail
 	})
 	_apply_skill_forge_result(completion_result)
-	game_ui.show_message("Skill Forge run recorded.")
+	game_ui.show_message(success_message)
+
+
+func _skill_forge_blocked_draft_for_template(template_id: String, spec: Dictionary) -> Dictionary:
+	var draft := spec.duplicate(true)
+	var expected_tool := _skill_forge_expected_revision_tool(template_id, draft)
+	var tools = draft.get("tools", [])
+	if typeof(tools) != TYPE_ARRAY:
+		tools = []
+	var revised_tools: Array = tools.duplicate()
+	if revised_tools.is_empty():
+		revised_tools.append("summon_rain")
+	else:
+		revised_tools[revised_tools.size() - 1] = "summon_rain"
+	draft["tools"] = revised_tools
+
+	var steps = draft.get("steps", [])
+	if typeof(steps) == TYPE_ARRAY and not steps.is_empty():
+		var revised_steps: Array = steps.duplicate(true)
+		for index in range(revised_steps.size() - 1, -1, -1):
+			var step = revised_steps[index]
+			if typeof(step) != TYPE_DICTIONARY:
+				continue
+			step["tool"] = "summon_rain"
+			revised_steps[index] = step
+			break
+		draft["steps"] = revised_steps
+
+	var failure_handling = draft.get("failure_handling", {})
+	if typeof(failure_handling) != TYPE_DICTIONARY:
+		failure_handling = {}
+	var revised_failure: Dictionary = failure_handling.duplicate(true)
+	revised_failure["on_blocked"] = str(revised_failure.get("on_blocked", "record_receipt"))
+	revised_failure["suggestion"] = "Replace summon_rain with %s and rerun." % expected_tool
+	draft["failure_handling"] = revised_failure
+	return draft
 
 
 func _skill_forge_request_for_template(template_id: String) -> Dictionary:
@@ -387,6 +453,34 @@ func _skill_forge_completion_detail(template_id: String) -> String:
 		"tend_crops_starter":
 			return "manual harness receipt confirmed crop-tending checks"
 	return "manual harness receipt recorded"
+
+
+func _skill_forge_revision_completion_detail(template_id: String) -> String:
+	match template_id:
+		"clear_patch_starter":
+			return "replaced summon_rain with clear_brush"
+		"tend_crops_starter":
+			return "replaced summon_rain with tend_crop"
+	return "starter spec revised and rerun"
+
+
+func _skill_forge_expected_revision_tool(template_id: String, spec: Dictionary) -> String:
+	match template_id:
+		"clear_patch_starter":
+			return "clear_brush"
+		"tend_crops_starter":
+			return "tend_crop"
+
+	var steps = spec.get("steps", [])
+	if typeof(steps) == TYPE_ARRAY:
+		for index in range(steps.size() - 1, -1, -1):
+			var step = steps[index]
+			if typeof(step) != TYPE_DICTIONARY:
+				continue
+			var tool_name := str(step.get("tool", "")).strip_edges()
+			if tool_name != "" and tool_name != "inspect_tile":
+				return tool_name
+	return "an allowlisted tool"
 
 
 func _apply_skill_forge_result(result: Dictionary) -> void:
