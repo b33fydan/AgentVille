@@ -350,14 +350,17 @@ Mitigation: start with one or two farm skills and one manual trigger.
 
 ### Slice 3: Manual Run Harness
 
-- Convert a valid Tend Crops or Clear Patch spec into an existing work order or directive.
-- Record a Field Log start receipt.
-- Record pass/fail result.
+- Implemented in `scripts/systems/SkillForgeRunHarness.gd`.
+- Converts a valid Tend Crops or Clear Patch spec into a deterministic local directive.
+- Maps Clear Patch to a current work-order-shaped `clear_brush` directive, while Tend Crops remains a Forge-only directive until farm execution exists.
+- Returns Field Log copy and event-log payloads for start, pass, fail, and blocked states.
+- Covered by `tools/smoke_skill_forge_run_harness.gd`, including blocked-run Hallucination Drift copy.
 
 ### Slice 4: Minimal Forge Panel
 
-- Add a compact panel with template preview and Run button.
-- Avoid a full editor until the run harness feels good.
+- Connect the template library and run harness to a compact panel with template preview and Run button.
+- Record returned Field Log lines and event-log payloads through existing game surfaces.
+- Avoid a full editor until the run harness is visible and useful.
 
 ### Slice 5: Revision Loop
 
