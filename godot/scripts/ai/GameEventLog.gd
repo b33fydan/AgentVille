@@ -58,6 +58,11 @@ func build_day_summary(day: int) -> Dictionary:
 		"favored_agents": {},
 		"memory_context_sessions": 0,
 		"remembered_help_sessions": {},
+		"skill_forge_runs": {},
+		"skill_forge_run_count": 0,
+		"completed_skill_forge_runs": 0,
+		"blocked_skill_forge_runs": 0,
+		"failed_skill_forge_runs": 0,
 		"total_player_actions": 0,
 		"top_action": "none",
 		"notable_events": [],
@@ -123,6 +128,8 @@ func build_day_summary(day: int) -> Dictionary:
 				summary["notable_events"].append(event)
 			"crew_mission":
 				_add_crew_mission_summary(summary, event)
+			"skill_forge_run":
+				_add_skill_forge_run_summary(summary, event)
 
 	var top_action := "none"
 	var top_count := 0
@@ -257,6 +264,65 @@ func _add_crew_mission_summary(summary: Dictionary, event: Dictionary) -> void:
 	missions[mission_id] = receipt
 	summary["crew_missions"] = missions
 	summary["crew_mission_count"] = missions.size()
+
+
+func _add_skill_forge_run_summary(summary: Dictionary, event: Dictionary) -> void:
+	var run_id := str(event.get("run_id", "")).strip_edges()
+	if run_id == "":
+		run_id = "forge_run_%s" % str(event.get("tick_ms", "unknown"))
+
+	var runs: Dictionary = summary["skill_forge_runs"]
+	var receipt: Dictionary = runs.get(run_id, {
+		"run_id": run_id,
+		"skill_id": "",
+		"skill_name": "Skill Run",
+		"status": "",
+		"agent_id": "",
+		"agent_name": "Crew",
+		"target_tile": Vector2i(-1, -1),
+		"trigger_type": "",
+		"action": "",
+		"success_check_type": "",
+		"receipt_label": "",
+		"result_detail": "",
+		"failure_suggestion": "",
+		"drift_level": "steady",
+		"counted_passed": false,
+		"counted_blocked": false,
+		"counted_failed": false
+	})
+
+	receipt["skill_id"] = str(event.get("skill_id", receipt.get("skill_id", "")))
+	receipt["skill_name"] = str(event.get("skill_name", receipt.get("skill_name", "Skill Run")))
+	receipt["status"] = str(event.get("status", receipt.get("status", "")))
+	receipt["agent_id"] = str(event.get("agent_id", receipt.get("agent_id", "")))
+	receipt["agent_name"] = str(event.get("agent_name", receipt.get("agent_name", "Crew")))
+	receipt["target_tile"] = event.get("target_tile", receipt.get("target_tile", Vector2i(-1, -1)))
+	receipt["trigger_type"] = str(event.get("trigger_type", receipt.get("trigger_type", "")))
+	receipt["action"] = str(event.get("action", receipt.get("action", "")))
+	receipt["success_check_type"] = str(event.get("success_check_type", receipt.get("success_check_type", "")))
+	receipt["receipt_label"] = str(event.get("receipt_label", receipt.get("receipt_label", "")))
+	receipt["result_detail"] = str(event.get("result_detail", receipt.get("result_detail", "")))
+	receipt["failure_suggestion"] = str(event.get("failure_suggestion", receipt.get("failure_suggestion", "")))
+	receipt["drift_level"] = str(event.get("drift_level", receipt.get("drift_level", "steady")))
+
+	match str(receipt.get("status", "")):
+		"passed":
+			if not bool(receipt.get("counted_passed", false)):
+				summary["completed_skill_forge_runs"] = int(summary.get("completed_skill_forge_runs", 0)) + 1
+				receipt["counted_passed"] = true
+		"blocked":
+			if not bool(receipt.get("counted_blocked", false)):
+				summary["blocked_skill_forge_runs"] = int(summary.get("blocked_skill_forge_runs", 0)) + 1
+				receipt["counted_blocked"] = true
+		"failed":
+			if not bool(receipt.get("counted_failed", false)):
+				summary["failed_skill_forge_runs"] = int(summary.get("failed_skill_forge_runs", 0)) + 1
+				receipt["counted_failed"] = true
+
+	runs[run_id] = receipt
+	summary["skill_forge_runs"] = runs
+	summary["skill_forge_run_count"] = runs.size()
 
 
 func _add_called_favor_summary(summary: Dictionary, event: Dictionary) -> void:

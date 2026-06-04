@@ -163,6 +163,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_consequence_active_work_signals.gd` exercises consequence-driven active work context in crew rows and NPC reason badges.
 - `tools/smoke_consequence_receipt_language.gd` exercises readable consequence source labels in Field Log receipts, day summaries, vibe reasons, and NPC comments.
 - `tools/smoke_skill_forge_prd.gd` exercises the Skill Forge PRD document keeping its product, spec, safety, implementation, and questionnaire anchors.
+- `tools/smoke_skill_forge_day_summary.gd` exercises Skill Forge run recaps in day summaries, including passed runs, blocked runs, and Hallucination Drift.
 - `tools/smoke_skill_forge_panel.gd` exercises the first visible Skill Forge panel, template preview selection, Run button wiring, and Field Log/event-log receipts.
 - `tools/smoke_skill_forge_revision_loop.gd` exercises the visible Forge revision loop: blocked draft checks, Hallucination Drift copy, Fix reruns, and pass receipts.
 - `tools/smoke_skill_forge_spec_preview.gd` exercises structured starter-spec preview fields for trigger, context, ordered tools, steps, checks, and receipts.
@@ -257,6 +258,7 @@ Once the core farm, NPC, mission, memory, Parley, and verification loops feel st
 - The first visible panel lives in `scripts/ui/GameUI.gd`, showing Tend Crops and Clear Patch previews and routing Run clicks through the local harness from `scripts/core/Game.gd`.
 - The bounded revision loop lives in the same panel: Check runs a flawed starter draft, shows the validator issue and suggestion, and Fix reruns the clean template.
 - Starter previews now show the structured skill contract directly in the panel: trigger, context, tools, steps, success check, and receipt.
+- Skill Forge runs now land in day summaries as compact Forge recaps, including blocked-run Drift notes.
 - This should teach agent-skill building rather than general programming: triggers, context, tools, steps, receipts, verification, memory, and failure handling.
 - The first version should stay deterministic and local, using safe structured skill specs instead of arbitrary runtime code.
 - Skill runs should reuse existing AgentVille systems: missions become learning objectives, work orders become tool calls, Field Log entries become receipts, and smoke-style checks become visible pass/fail validation.

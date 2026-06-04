@@ -377,6 +377,13 @@ Mitigation: start with one or two farm skills and one manual trigger.
 - Shows those fields directly in the Forge panel so players can read the agent-skill shape before a full editor exists.
 - Covered by `tools/smoke_skill_forge_spec_preview.gd`.
 
+### Slice 7: Day Summary Forge Recaps
+
+- Implemented in `scripts/ai/GameEventLog.gd` and `scripts/core/Game.gd`.
+- Aggregates `skill_forge_run` events into unique run receipts with final status, agent, skill name, result detail, and Drift state.
+- Adds compact Forge recaps to formatted day summaries so passed and blocked starter runs persist beyond the immediate Field Log.
+- Covered by `tools/smoke_skill_forge_day_summary.gd`.
+
 ## Questionnaire For The Big PRD Session
 
 Use these questions when you sit down to think through the full Forge vision.

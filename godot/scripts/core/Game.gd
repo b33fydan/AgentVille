@@ -2948,6 +2948,7 @@ func _format_day_summary(summary: Dictionary) -> String:
 	var social_preference_actions: Dictionary = summary.get("agent_social_preference_actions", {})
 	var social_autonomy_text := _format_agent_social_preference_names(social_preference_actions)
 	var social_run_recap_text := _format_agent_social_preference_run_recaps(social_preference_actions)
+	var skill_forge_run_recap_text := _format_skill_forge_run_recaps(summary.get("skill_forge_runs", {}))
 	var completed_crew_missions := int(summary.get("completed_crew_missions", 0))
 	var completed_mission_text := _format_completed_crew_mission_names(summary.get("crew_missions", {}))
 	var top_action := str(summary.get("top_action", "none"))
@@ -2963,6 +2964,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 			empty_line += ", crew followed %s" % social_autonomy_text
 		if social_run_recap_text != "":
 			empty_line += ", run recap %s" % social_run_recap_text
+		if skill_forge_run_recap_text != "":
+			empty_line += ", forge recap %s" % skill_forge_run_recap_text
 		if truce_delayed_orders > 0:
 			empty_line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 		if completed_crew_missions > 0:
@@ -2986,6 +2989,8 @@ func _format_day_summary(summary: Dictionary) -> String:
 		line += ", crew followed %s" % social_autonomy_text
 	if social_run_recap_text != "":
 		line += ", run recap %s" % social_run_recap_text
+	if skill_forge_run_recap_text != "":
+		line += ", forge recap %s" % skill_forge_run_recap_text
 	if truce_delayed_orders > 0:
 		line += ", truce delayed %s order%s" % [truce_delayed_orders, "" if truce_delayed_orders == 1 else "s"]
 	if completed_crew_missions > 0:
@@ -3150,6 +3155,32 @@ func _format_agent_social_preference_run_recaps(social_actions: Dictionary) -> S
 		var count := int(receipt.get("actions", 0))
 		if count > 1:
 			detail += " x%s" % count
+		if not recaps.has(detail):
+			recaps.append(detail)
+	recaps.sort()
+	return _join_names(recaps)
+
+
+func _format_skill_forge_run_recaps(forge_runs) -> String:
+	if typeof(forge_runs) != TYPE_DICTIONARY:
+		return ""
+
+	var recaps: Array[String] = []
+	for run_id in forge_runs.keys():
+		var receipt: Dictionary = forge_runs.get(run_id, {})
+		var status := str(receipt.get("status", "")).strip_edges()
+		if status == "":
+			continue
+		var agent_name := str(receipt.get("agent_name", "Crew")).strip_edges()
+		if agent_name == "":
+			agent_name = "Crew"
+		var skill_name := str(receipt.get("skill_name", "Skill Run")).strip_edges()
+		if skill_name == "":
+			skill_name = "Skill Run"
+		var detail := "%s %s %s" % [agent_name, status, skill_name]
+		var drift_level := str(receipt.get("drift_level", "")).strip_edges()
+		if status in ["blocked", "failed"] and drift_level != "" and drift_level != "steady":
+			detail += " [Drift %s]" % drift_level
 		if not recaps.has(detail):
 			recaps.append(detail)
 	recaps.sort()
