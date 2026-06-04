@@ -1,0 +1,169 @@
+extends SceneTree
+
+var _failed := false
+
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	root.size = Vector2i(1600, 900)
+	await process_frame
+	await process_frame
+
+	var game_ui = scene.get_node("GameUI")
+	await _test_clear_patch_drafts_ready_work_order(scene, game_ui)
+	if _failed:
+		return
+	await _test_tend_crops_stays_receipt_only(scene, game_ui)
+	if _failed:
+		return
+
+	scene.queue_free()
+	if not _failed:
+		quit()
+
+
+func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
+	_select_template(game_ui, "clear_patch_starter")
+	if _failed:
+		return
+
+	var before_count := _forge_order_count(scene)
+	var run_button = game_ui.get("_skill_forge_run_button") as Button
+	if run_button == null:
+		_fail("Skill Forge run button missing before Clear Patch run.")
+		return
+	run_button.pressed.emit()
+	await process_frame
+
+	if _forge_order_count(scene) != before_count + 1:
+		_fail("Clear Patch did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
+		return
+
+	var order_id := _latest_forge_order_id(scene, "clear_patch_starter")
+	if order_id == "":
+		_fail("Clear Patch did not create a Forge-tagged work order.")
+		return
+	var order: Dictionary = scene.work_orders.get(order_id, {})
+	if str(order.get("status", "")) != "ready":
+		_fail("Forge work order should start ready. order=%s" % str(order))
+		return
+	if str(order.get("action", "")) != "clear_brush" or str(order.get("agent_action", "")) != "clear_brush":
+		_fail("Forge work order did not keep the clear_brush directive. order=%s" % str(order))
+		return
+	if str(order.get("source", "")) != "skill_forge" or str(order.get("preference_source", "")) != "skill_forge":
+		_fail("Forge work order did not keep Skill Forge source context. order=%s" % str(order))
+		return
+	if str(order.get("skill_name", "")) != "Clear Patch":
+		_fail("Forge work order did not keep a readable skill name. order=%s" % str(order))
+		return
+	if str(order.get("forge_run_id", "")).strip_edges() == "":
+		_fail("Forge work order did not keep its run id. order=%s" % str(order))
+		return
+	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
+	if not scene.call("_can_target_crew_order", "clear_brush", target_tile):
+		_fail("Forge work order target was not a valid clear_brush tile. order=%s" % str(order))
+		return
+
+	var rows: Dictionary = game_ui.get("_work_order_rows")
+	if not rows.has(order_id):
+		_fail("Forge work order did not appear in the crew order rows. rows=%s" % str(rows.keys()))
+		return
+	var row: Dictionary = rows.get(order_id, {})
+	var preference := row.get("preference", null) as Label
+	if preference == null or not preference.visible or str(preference.text) != "Forge":
+		_fail("Forge work order row did not show the Forge context chip. text=%s visible=%s" % [
+			str(preference.text) if preference != null else "",
+			preference.visible if preference != null else false
+		])
+		return
+	if not str(preference.tooltip_text).contains("Clear Patch"):
+		_fail("Forge work order chip tooltip did not name the skill. tooltip=%s" % str(preference.tooltip_text))
+		return
+
+	var field_log_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(field_log_entries, "Forge order drafted: Clear Patch"):
+		_fail("Forge work order draft did not leave a Field Log receipt. entries=%s" % str(field_log_entries))
+		return
+
+	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 10)
+	if not _work_order_event_exists(events, order_id, "forge_drafted"):
+		_fail("Forge work order draft did not record a work_order event. events=%s" % str(events))
+		return
+
+
+func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
+	_select_template(game_ui, "tend_crops_starter")
+	if _failed:
+		return
+
+	var before_count := _forge_order_count(scene)
+	var run_button = game_ui.get("_skill_forge_run_button") as Button
+	run_button.pressed.emit()
+	await process_frame
+
+	if _forge_order_count(scene) != before_count:
+		_fail("Tend Crops should stay receipt-only until a farm work order exists. before=%s after=%s" % [before_count, _forge_order_count(scene)])
+		return
+
+	var field_log_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(field_log_entries, "Skill Forge passed Tend Crops"):
+		_fail("Tend Crops receipt-only run did not still pass. entries=%s" % str(field_log_entries))
+		return
+
+
+func _select_template(game_ui, template_id: String) -> void:
+	var buttons_value = game_ui.get("_skill_forge_template_buttons")
+	if typeof(buttons_value) != TYPE_DICTIONARY:
+		_fail("Skill Forge panel did not expose template buttons.")
+		return
+	var buttons: Dictionary = buttons_value
+	var button = buttons.get(template_id, null) as Button
+	if button == null:
+		_fail("Skill Forge template button missing for %s." % template_id)
+		return
+	button.pressed.emit()
+
+
+func _forge_order_count(scene: Node) -> int:
+	var count := 0
+	for order_id in scene.work_order_ids:
+		var order: Dictionary = scene.work_orders.get(str(order_id), {})
+		if str(order.get("source", "")) == "skill_forge":
+			count += 1
+	return count
+
+
+func _latest_forge_order_id(scene: Node, skill_id: String) -> String:
+	for index in range(scene.work_order_ids.size() - 1, -1, -1):
+		var order_id := str(scene.work_order_ids[index])
+		var order: Dictionary = scene.work_orders.get(order_id, {})
+		if str(order.get("source", "")) == "skill_forge" and str(order.get("skill_id", "")) == skill_id:
+			return order_id
+	return ""
+
+
+func _entries_contain(entries: Array, needle: String) -> bool:
+	for entry in entries:
+		if str(entry).contains(needle):
+			return true
+	return false
+
+
+func _work_order_event_exists(events: Array, order_id: String, status: String) -> bool:
+	for event in events:
+		if str(event.get("type", "")) != "work_order":
+			continue
+		if str(event.get("order_id", "")) == order_id and str(event.get("status", "")) == status:
+			return true
+	return false
+
+
+func _fail(message: String) -> void:
+	_failed = true
+	push_error(message)
+	quit(1)

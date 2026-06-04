@@ -1699,6 +1699,8 @@ func _work_order_preference_context_text(order: Dictionary) -> String:
 			return "Pressure"
 		"held_truce":
 			return "Held"
+		"skill_forge":
+			return "Forge"
 	return ""
 
 
@@ -1720,6 +1722,8 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 			return _with_origin_suffix("Ignored ask: %s" % label if label != "" else "Influenced by an ignored ask", origin_suffix)
 		"held_truce":
 			return _with_origin_suffix("Held truce: %s" % label if label != "" else "Influenced by a held truce", origin_suffix)
+		"skill_forge":
+			return "Skill Forge: %s" % label if label != "" else "Drafted by Skill Forge"
 	return ""
 
 
@@ -1729,7 +1733,7 @@ func _work_order_preference_color(order: Dictionary) -> Color:
 			return Color("#7b5aa6")
 		"ignored_ask":
 			return Color("#8a503e")
-		"completed_order", "completed_mission":
+		"completed_order", "completed_mission", "skill_forge":
 			return Color("#4f6f8f")
 	return Color("#5f7f39")
 

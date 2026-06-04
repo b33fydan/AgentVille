@@ -496,7 +496,80 @@ func _apply_skill_forge_result(result: Dictionary) -> void:
 				payload = {}
 			_event_log.record_event(str(entry.get("type", "skill_forge_run")), payload)
 
+	if str(result.get("status", "")) == "started":
+		_maybe_draft_skill_forge_work_order(result)
+
 	game_ui.set_skill_forge_result(result)
+
+
+func _maybe_draft_skill_forge_work_order(result: Dictionary) -> String:
+	var directive_value = result.get("directive", {})
+	if typeof(directive_value) != TYPE_DICTIONARY:
+		return ""
+	var directive: Dictionary = directive_value
+	if str(directive.get("kind", "")).strip_edges() != "work_order_directive":
+		return ""
+
+	var forge_run_id := str(directive.get("forge_run_id", "")).strip_edges()
+	if forge_run_id == "":
+		var run_value = result.get("run", {})
+		if typeof(run_value) == TYPE_DICTIONARY:
+			var run: Dictionary = run_value
+			forge_run_id = str(run.get("id", "")).strip_edges()
+	if forge_run_id == "" or _has_skill_forge_work_order(forge_run_id):
+		return ""
+
+	var action_id := str(directive.get("action", "")).strip_edges()
+	if not WORK_ORDER_ACTIONS.has(action_id):
+		return ""
+
+	var target_tile := _demand_target_from_value(directive.get("target_tile", Vector2i(-1, -1)))
+	var skill_name := str(directive.get("skill_name", "Skill Run")).strip_edges()
+	if skill_name == "":
+		skill_name = "Skill Run"
+	if target_tile == Vector2i(-1, -1) or not _can_target_crew_order(action_id, target_tile):
+		game_ui.add_field_log("Forge order blocked: target changed for %s." % skill_name)
+		return ""
+
+	var action: Dictionary = WORK_ORDER_ACTIONS[action_id]
+	var order_id := "order_%03d" % _next_work_order_number
+	_next_work_order_number += 1
+	var base_label := _work_order_label(action_id, target_tile)
+	var order := {
+		"id": order_id,
+		"label": "%s: %s" % [skill_name, base_label],
+		"status": "ready",
+		"action": action_id,
+		"agent_action": str(directive.get("agent_action", action.get("agent_action", ""))),
+		"target_tile": target_tile,
+		"required_item": str(directive.get("required_item", action.get("required_item", ""))),
+		"created_day": grid_manager.day,
+		"source": "skill_forge",
+		"preference_source": "skill_forge",
+		"preference_label": skill_name,
+		"forge_run_id": forge_run_id,
+		"skill_id": str(directive.get("skill_id", "")),
+		"skill_name": skill_name,
+		"directive_id": str(directive.get("id", "")),
+		"directive_kind": str(directive.get("kind", "")),
+		"source_context": directive.get("source_context", {})
+	}
+	work_orders[order_id] = order
+	work_order_ids.append(order_id)
+	_refresh_work_orders()
+	game_ui.add_field_log("Forge order drafted: %s -> %s." % [skill_name, base_label])
+	_record_work_order_event(order_id, "forge_drafted")
+	return order_id
+
+
+func _has_skill_forge_work_order(forge_run_id: String) -> bool:
+	for order_id in work_order_ids:
+		if not work_orders.has(str(order_id)):
+			continue
+		var order: Dictionary = work_orders[str(order_id)]
+		if str(order.get("forge_run_id", "")) == forge_run_id:
+			return true
+	return false
 
 
 func _on_crafting_demand_target_requested(demand_id: String) -> void:
@@ -2721,6 +2794,12 @@ func _record_work_order_event(order_id: String, status: String) -> void:
 		"mission_step_index": int(order.get("mission_step_index", -1)),
 		"mission_total_steps": int(order.get("mission_total_steps", 0)),
 		"mission_step_label": str(order.get("mission_step_label", "")),
+		"forge_run_id": str(order.get("forge_run_id", "")),
+		"skill_id": str(order.get("skill_id", "")),
+		"skill_name": str(order.get("skill_name", "")),
+		"directive_id": str(order.get("directive_id", "")),
+		"directive_kind": str(order.get("directive_kind", "")),
+		"source_context": order.get("source_context", {}),
 		"incentive_label": str(order.get("incentive_label", "")),
 		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
 		"incentive_claimed": bool(order.get("incentive_claimed", false))
@@ -2757,6 +2836,12 @@ func _record_removed_work_order_event(order: Dictionary, status: String) -> void
 		"mission_step_index": int(order.get("mission_step_index", -1)),
 		"mission_total_steps": int(order.get("mission_total_steps", 0)),
 		"mission_step_label": str(order.get("mission_step_label", "")),
+		"forge_run_id": str(order.get("forge_run_id", "")),
+		"skill_id": str(order.get("skill_id", "")),
+		"skill_name": str(order.get("skill_name", "")),
+		"directive_id": str(order.get("directive_id", "")),
+		"directive_kind": str(order.get("directive_kind", "")),
+		"source_context": order.get("source_context", {}),
 		"incentive_label": str(order.get("incentive_label", "")),
 		"incentive_resource_delta": order.get("incentive_resource_delta", {}),
 		"incentive_claimed": bool(order.get("incentive_claimed", false))

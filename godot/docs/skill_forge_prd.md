@@ -384,6 +384,13 @@ Mitigation: start with one or two farm skills and one manual trigger.
 - Adds compact Forge recaps to formatted day summaries so passed and blocked starter runs persist beyond the immediate Field Log.
 - Covered by `tools/smoke_skill_forge_day_summary.gd`.
 
+### Slice 8: Work-Order Directive Drafts
+
+- Implemented in `scripts/core/Game.gd` and `scripts/ui/GameUI.gd`.
+- Turns a valid Clear Patch `work_order_directive` into a ready crew-order row with Forge metadata, run id, skill name, Field Log receipt, work-order event, and `Forge` context chip.
+- Keeps Tend Crops as a Forge-only directive until crop-tending has a real crew-order path.
+- Covered by `tools/smoke_skill_forge_work_order_directive.gd`.
+
 ## Questionnaire For The Big PRD Session
 
 Use these questions when you sit down to think through the full Forge vision.
