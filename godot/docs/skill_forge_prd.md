@@ -296,6 +296,16 @@ The first Forge slice is successful when:
 - Should the first Forge run require an existing Mission Momentum context?
 - Should skill specs be collectible objects, recipes, or notebook entries?
 
+## Questionnaire Direction
+
+The first answered direction is:
+
+- Fantasy: the player is an apprentice learning how agents work by teaching NPCs safe task specs.
+- Place: the Forge should feel like a lab connected to the farm, not a generic automation editor.
+- First task: Tend Crops, using manual trigger, selected farm context, visible success checks, required failure handling, and templated receipts.
+- Failure tone: early failures can be funny, but repeated bad specs should produce visible Hallucination Drift.
+- Hallucination Drift starts as data, not animation: validation warnings create a wobbly state with sweating/crew-noticing hints, while hard blockers create a hallucinating state with glitched/crew-worried hints.
+
 ## Risks
 
 ### Too Abstract
@@ -326,14 +336,14 @@ Mitigation: start with one or two farm skills and one manual trigger.
 
 ### Slice 1: PRD And Spec Validator
 
-- Add `SkillSpecValidator.gd`.
-- Validate one dictionary-shaped spec.
-- Return errors and warnings.
-- Add smoke coverage for valid and invalid specs.
+- Implemented in `scripts/systems/SkillSpecValidator.gd`.
+- Validates one dictionary-shaped spec.
+- Returns errors, warnings, run permission, normalized receipt template, and data-only Hallucination Drift state.
+- Covered by `tools/smoke_skill_forge_spec_validator.gd` for valid Tend Crops specs, unknown tools, warning-only drift, and missing receipts.
 
 ### Slice 2: Forge Template Data
 
-- Add starter templates for Clear Patch and Restock Kit.
+- Add starter templates for Tend Crops and Clear Patch.
 - Keep them static and local.
 - Validate templates in smoke.
 

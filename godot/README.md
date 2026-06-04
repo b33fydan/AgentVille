@@ -163,6 +163,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_consequence_active_work_signals.gd` exercises consequence-driven active work context in crew rows and NPC reason badges.
 - `tools/smoke_consequence_receipt_language.gd` exercises readable consequence source labels in Field Log receipts, day summaries, vibe reasons, and NPC comments.
 - `tools/smoke_skill_forge_prd.gd` exercises the Skill Forge PRD document keeping its product, spec, safety, implementation, and questionnaire anchors.
+- `tools/smoke_skill_forge_spec_validator.gd` exercises the first Skill Forge validator contract for manual task specs, allowlisted tools, templated receipts, and data-only Hallucination Drift signals.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
 - `tools/smoke_visual_polish.gd` exercises the reason-badge backing plate, readable outline, and motive-change pop.
 - `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, live crew-row motive signals, planning fallbacks, and preserved receipt context.
@@ -245,6 +246,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 Once the core farm, NPC, mission, memory, Parley, and verification loops feel stable, the next top-priority direction is **Skill Forge**: a cozy agent-harness learning mode where players write small skill specs and watch NPCs or helper bots execute them on the farm.
 
 - The working PRD and reflection questionnaire live in `docs/skill_forge_prd.md`.
+- The first local rule layer lives in `scripts/systems/SkillSpecValidator.gd`, with smoke coverage in `tools/smoke_skill_forge_spec_validator.gd`.
 - This should teach agent-skill building rather than general programming: triggers, context, tools, steps, receipts, verification, memory, and failure handling.
 - The first version should stay deterministic and local, using safe structured skill specs instead of arbitrary runtime code.
 - Skill runs should reuse existing AgentVille systems: missions become learning objectives, work orders become tool calls, Field Log entries become receipts, and smoke-style checks become visible pass/fail validation.
