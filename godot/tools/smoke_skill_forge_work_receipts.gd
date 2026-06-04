@@ -43,6 +43,11 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge work-order target tile was missing.")
 		return
 
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
+		_fail("Forge panel did not trace the drafted work order. text=%s" % (trace_label.text if trace_label else ""))
+		return
+
 	var agent_manager = scene.get_node("FarmWorld/AgentManager")
 	for agent in agent_manager.agents:
 		agent.move_speed = 42.0
@@ -82,6 +87,13 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if receipt.contains("skill_forge") or receipt.contains("Skill Forge: Clear Patch"):
 		_fail("Forge work receipt used raw or social-style Forge context. saw=%s" % receipt)
+		return
+
+	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Agent Receipt":
+		_fail("Forge panel did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	if not str(trace_label.tooltip_text).contains(receipt):
+		_fail("Forge trace tooltip did not preserve the readable agent receipt. tooltip=%s receipt=%s" % [str(trace_label.tooltip_text), receipt])
 		return
 
 	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)

@@ -496,8 +496,15 @@ func _apply_skill_forge_result(result: Dictionary) -> void:
 				payload = {}
 			_event_log.record_event(str(entry.get("type", "skill_forge_run")), payload)
 
+	var order_id := ""
 	if str(result.get("status", "")) == "started":
-		_maybe_draft_skill_forge_work_order(result)
+		order_id = _maybe_draft_skill_forge_work_order(result)
+	if order_id == "":
+		order_id = _skill_forge_order_id_for_result(result)
+	if order_id != "":
+		result["drafted_order_id"] = order_id
+		var order: Dictionary = work_orders.get(order_id, {})
+		result["drafted_order_label"] = str(order.get("label", ""))
 
 	game_ui.set_skill_forge_result(result)
 
@@ -570,6 +577,38 @@ func _has_skill_forge_work_order(forge_run_id: String) -> bool:
 		if str(order.get("forge_run_id", "")) == forge_run_id:
 			return true
 	return false
+
+
+func _skill_forge_order_id_for_result(result: Dictionary) -> String:
+	var forge_run_id := ""
+	var run_value = result.get("run", {})
+	if typeof(run_value) == TYPE_DICTIONARY:
+		var run: Dictionary = run_value
+		forge_run_id = str(run.get("id", "")).strip_edges()
+	if forge_run_id == "":
+		var directive_value = result.get("directive", {})
+		if typeof(directive_value) == TYPE_DICTIONARY:
+			var directive: Dictionary = directive_value
+			forge_run_id = str(directive.get("forge_run_id", "")).strip_edges()
+	if forge_run_id == "":
+		return ""
+
+	for order_id in work_order_ids:
+		var order_key := str(order_id)
+		if not work_orders.has(order_key):
+			continue
+		var order: Dictionary = work_orders[order_key]
+		if str(order.get("forge_run_id", "")).strip_edges() == forge_run_id:
+			return order_key
+	return ""
+
+
+func _maybe_update_skill_forge_receipt_trace(payload: Dictionary, receipt: String) -> void:
+	var forge_run_id := str(payload.get("forge_run_id", "")).strip_edges()
+	var skill_name := str(payload.get("skill_name", "")).strip_edges()
+	if forge_run_id == "" and skill_name == "":
+		return
+	game_ui.set_skill_forge_work_receipt_trace(payload, receipt)
 
 
 func _on_crafting_demand_target_requested(demand_id: String) -> void:
@@ -2072,6 +2111,7 @@ func _on_agent_world_action(event: Dictionary) -> void:
 	var receipt := _format_agent_receipt(payload)
 	if receipt != "":
 		game_ui.add_field_log(receipt)
+		_maybe_update_skill_forge_receipt_trace(payload, receipt)
 		if bool(payload.get("success", false)):
 			game_ui.show_message(receipt)
 

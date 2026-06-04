@@ -95,6 +95,11 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 		_fail("Clear Patch preview did not expose the success check. text=%s" % (meta_label.text if meta_label else ""))
 		return
 
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Spec > clear_brush":
+		_fail("Clear Patch preview did not expose the compact Forge trace. text=%s" % (trace_label.text if trace_label else ""))
+		return
+
 
 func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
@@ -115,6 +120,11 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	var result_label = game_ui.get("_skill_forge_result_label") as Label
 	if result_label == null or not result_label.text.contains("Passed"):
 		_fail("Skill Forge result label did not show the completed run status. text=%s" % (result_label.text if result_label else ""))
+		return
+
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
+		_fail("Skill Forge run did not show the spec-to-order trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 
 	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 6)

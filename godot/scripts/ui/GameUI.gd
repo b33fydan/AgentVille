@@ -61,6 +61,7 @@ var _active_skill_forge_template_id: String = ""
 var _skill_forge_summary_label: Label
 var _skill_forge_lesson_label: Label
 var _skill_forge_meta_label: Label
+var _skill_forge_trace_label: Label
 var _skill_forge_result_label: Label
 var _skill_forge_run_button: Button
 var _skill_forge_review_button: Button
@@ -204,6 +205,18 @@ func set_skill_forge_result(result: Dictionary) -> void:
 	else:
 		_skill_forge_last_blocked_template_id = ""
 		_refresh_skill_forge_panel()
+		_set_skill_forge_trace_from_result(result)
+
+
+func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String) -> void:
+	if _skill_forge_trace_label == null:
+		return
+	var skill_name := str(event.get("skill_name", "Skill Run")).strip_edges()
+	if skill_name == "":
+		skill_name = "Skill Run"
+	_skill_forge_trace_label.text = "Spec > Directive > Work Order > Agent Receipt"
+	_skill_forge_trace_label.tooltip_text = "Forge trace for %s ended in agent receipt: %s" % [skill_name, receipt_text]
+	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f7a3a"))
 
 
 func set_work_order(order: Dictionary) -> void:
@@ -991,7 +1004,7 @@ func _build_work_order_controls(parent: VBoxContainer) -> void:
 
 func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 94)
+	card.custom_minimum_size = Vector2(0, 108)
 	card.add_theme_stylebox_override("panel", _soft_box(Color("#eef7ee"), 10, 1))
 	parent.add_child(card)
 
@@ -1056,6 +1069,13 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_lesson_label.add_theme_font_size_override("font_size", 9)
 	_skill_forge_lesson_label.add_theme_color_override("font_color", Color("#6f8568"))
 	stack.add_child(_skill_forge_lesson_label)
+
+	_skill_forge_trace_label = Label.new()
+	_skill_forge_trace_label.text = "Spec > Receipt"
+	_skill_forge_trace_label.clip_text = true
+	_skill_forge_trace_label.add_theme_font_size_override("font_size", 9)
+	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
+	stack.add_child(_skill_forge_trace_label)
 
 	_skill_forge_run_button = Button.new()
 	_skill_forge_run_button.text = "Run"
@@ -1152,6 +1172,9 @@ func _refresh_skill_forge_panel() -> void:
 			_skill_forge_meta_label.text = "Manual | 0 steps | check"
 		if _skill_forge_lesson_label:
 			_skill_forge_lesson_label.text = ""
+		if _skill_forge_trace_label:
+			_skill_forge_trace_label.text = "Spec > Receipt"
+			_skill_forge_trace_label.tooltip_text = ""
 		return
 
 	var preview: Dictionary = _skill_forge_template_previews[_active_skill_forge_template_id]
@@ -1170,6 +1193,13 @@ func _refresh_skill_forge_panel() -> void:
 			str(preview.get("check_label", preview.get("success_check", "check"))),
 			str(preview.get("receipt_label", "receipt"))
 		]
+	if _skill_forge_trace_label:
+		_skill_forge_trace_label.text = _skill_forge_preview_trace_text(preview)
+		_skill_forge_trace_label.tooltip_text = "Preview trace for %s: spec tools %s" % [
+			str(preview.get("name", "Skill Run")),
+			str(preview.get("tools_label", ""))
+		]
+		_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 
 
 func _skill_forge_button_text(preview: Dictionary) -> String:
@@ -1222,6 +1252,7 @@ func _show_skill_forge_blocked_result(result: Dictionary) -> void:
 		_skill_forge_summary_label.text = _skill_forge_first_issue_text(result)
 	if _skill_forge_meta_label:
 		_skill_forge_meta_label.text = _skill_forge_revision_suggestion_text(result)
+	_set_skill_forge_trace_from_result(result)
 	_set_skill_forge_revision_button_enabled(_skill_forge_last_blocked_template_id == _active_skill_forge_template_id)
 
 
@@ -1286,6 +1317,75 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	if detail != "":
 		text += " | %s" % detail
 	return text
+
+
+func _skill_forge_preview_trace_text(preview: Dictionary) -> String:
+	var tools_label := str(preview.get("tools_label", "")).strip_edges()
+	var final_tool := _skill_forge_final_tool_label(tools_label)
+	if final_tool == "":
+		return "Spec > Receipt"
+	return "Spec > %s" % final_tool
+
+
+func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
+	if _skill_forge_trace_label == null:
+		return
+	_skill_forge_trace_label.text = _skill_forge_result_trace_text(result)
+	_skill_forge_trace_label.tooltip_text = _skill_forge_result_trace_tooltip(result)
+	_skill_forge_trace_label.add_theme_color_override("font_color", _skill_forge_result_trace_color(result))
+
+
+func _skill_forge_result_trace_text(result: Dictionary) -> String:
+	var status := str(result.get("status", "")).strip_edges()
+	var directive: Dictionary = result.get("directive", {})
+	if directive.is_empty():
+		return "Spec > Blocked Receipt" if status == "blocked" else "Spec > Receipt"
+
+	var directive_kind := str(directive.get("kind", "")).strip_edges()
+	var has_order := str(result.get("drafted_order_id", "")).strip_edges() != ""
+	if directive_kind == "work_order_directive":
+		if has_order:
+			return "Spec > Directive > Work Order > Harness Receipt" if status in ["passed", "failed"] else "Spec > Directive > Work Order"
+		return "Spec > Directive > Order Blocked"
+	return "Spec > Directive > Forge Receipt"
+
+
+func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
+	var run: Dictionary = result.get("run", {})
+	var directive: Dictionary = result.get("directive", {})
+	var skill_name := str(run.get("skill_name", "Skill Run")).strip_edges()
+	var action := str(directive.get("action", run.get("action", ""))).strip_edges()
+	var directive_kind := str(directive.get("kind", "")).strip_edges()
+	var order_label := str(result.get("drafted_order_label", "")).strip_edges()
+	var detail := str(run.get("result_detail", "")).strip_edges()
+	var text := "Forge trace for %s" % (skill_name if skill_name != "" else "Skill Run")
+	if action != "":
+		text += " | directive %s" % action
+	if directive_kind != "":
+		text += " (%s)" % directive_kind
+	if order_label != "":
+		text += " | work order %s" % order_label
+	if detail != "":
+		text += " | harness receipt %s" % detail
+	return text
+
+
+func _skill_forge_result_trace_color(result: Dictionary) -> Color:
+	match str(result.get("status", "")).strip_edges():
+		"blocked", "failed":
+			return Color("#8a503e")
+		"passed":
+			return Color("#4f7a3a")
+	return Color("#4f6f8f")
+
+
+func _skill_forge_final_tool_label(tools_label: String) -> String:
+	if tools_label == "":
+		return ""
+	var parts := tools_label.split(" -> ", false)
+	if parts.is_empty():
+		return tools_label
+	return str(parts[parts.size() - 1]).strip_edges()
 
 
 func _add_work_order_action_button(parent: HBoxContainer, action_id: String, label: String, tooltip: String) -> void:
