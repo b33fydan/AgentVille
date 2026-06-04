@@ -358,14 +358,16 @@ Mitigation: start with one or two farm skills and one manual trigger.
 
 ### Slice 4: Minimal Forge Panel
 
-- Connect the template library and run harness to a compact panel with template preview and Run button.
-- Record returned Field Log lines and event-log payloads through existing game surfaces.
-- Avoid a full editor until the run harness is visible and useful.
+- Implemented in `scripts/ui/GameUI.gd` and wired from `scripts/core/Game.gd`.
+- Connects the template library and run harness to a compact panel with Tend Crops and Clear Patch preview selectors plus a Run button.
+- Records returned Field Log lines and event-log payloads through existing game surfaces.
+- Covered by `tools/smoke_skill_forge_panel.gd`, including template preview selection and started/passed receipt visibility.
 
 ### Slice 5: Revision Loop
 
 - Show validation errors and failure suggestions.
 - Let the player tweak one or two fields and rerun.
+- Keep this as the last bridge before full Skill Forge editing: visible enough to teach revision, still bounded enough to stay deterministic.
 
 ## Questionnaire For The Big PRD Session
 

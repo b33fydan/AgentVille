@@ -163,6 +163,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_consequence_active_work_signals.gd` exercises consequence-driven active work context in crew rows and NPC reason badges.
 - `tools/smoke_consequence_receipt_language.gd` exercises readable consequence source labels in Field Log receipts, day summaries, vibe reasons, and NPC comments.
 - `tools/smoke_skill_forge_prd.gd` exercises the Skill Forge PRD document keeping its product, spec, safety, implementation, and questionnaire anchors.
+- `tools/smoke_skill_forge_panel.gd` exercises the first visible Skill Forge panel, template preview selection, Run button wiring, and Field Log/event-log receipts.
 - `tools/smoke_skill_forge_run_harness.gd` exercises manual Skill Forge starter runs turning valid specs into deterministic directives, start/pass/fail receipts, and blocked-run Hallucination Drift copy.
 - `tools/smoke_skill_forge_spec_validator.gd` exercises the first Skill Forge validator contract for manual task specs, allowlisted tools, templated receipts, and data-only Hallucination Drift signals.
 - `tools/smoke_skill_forge_templates.gd` exercises static Skill Forge starter templates for Tend Crops and Clear Patch, including validator-clean specs and compact preview data.
@@ -251,6 +252,7 @@ Once the core farm, NPC, mission, memory, Parley, and verification loops feel st
 - The first local rule layer lives in `scripts/systems/SkillSpecValidator.gd`, with smoke coverage in `tools/smoke_skill_forge_spec_validator.gd`.
 - Static starter templates live in `scripts/systems/SkillForgeTemplateLibrary.gd`, validating Tend Crops and Clear Patch before any run harness or UI work begins.
 - The manual run harness lives in `scripts/systems/SkillForgeRunHarness.gd`, turning validated starter specs into local directives plus Field Log and event-log receipt payloads.
+- The first visible panel lives in `scripts/ui/GameUI.gd`, showing Tend Crops and Clear Patch previews and routing Run clicks through the local harness from `scripts/core/Game.gd`.
 - This should teach agent-skill building rather than general programming: triggers, context, tools, steps, receipts, verification, memory, and failure handling.
 - The first version should stay deterministic and local, using safe structured skill specs instead of arbitrary runtime code.
 - Skill runs should reuse existing AgentVille systems: missions become learning objectives, work orders become tool calls, Field Log entries become receipts, and smoke-style checks become visible pass/fail validation.

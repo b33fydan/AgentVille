@@ -16,6 +16,7 @@ signal adversarial_encounter_requested(agent_id: String)
 signal adversarial_response_selected(choice_id: String)
 signal crafting_demand_target_requested(demand_id: String)
 signal crafting_demand_requested(demand_id: String)
+signal skill_forge_run_requested(template_id: String)
 
 const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
 
@@ -50,6 +51,16 @@ var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
 var _work_order_list_stack: VBoxContainer
 var _active_work_order_tool: String = ""
+var _skill_forge_template_buttons: Dictionary = {}
+var _skill_forge_template_previews: Dictionary = {}
+var _skill_forge_template_ids: Array[String] = []
+var _skill_forge_template_button_row: HBoxContainer
+var _active_skill_forge_template_id: String = ""
+var _skill_forge_summary_label: Label
+var _skill_forge_lesson_label: Label
+var _skill_forge_meta_label: Label
+var _skill_forge_result_label: Label
+var _skill_forge_run_button: Button
 var _crew_status_label: Label
 var _parley_button: Button
 var _parley_prompt_active: bool = false
@@ -143,6 +154,44 @@ func set_inventory(resources: Dictionary, crafted_items: Dictionary) -> void:
 	_set_craft_button_state("fence_kit", int(resources.get("fiber", 0)) >= 2 and int(resources.get("grain", 0)) >= 1)
 	_set_craft_button_state("seed_bundle", int(resources.get("grain", 0)) >= 2)
 	_set_craft_button_state("rush_kit", int(resources.get("fiber", 0)) >= 1 and int(resources.get("stone", 0)) >= 1)
+
+
+func set_skill_forge_templates(previews: Array) -> void:
+	_skill_forge_template_previews.clear()
+	_skill_forge_template_ids.clear()
+	var first_template_id := ""
+	for preview in previews:
+		if typeof(preview) != TYPE_DICTIONARY:
+			continue
+		var template_id := str(preview.get("id", "")).strip_edges()
+		if template_id == "":
+			continue
+		if first_template_id == "":
+			first_template_id = template_id
+		_skill_forge_template_ids.append(template_id)
+		_skill_forge_template_previews[template_id] = preview.duplicate(true)
+
+	if first_template_id != "" and not _skill_forge_template_previews.has(_active_skill_forge_template_id):
+		_active_skill_forge_template_id = first_template_id
+
+	_rebuild_skill_forge_template_buttons()
+	_refresh_skill_forge_panel()
+
+
+func set_skill_forge_result(result: Dictionary) -> void:
+	if _skill_forge_result_label == null:
+		return
+	if result.is_empty():
+		_skill_forge_result_label.text = "Ready"
+		_skill_forge_result_label.add_theme_color_override("font_color", Color("#5f7f39"))
+		return
+
+	var status := str(result.get("status", "ready")).strip_edges()
+	var run: Dictionary = result.get("run", {})
+	var skill_name := str(run.get("skill_name", "Skill Run")).strip_edges()
+	_skill_forge_result_label.text = "%s: %s" % [_skill_forge_status_text(status), skill_name]
+	_skill_forge_result_label.tooltip_text = _skill_forge_result_tooltip(result)
+	_skill_forge_result_label.add_theme_color_override("font_color", _skill_forge_status_color(status))
 
 
 func set_work_order(order: Dictionary) -> void:
@@ -778,6 +827,7 @@ func _build_settings_panel() -> void:
 	_build_craft_controls(stack)
 	_build_crafting_demand_controls(stack)
 	_build_work_order_controls(stack)
+	_build_skill_forge_controls(stack)
 
 	var mode_label := Label.new()
 	mode_label.text = "VIEW"
@@ -925,6 +975,208 @@ func _build_work_order_controls(parent: VBoxContainer) -> void:
 	_work_order_list_stack.add_theme_constant_override("separation", 2)
 	stack.add_child(_work_order_list_stack)
 	_add_empty_work_order_row(_work_order_list_stack)
+
+
+func _build_skill_forge_controls(parent: VBoxContainer) -> void:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 78)
+	card.add_theme_stylebox_override("panel", _soft_box(Color("#eef7ee"), 10, 1))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	card.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 2)
+	margin.add_child(stack)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 6)
+	stack.add_child(header)
+
+	var title := Label.new()
+	title.text = "SKILL FORGE"
+	title.add_theme_font_size_override("font_size", 10)
+	title.add_theme_color_override("font_color", Color("#6f8568"))
+	header.add_child(title)
+
+	_skill_forge_result_label = Label.new()
+	_skill_forge_result_label.text = "Ready"
+	_skill_forge_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_skill_forge_result_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_forge_result_label.clip_text = true
+	_skill_forge_result_label.add_theme_font_size_override("font_size", 9)
+	_skill_forge_result_label.add_theme_color_override("font_color", Color("#5f7f39"))
+	header.add_child(_skill_forge_result_label)
+
+	_skill_forge_template_button_row = HBoxContainer.new()
+	_skill_forge_template_button_row.add_theme_constant_override("separation", 5)
+	stack.add_child(_skill_forge_template_button_row)
+
+	_skill_forge_summary_label = Label.new()
+	_skill_forge_summary_label.text = "Load a starter skill spec."
+	_skill_forge_summary_label.custom_minimum_size = Vector2(0, 16)
+	_skill_forge_summary_label.clip_text = true
+	_skill_forge_summary_label.add_theme_font_size_override("font_size", 9)
+	_skill_forge_summary_label.add_theme_color_override("font_color", Color("#3f4a37"))
+	stack.add_child(_skill_forge_summary_label)
+
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 6)
+	stack.add_child(bottom)
+
+	_skill_forge_meta_label = Label.new()
+	_skill_forge_meta_label.text = "Manual | 0 steps | check"
+	_skill_forge_meta_label.clip_text = true
+	_skill_forge_meta_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_forge_meta_label.add_theme_font_size_override("font_size", 9)
+	_skill_forge_meta_label.add_theme_color_override("font_color", Color("#6f8568"))
+	bottom.add_child(_skill_forge_meta_label)
+
+	_skill_forge_lesson_label = Label.new()
+	_skill_forge_lesson_label.text = ""
+	_skill_forge_lesson_label.visible = false
+	_skill_forge_lesson_label.add_theme_font_size_override("font_size", 9)
+	_skill_forge_lesson_label.add_theme_color_override("font_color", Color("#6f8568"))
+	stack.add_child(_skill_forge_lesson_label)
+
+	_skill_forge_run_button = Button.new()
+	_skill_forge_run_button.text = "Run"
+	_skill_forge_run_button.tooltip_text = "Run the selected starter spec through the local harness"
+	_skill_forge_run_button.custom_minimum_size = Vector2(56, 19)
+	_skill_forge_run_button.focus_mode = Control.FOCUS_NONE
+	_skill_forge_run_button.add_theme_font_size_override("font_size", 10)
+	_skill_forge_run_button.add_theme_color_override("font_color", Color("#2d3b1d"))
+	_skill_forge_run_button.add_theme_stylebox_override("normal", _craft_button_style(true))
+	_skill_forge_run_button.add_theme_stylebox_override("hover", _craft_button_style(true))
+	_skill_forge_run_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
+	_skill_forge_run_button.pressed.connect(_on_skill_forge_run_pressed)
+	bottom.add_child(_skill_forge_run_button)
+
+	_refresh_skill_forge_panel()
+
+
+func _rebuild_skill_forge_template_buttons() -> void:
+	if _skill_forge_template_button_row == null:
+		return
+
+	for child in _skill_forge_template_button_row.get_children():
+		child.queue_free()
+	_skill_forge_template_buttons.clear()
+
+	for template_id in _skill_forge_template_ids:
+		if not _skill_forge_template_previews.has(template_id):
+			continue
+		var preview: Dictionary = _skill_forge_template_previews[template_id]
+		var button := Button.new()
+		button.text = _skill_forge_button_text(preview)
+		button.tooltip_text = str(preview.get("lesson", preview.get("summary", "")))
+		button.custom_minimum_size = Vector2(0, 22)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_font_size_override("font_size", 10)
+		button.pressed.connect(_on_skill_forge_template_pressed.bind(str(template_id)))
+		_skill_forge_template_button_row.add_child(button)
+		_skill_forge_template_buttons[template_id] = button
+
+
+func _refresh_skill_forge_panel() -> void:
+	var has_active := _active_skill_forge_template_id != "" and _skill_forge_template_previews.has(_active_skill_forge_template_id)
+	for template_id in _skill_forge_template_buttons.keys():
+		var button := _skill_forge_template_buttons[template_id] as Button
+		var active := str(template_id) == _active_skill_forge_template_id
+		button.add_theme_stylebox_override("normal", _crew_order_button_style(active))
+		button.add_theme_stylebox_override("hover", _crew_order_button_style(true))
+		button.add_theme_stylebox_override("pressed", _crew_order_button_style(true))
+		button.add_theme_color_override("font_color", Color("#23331a") if active else Color("#4b4337"))
+
+	if _skill_forge_run_button:
+		_skill_forge_run_button.disabled = not has_active
+		_skill_forge_run_button.add_theme_color_override("font_color", Color("#2d3b1d") if has_active else Color("#8c8274"))
+		_skill_forge_run_button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+
+	if not has_active:
+		if _skill_forge_summary_label:
+			_skill_forge_summary_label.text = "No starter templates loaded."
+		if _skill_forge_meta_label:
+			_skill_forge_meta_label.text = "Manual | 0 steps | check"
+		if _skill_forge_lesson_label:
+			_skill_forge_lesson_label.text = ""
+		return
+
+	var preview: Dictionary = _skill_forge_template_previews[_active_skill_forge_template_id]
+	if _skill_forge_summary_label:
+		_skill_forge_summary_label.text = str(preview.get("summary", ""))
+	if _skill_forge_lesson_label:
+		_skill_forge_lesson_label.text = str(preview.get("lesson", ""))
+	if _skill_forge_meta_label:
+		_skill_forge_meta_label.text = "Manual | %s steps | %s" % [
+			int(preview.get("step_count", 0)),
+			str(preview.get("success_check", "check"))
+		]
+
+
+func _skill_forge_button_text(preview: Dictionary) -> String:
+	var name := str(preview.get("name", "Skill")).strip_edges()
+	match name:
+		"Tend Crops":
+			return "TND\nCrops"
+		"Clear Patch":
+			return "CLR\nPatch"
+	return name
+
+
+func _on_skill_forge_template_pressed(template_id: String) -> void:
+	if not _skill_forge_template_previews.has(template_id):
+		return
+	_active_skill_forge_template_id = template_id
+	sound_requested.emit("ui_click")
+	_refresh_skill_forge_panel()
+
+
+func _on_skill_forge_run_pressed() -> void:
+	if _active_skill_forge_template_id == "" or not _skill_forge_template_previews.has(_active_skill_forge_template_id):
+		return
+	sound_requested.emit("ui_click")
+	skill_forge_run_requested.emit(_active_skill_forge_template_id)
+
+
+func _skill_forge_status_text(status: String) -> String:
+	match status:
+		"started":
+			return "Started"
+		"passed":
+			return "Passed"
+		"failed":
+			return "Failed"
+		"blocked":
+			return "Blocked"
+	return "Ready"
+
+
+func _skill_forge_status_color(status: String) -> Color:
+	match status:
+		"passed":
+			return Color("#4f7a3a")
+		"failed", "blocked":
+			return Color("#8a503e")
+		"started":
+			return Color("#4f6f8f")
+	return Color("#5f7f39")
+
+
+func _skill_forge_result_tooltip(result: Dictionary) -> String:
+	var run: Dictionary = result.get("run", {})
+	var detail := str(run.get("result_detail", "")).strip_edges()
+	var drift := str(run.get("drift", {}).get("level", "steady")).strip_edges()
+	var text := "Drift: %s" % drift
+	if detail != "":
+		text += " | %s" % detail
+	return text
 
 
 func _add_work_order_action_button(parent: HBoxContainer, action_id: String, label: String, tooltip: String) -> void:

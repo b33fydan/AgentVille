@@ -3,6 +3,8 @@ extends Node
 const GameEventLogScript: Script = preload("res://scripts/ai/GameEventLog.gd")
 const AgentManagerScript: Script = preload("res://scripts/ai/AgentManager.gd")
 const AdversarialSessionManagerScript: Script = preload("res://scripts/ai/AdversarialSessionManager.gd")
+const SkillForgeRunHarnessScript: Script = preload("res://scripts/systems/SkillForgeRunHarness.gd")
+const SkillForgeTemplateLibraryScript: Script = preload("res://scripts/systems/SkillForgeTemplateLibrary.gd")
 const RECIPES: Dictionary = {
 	"fence_kit": {
 		"label": "Fence Kit",
@@ -87,6 +89,8 @@ var _sun: DirectionalLight3D
 var _event_log
 var _agent_manager
 var _adversarial_session
+var _skill_forge_templates = SkillForgeTemplateLibraryScript.new()
+var _skill_forge_run_harness = SkillForgeRunHarnessScript.new()
 var _crew_priority_timer: float = 0.0
 var _next_work_order_number: int = 1
 var _next_crafting_demand_number: int = 1
@@ -112,6 +116,7 @@ func _ready() -> void:
 	camera_controller.center_on_farm()
 	game_ui.set_day(grid_manager.day)
 	game_ui.set_money(money)
+	game_ui.set_skill_forge_templates(_skill_forge_templates.list_template_previews())
 	_refresh_inventory_and_orders()
 
 
@@ -151,6 +156,7 @@ func _connect_systems() -> void:
 	game_ui.adversarial_response_selected.connect(_on_adversarial_response_selected)
 	game_ui.crafting_demand_target_requested.connect(_on_crafting_demand_target_requested)
 	game_ui.crafting_demand_requested.connect(_on_crafting_demand_requested)
+	game_ui.skill_forge_run_requested.connect(_on_skill_forge_run_requested)
 
 	if _agent_manager:
 		_agent_manager.agent_comment.connect(game_ui.show_message)
@@ -291,6 +297,112 @@ func _on_work_order_tool_selected(action_id: String) -> void:
 	game_ui.set_selected_work_order_tool(action_id)
 	game_ui.show_message("%s: mark a farm tile." % str(action.get("verb", "Crew order")))
 	sound_manager.play_stamp("tool_select")
+
+
+func _on_skill_forge_run_requested(template_id: String) -> void:
+	if _skill_forge_templates == null or _skill_forge_run_harness == null:
+		return
+
+	var spec: Dictionary = _skill_forge_templates.get_template_spec(template_id)
+	if spec.is_empty():
+		game_ui.show_message("Unknown Forge template.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var start_result: Dictionary = _skill_forge_run_harness.start_manual_run(spec, _skill_forge_request_for_template(template_id))
+	_apply_skill_forge_result(start_result)
+	if str(start_result.get("status", "")) != "started":
+		game_ui.show_message("Skill Forge blocked the run.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var completion_result: Dictionary = _skill_forge_run_harness.complete_run(start_result, true, {
+		"result_detail": _skill_forge_completion_detail(template_id)
+	})
+	_apply_skill_forge_result(completion_result)
+	game_ui.show_message("Skill Forge run recorded.")
+
+
+func _skill_forge_request_for_template(template_id: String) -> Dictionary:
+	var agent := _skill_forge_agent_for_template(template_id)
+	return {
+		"agent_id": str(agent.get("id", "")),
+		"agent_name": str(agent.get("name", "Crew")),
+		"target_tile": _skill_forge_target_for_template(template_id),
+		"day": grid_manager.day,
+		"source_context": {
+			"source": "skill_forge",
+			"label": "Starter Lab"
+		}
+	}
+
+
+func _skill_forge_agent_for_template(template_id: String) -> Dictionary:
+	match template_id:
+		"clear_patch_starter":
+			return {
+				"id": "chuck",
+				"name": "Chuck"
+			}
+		"tend_crops_starter":
+			return {
+				"id": "marigold",
+				"name": "Marigold"
+			}
+	return {
+		"id": "bert",
+		"name": "Bert"
+	}
+
+
+func _skill_forge_target_for_template(template_id: String) -> Vector2i:
+	match template_id:
+		"clear_patch_starter":
+			var clear_target := _find_demand_target_tile({"kind": "clear_brush"})
+			if clear_target != Vector2i(-1, -1):
+				return clear_target
+			return Vector2i(0, 1)
+		"tend_crops_starter":
+			var crop_target := _first_crop_tile()
+			if crop_target != Vector2i(-1, -1):
+				return crop_target
+			return Vector2i(1, 4)
+	return Vector2i(0, 0)
+
+
+func _first_crop_tile() -> Vector2i:
+	for x in range(grid_manager.width):
+		for z in range(grid_manager.height):
+			var grid_pos := Vector2i(x, z)
+			var tile = grid_manager.get_tile(grid_pos)
+			if tile != null and tile.crop != null:
+				return grid_pos
+	return Vector2i(-1, -1)
+
+
+func _skill_forge_completion_detail(template_id: String) -> String:
+	match template_id:
+		"clear_patch_starter":
+			return "manual harness receipt confirmed clear-patch checks"
+		"tend_crops_starter":
+			return "manual harness receipt confirmed crop-tending checks"
+	return "manual harness receipt recorded"
+
+
+func _apply_skill_forge_result(result: Dictionary) -> void:
+	for line in result.get("field_log_lines", []):
+		game_ui.add_field_log(str(line))
+
+	if _event_log:
+		for entry in result.get("event_log_entries", []):
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			var payload = entry.get("payload", {})
+			if typeof(payload) != TYPE_DICTIONARY:
+				payload = {}
+			_event_log.record_event(str(entry.get("type", "skill_forge_run")), payload)
+
+	game_ui.set_skill_forge_result(result)
 
 
 func _on_crafting_demand_target_requested(demand_id: String) -> void:
