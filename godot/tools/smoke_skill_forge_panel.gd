@@ -49,8 +49,13 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 		return
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label
-	if summary_label == null or not summary_label.text.contains("crop"):
-		_fail("Skill Forge default preview should describe Tend Crops. text=%s" % (summary_label.text if summary_label else ""))
+	if summary_label == null or not summary_label.text.contains("Trigger manual"):
+		_fail("Skill Forge default preview should expose the trigger contract. text=%s" % (summary_label.text if summary_label else ""))
+		return
+
+	var lesson_label = game_ui.get("_skill_forge_lesson_label") as Label
+	if lesson_label == null or not lesson_label.text.contains("tend_crop"):
+		_fail("Skill Forge default preview should expose Tend Crops tools. text=%s" % (lesson_label.text if lesson_label else ""))
 		return
 
 	if not game_ui.is_pointer_over_ui(run_button.get_global_rect().get_center()):
@@ -76,8 +81,13 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 		return
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label
-	if summary_label == null or not summary_label.text.contains("brush"):
-		_fail("Clear Patch preview did not mention brush. text=%s" % (summary_label.text if summary_label else ""))
+	if summary_label == null or not summary_label.text.contains("Context selected_tile"):
+		_fail("Clear Patch preview did not expose selected-tile context. text=%s" % (summary_label.text if summary_label else ""))
+		return
+
+	var lesson_label = game_ui.get("_skill_forge_lesson_label") as Label
+	if lesson_label == null or not lesson_label.text.contains("clear_brush"):
+		_fail("Clear Patch preview did not expose clear_brush tooling. text=%s" % (lesson_label.text if lesson_label else ""))
 		return
 
 	var meta_label = game_ui.get("_skill_forge_meta_label") as Label

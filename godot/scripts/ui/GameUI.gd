@@ -991,7 +991,7 @@ func _build_work_order_controls(parent: VBoxContainer) -> void:
 
 func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 78)
+	card.custom_minimum_size = Vector2(0, 94)
 	card.add_theme_stylebox_override("panel", _soft_box(Color("#eef7ee"), 10, 1))
 	parent.add_child(card)
 
@@ -1051,7 +1051,8 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 
 	_skill_forge_lesson_label = Label.new()
 	_skill_forge_lesson_label.text = ""
-	_skill_forge_lesson_label.visible = false
+	_skill_forge_lesson_label.visible = true
+	_skill_forge_lesson_label.clip_text = true
 	_skill_forge_lesson_label.add_theme_font_size_override("font_size", 9)
 	_skill_forge_lesson_label.add_theme_color_override("font_color", Color("#6f8568"))
 	stack.add_child(_skill_forge_lesson_label)
@@ -1155,13 +1156,19 @@ func _refresh_skill_forge_panel() -> void:
 
 	var preview: Dictionary = _skill_forge_template_previews[_active_skill_forge_template_id]
 	if _skill_forge_summary_label:
-		_skill_forge_summary_label.text = str(preview.get("summary", ""))
+		_skill_forge_summary_label.text = "Trigger %s | Context %s" % [
+			str(preview.get("trigger_type", "manual")),
+			str(preview.get("context_label", preview.get("context", "selected_tile")))
+		]
 	if _skill_forge_lesson_label:
-		_skill_forge_lesson_label.text = str(preview.get("lesson", ""))
+		_skill_forge_lesson_label.text = "Tools %s | Steps %s" % [
+			str(preview.get("tools_label", "")),
+			str(preview.get("step_label", ""))
+		]
 	if _skill_forge_meta_label:
-		_skill_forge_meta_label.text = "Manual | %s steps | %s" % [
-			int(preview.get("step_count", 0)),
-			str(preview.get("success_check", "check"))
+		_skill_forge_meta_label.text = "Check %s | Receipt %s" % [
+			str(preview.get("check_label", preview.get("success_check", "check"))),
+			str(preview.get("receipt_label", "receipt"))
 		]
 
 

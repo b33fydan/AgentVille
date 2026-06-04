@@ -37,20 +37,62 @@ func list_template_previews() -> Array:
 
 
 func _preview_from_spec(spec: Dictionary) -> Dictionary:
+	var context: Dictionary = spec.get("context", {})
 	var success_check: Dictionary = spec.get("success_check", {})
+	var receipt: Dictionary = spec.get("receipt", {})
 	var tools: Array = spec.get("tools", [])
 	var steps: Array = spec.get("steps", [])
+	var context_target := str(context.get("target", ""))
 	return {
 		"id": spec.get("id", ""),
 		"name": spec.get("name", ""),
 		"summary": spec.get("summary", ""),
 		"lesson": spec.get("lesson", ""),
-		"context": str(spec.get("context", {}).get("target", "")),
+		"trigger_type": str(spec.get("trigger", {}).get("type", "")),
+		"context": context_target,
+		"context_label": context_target,
 		"tools": tools.duplicate(),
+		"tools_label": _join_string_values(tools, " -> "),
 		"step_count": steps.size(),
+		"step_label": _step_label(steps),
 		"success_check": success_check.get("type", ""),
-		"receipt_label": spec.get("receipt", {}).get("label", "")
+		"check_label": _check_label(success_check),
+		"receipt_label": receipt.get("label", "")
 	}
+
+
+func _step_label(steps: Array) -> String:
+	var ids := []
+	for step in steps:
+		if typeof(step) != TYPE_DICTIONARY:
+			continue
+		var step_id := str(step.get("id", "")).strip_edges()
+		if step_id != "":
+			ids.append(step_id)
+	if ids.is_empty():
+		return ""
+	return _join_string_values(ids, " -> ")
+
+
+func _check_label(success_check: Dictionary) -> String:
+	var check_type := str(success_check.get("type", "")).strip_edges()
+	var target := str(success_check.get("target", "")).strip_edges()
+	if target == "context.target":
+		target = "selected_tile"
+	if check_type == "":
+		return ""
+	if target == "":
+		return check_type
+	return "%s on %s" % [check_type, target]
+
+
+func _join_string_values(values: Array, separator: String) -> String:
+	var strings := []
+	for value in values:
+		var text := str(value).strip_edges()
+		if text != "":
+			strings.append(text)
+	return separator.join(strings)
 
 
 func _tend_crops_spec() -> Dictionary:

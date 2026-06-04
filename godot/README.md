@@ -165,6 +165,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_skill_forge_prd.gd` exercises the Skill Forge PRD document keeping its product, spec, safety, implementation, and questionnaire anchors.
 - `tools/smoke_skill_forge_panel.gd` exercises the first visible Skill Forge panel, template preview selection, Run button wiring, and Field Log/event-log receipts.
 - `tools/smoke_skill_forge_revision_loop.gd` exercises the visible Forge revision loop: blocked draft checks, Hallucination Drift copy, Fix reruns, and pass receipts.
+- `tools/smoke_skill_forge_spec_preview.gd` exercises structured starter-spec preview fields for trigger, context, ordered tools, steps, checks, and receipts.
 - `tools/smoke_skill_forge_run_harness.gd` exercises manual Skill Forge starter runs turning valid specs into deterministic directives, start/pass/fail receipts, and blocked-run Hallucination Drift copy.
 - `tools/smoke_skill_forge_spec_validator.gd` exercises the first Skill Forge validator contract for manual task specs, allowlisted tools, templated receipts, and data-only Hallucination Drift signals.
 - `tools/smoke_skill_forge_templates.gd` exercises static Skill Forge starter templates for Tend Crops and Clear Patch, including validator-clean specs and compact preview data.
@@ -255,6 +256,7 @@ Once the core farm, NPC, mission, memory, Parley, and verification loops feel st
 - The manual run harness lives in `scripts/systems/SkillForgeRunHarness.gd`, turning validated starter specs into local directives plus Field Log and event-log receipt payloads.
 - The first visible panel lives in `scripts/ui/GameUI.gd`, showing Tend Crops and Clear Patch previews and routing Run clicks through the local harness from `scripts/core/Game.gd`.
 - The bounded revision loop lives in the same panel: Check runs a flawed starter draft, shows the validator issue and suggestion, and Fix reruns the clean template.
+- Starter previews now show the structured skill contract directly in the panel: trigger, context, tools, steps, success check, and receipt.
 - This should teach agent-skill building rather than general programming: triggers, context, tools, steps, receipts, verification, memory, and failure handling.
 - The first version should stay deterministic and local, using safe structured skill specs instead of arbitrary runtime code.
 - Skill runs should reuse existing AgentVille systems: missions become learning objectives, work orders become tool calls, Field Log entries become receipts, and smoke-style checks become visible pass/fail validation.

@@ -370,6 +370,13 @@ Mitigation: start with one or two farm skills and one manual trigger.
 - Records blocked and passed receipts through existing Field Log and event-log surfaces.
 - Covered by `tools/smoke_skill_forge_revision_loop.gd`.
 
+### Slice 6: Structured Spec Preview
+
+- Implemented in `scripts/systems/SkillForgeTemplateLibrary.gd` and rendered in `scripts/ui/GameUI.gd`.
+- Extends starter template previews with compact contract fields: trigger, context, ordered tools, step ids, success check, and receipt label.
+- Shows those fields directly in the Forge panel so players can read the agent-skill shape before a full editor exists.
+- Covered by `tools/smoke_skill_forge_spec_preview.gd`.
+
 ## Questionnaire For The Big PRD Session
 
 Use these questions when you sit down to think through the full Forge vision.
