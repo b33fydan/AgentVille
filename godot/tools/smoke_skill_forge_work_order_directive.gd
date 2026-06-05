@@ -123,6 +123,12 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		_fail("Tend Crops receipt-only run did not still pass. entries=%s" % str(field_log_entries))
 		return
 
+	var result_label = game_ui.get("_skill_forge_result_label") as Label
+	var result_tooltip := str(result_label.tooltip_text) if result_label != null else ""
+	if result_label == null or not result_tooltip.contains("Stage: Forge Receipt"):
+		_fail("Tend Crops result tooltip did not expose the Forge-only receipt stage. tooltip=%s" % result_tooltip)
+		return
+
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	if trace_label == null or str(trace_label.text) != "Spec > Directive > Forge Receipt":
 		_fail("Tend Crops did not show a Forge-only receipt trace. text=%s" % (trace_label.text if trace_label else ""))
@@ -205,6 +211,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	var result_tooltip := str(result_label.tooltip_text)
 	if not result_tooltip.contains("Order blocked: target changed") or not result_tooltip.contains("Clear Patch"):
 		_fail("Order-blocked result tooltip did not keep the blocked-order detail. tooltip=%s" % result_tooltip)
+		return
+	if not result_tooltip.contains("Stage: Order Blocked"):
+		_fail("Order-blocked result tooltip did not expose the order-blocked stage. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("History: Order Blocked Clear Patch"):
 		_fail("Order-blocked result tooltip did not keep the blocked-order history endpoint. tooltip=%s" % result_tooltip)

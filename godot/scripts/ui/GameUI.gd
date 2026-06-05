@@ -1367,7 +1367,10 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var suggestion := str(run.get("failure_suggestion", "")).strip_edges()
 	var blocked_reason := str(result.get("drafted_order_blocked_reason", "")).strip_edges()
 	var blocked_detail := str(result.get("drafted_order_blocked_detail", "")).strip_edges()
+	var stage := _skill_forge_result_history_stage(result)
 	var text := "Drift: %s" % drift
+	if stage != "":
+		text += " | Stage: %s" % stage
 	if detail != "":
 		text += " | %s" % detail
 	if blocked_detail != "":
