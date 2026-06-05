@@ -535,6 +535,9 @@ func _maybe_draft_skill_forge_work_order(result: Dictionary) -> String:
 	if skill_name == "":
 		skill_name = "Skill Run"
 	if target_tile == Vector2i(-1, -1) or not _can_target_crew_order(action_id, target_tile):
+		var target_label := "%s,%s" % [target_tile.x, target_tile.y] if target_tile != Vector2i(-1, -1) else "unknown target"
+		result["drafted_order_blocked_reason"] = "target changed"
+		result["drafted_order_blocked_detail"] = "target changed before %s could draft %s crew work at %s" % [skill_name, action_id, target_label]
 		game_ui.add_field_log("Forge order blocked: target changed for %s." % skill_name)
 		return ""
 

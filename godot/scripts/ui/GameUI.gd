@@ -1372,6 +1372,8 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	var action := str(directive.get("action", run.get("action", ""))).strip_edges()
 	var directive_kind := str(directive.get("kind", "")).strip_edges()
 	var order_label := str(result.get("drafted_order_label", "")).strip_edges()
+	var blocked_reason := str(result.get("drafted_order_blocked_reason", "")).strip_edges()
+	var blocked_detail := str(result.get("drafted_order_blocked_detail", "")).strip_edges()
 	var detail := str(run.get("result_detail", "")).strip_edges()
 	var text := "Forge trace for %s" % (skill_name if skill_name != "" else "Skill Run")
 	text += _skill_forge_context_trace_suffix(
@@ -1387,6 +1389,10 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 		text += " | receipt-only until this action has a crew-order path"
 	if order_label != "":
 		text += " | work order %s" % order_label
+	if blocked_detail != "":
+		text += " | order blocked: %s" % blocked_detail
+	elif blocked_reason != "":
+		text += " | order blocked: %s" % blocked_reason
 	if detail != "":
 		text += " | harness receipt %s" % detail
 	text += _skill_forge_history_tooltip_suffix()

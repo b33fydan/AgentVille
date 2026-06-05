@@ -23,6 +23,11 @@ func _run() -> void:
 		return
 
 	scene.queue_free()
+	await process_frame
+	await _test_clear_patch_order_blocked_trace()
+	if _failed:
+		return
+
 	if not _failed:
 		quit()
 
@@ -126,6 +131,66 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("agent Marigold") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Tend Crops trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
+
+
+func _test_clear_patch_order_blocked_trace() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	root.size = Vector2i(1600, 900)
+	await process_frame
+	await process_frame
+
+	var game_ui = scene.get_node("GameUI")
+	_select_template(game_ui, "clear_patch_starter")
+	if _failed:
+		return
+
+	var request: Dictionary = scene.call("_skill_forge_request_for_template", "clear_patch_starter")
+	var target_tile: Vector2i = request.get("target_tile", Vector2i(-1, -1))
+	if target_tile == Vector2i(-1, -1) or not scene.call("_can_target_crew_order", "clear_brush", target_tile):
+		_fail("Clear Patch smoke could not find an initial clear_brush target. request=%s" % str(request))
+		return
+
+	var tile = scene.get_node("FarmWorld/GridManager").get_tile(target_tile)
+	if tile == null:
+		_fail("Clear Patch order-blocked smoke target tile was missing.")
+		return
+	tile.set_terrain("grass")
+	if scene.call("_can_target_crew_order", "clear_brush", target_tile):
+		_fail("Clear Patch target stayed valid after being cleared. target=%s tile=%s" % [str(target_tile), str(tile)])
+		return
+
+	var templates = scene.get("_skill_forge_templates")
+	var harness = scene.get("_skill_forge_run_harness")
+	if templates == null or harness == null:
+		_fail("Skill Forge internals were missing for order-blocked smoke.")
+		return
+
+	var spec: Dictionary = templates.get_template_spec("clear_patch_starter")
+	var start_result: Dictionary = harness.start_manual_run(spec, request)
+	scene.call("_apply_skill_forge_result", start_result)
+	await process_frame
+
+	if _forge_order_count(scene) != 0:
+		_fail("Order-blocked Clear Patch should not draft a Forge work order. count=%s" % _forge_order_count(scene))
+		return
+
+	var field_log_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(field_log_entries, "Forge order blocked: target changed for Clear Patch."):
+		_fail("Order-blocked Clear Patch did not leave a Field Log reason. entries=%s" % str(field_log_entries))
+		return
+
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Spec > Directive > Order Blocked":
+		_fail("Order-blocked Clear Patch did not show the blocked trace. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	var trace_tooltip := str(trace_label.tooltip_text)
+	if not trace_tooltip.contains("order blocked: target changed") or not trace_tooltip.contains("clear_brush") or not trace_tooltip.contains("Clear Patch"):
+		_fail("Order-blocked trace did not explain the blocked directive. tooltip=%s" % trace_tooltip)
+		return
+
+	scene.queue_free()
+	await process_frame
 
 
 func _select_template(game_ui, template_id: String) -> void:
