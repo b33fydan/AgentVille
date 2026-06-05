@@ -126,6 +126,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
 		_fail("Skill Forge run did not show the spec-to-order trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
+	if not str(trace_label.tooltip_text).contains("History: Passed Clear Patch"):
+		_fail("Skill Forge run history did not remember the passed harness receipt. tooltip=%s" % str(trace_label.tooltip_text))
+		return
 
 	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 6)
 	if not _event_exists(events, "skill_forge_run", "started"):

@@ -95,6 +95,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not str(trace_label.tooltip_text).contains(receipt):
 		_fail("Forge trace tooltip did not preserve the readable agent receipt. tooltip=%s receipt=%s" % [str(trace_label.tooltip_text), receipt])
 		return
+	if not str(trace_label.tooltip_text).contains("History: Agent Receipt Clear Patch") or not str(trace_label.tooltip_text).contains("Passed Clear Patch"):
+		_fail("Forge trace tooltip did not keep recent Forge receipt history. tooltip=%s" % str(trace_label.tooltip_text))
+		return
 
 	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)
 	if not _summary_has_forge_work(summary, str(order.get("forge_run_id", "")), "Clear Patch"):

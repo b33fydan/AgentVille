@@ -67,6 +67,7 @@ var _skill_forge_run_button: Button
 var _skill_forge_review_button: Button
 var _skill_forge_revision_button: Button
 var _skill_forge_last_blocked_template_id: String = ""
+var _skill_forge_history_entries: Array[String] = []
 var _crew_status_label: Label
 var _parley_button: Button
 var _parley_prompt_active: bool = false
@@ -191,12 +192,14 @@ func set_skill_forge_result(result: Dictionary) -> void:
 		_skill_forge_result_label.text = "Ready"
 		_skill_forge_result_label.add_theme_color_override("font_color", Color("#5f7f39"))
 		_skill_forge_last_blocked_template_id = ""
+		_skill_forge_history_entries.clear()
 		_refresh_skill_forge_panel()
 		return
 
 	var status := str(result.get("status", "ready")).strip_edges()
 	var run: Dictionary = result.get("run", {})
 	var skill_name := str(run.get("skill_name", "Skill Run")).strip_edges()
+	_record_skill_forge_history_from_result(result)
 	_skill_forge_result_label.text = "%s: %s" % [_skill_forge_status_text(status), skill_name]
 	_skill_forge_result_label.tooltip_text = _skill_forge_result_tooltip(result)
 	_skill_forge_result_label.add_theme_color_override("font_color", _skill_forge_status_color(status))
@@ -214,8 +217,13 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	var skill_name := str(event.get("skill_name", "Skill Run")).strip_edges()
 	if skill_name == "":
 		skill_name = "Skill Run"
+	_record_skill_forge_history_text("Agent Receipt %s" % skill_name)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > Agent Receipt"
-	_skill_forge_trace_label.tooltip_text = "Forge trace for %s ended in agent receipt: %s" % [skill_name, receipt_text]
+	_skill_forge_trace_label.tooltip_text = "Forge trace for %s ended in agent receipt: %s%s" % [
+		skill_name,
+		receipt_text,
+		_skill_forge_history_tooltip_suffix()
+	]
 	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f7a3a"))
 
 
@@ -1316,6 +1324,7 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var text := "Drift: %s" % drift
 	if detail != "":
 		text += " | %s" % detail
+	text += _skill_forge_history_tooltip_suffix()
 	return text
 
 
@@ -1367,6 +1376,7 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 		text += " | work order %s" % order_label
 	if detail != "":
 		text += " | harness receipt %s" % detail
+	text += _skill_forge_history_tooltip_suffix()
 	return text
 
 
@@ -1386,6 +1396,40 @@ func _skill_forge_final_tool_label(tools_label: String) -> String:
 	if parts.is_empty():
 		return tools_label
 	return str(parts[parts.size() - 1]).strip_edges()
+
+
+func _record_skill_forge_history_from_result(result: Dictionary) -> void:
+	var status := str(result.get("status", "")).strip_edges()
+	if status not in ["passed", "failed", "blocked"]:
+		return
+
+	var run: Dictionary = result.get("run", {})
+	var skill_name := str(run.get("skill_name", "Skill Run")).strip_edges()
+	if skill_name == "":
+		skill_name = "Skill Run"
+	var detail := str(run.get("result_detail", "")).strip_edges()
+	if detail == "" and status == "blocked":
+		detail = _skill_forge_first_issue_text(result)
+
+	var text := "%s %s" % [_skill_forge_status_text(status), skill_name]
+	if detail != "":
+		text += ": %s" % detail
+	_record_skill_forge_history_text(text)
+
+
+func _record_skill_forge_history_text(text: String) -> void:
+	text = text.strip_edges()
+	if text == "":
+		return
+	_skill_forge_history_entries.push_front(text)
+	while _skill_forge_history_entries.size() > 2:
+		_skill_forge_history_entries.pop_back()
+
+
+func _skill_forge_history_tooltip_suffix() -> String:
+	if _skill_forge_history_entries.is_empty():
+		return ""
+	return " | History: %s" % " ; ".join(_skill_forge_history_entries)
 
 
 func _add_work_order_action_button(parent: HBoxContainer, action_id: String, label: String, tooltip: String) -> void:

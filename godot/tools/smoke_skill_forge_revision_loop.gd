@@ -84,6 +84,11 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 		_fail("Blocked draft did not record hallucinating drift. events=%s" % str(events))
 		return
 
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or not str(trace_label.tooltip_text).contains("History: Blocked Clear Patch"):
+		_fail("Blocked draft did not land in the Forge history tooltip. tooltip=%s" % (trace_label.tooltip_text if trace_label else ""))
+		return
+
 
 func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	var fix_button = game_ui.get("_skill_forge_revision_button") as Button
@@ -106,6 +111,15 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 8)
 	if not _event_exists(events, "skill_forge_run", "passed"):
 		_fail("Clean revision did not record a passed event. events=%s" % str(events))
+		return
+
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null:
+		_fail("Clean revision did not keep the Forge trace label.")
+		return
+	var trace_tooltip := str(trace_label.tooltip_text)
+	if not trace_tooltip.contains("History: Passed Clear Patch") or not trace_tooltip.contains("Blocked Clear Patch"):
+		_fail("Clean revision history did not keep the recent pass/block receipts. tooltip=%s" % trace_tooltip)
 		return
 
 
