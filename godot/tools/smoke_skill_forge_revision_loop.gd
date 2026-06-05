@@ -85,8 +85,12 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or not str(trace_label.tooltip_text).contains("History: Blocked Clear Patch"):
-		_fail("Blocked draft did not land in the Forge history tooltip. tooltip=%s" % (trace_label.tooltip_text if trace_label else ""))
+	var blocked_tooltip := str(trace_label.tooltip_text) if trace_label != null else ""
+	if trace_label == null or not blocked_tooltip.contains("History: Blocked Clear Patch"):
+		_fail("Blocked draft did not land in the Forge history tooltip. tooltip=%s" % blocked_tooltip)
+		return
+	if not blocked_tooltip.contains("[Drift hallucinating]") or not blocked_tooltip.contains("Fix: Replace summon_rain with clear_brush"):
+		_fail("Blocked draft history did not keep Drift and Fix detail. tooltip=%s" % blocked_tooltip)
 		return
 
 
@@ -120,6 +124,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	var trace_tooltip := str(trace_label.tooltip_text)
 	if not trace_tooltip.contains("History: Passed Clear Patch") or not trace_tooltip.contains("Blocked Clear Patch"):
 		_fail("Clean revision history did not keep the recent pass/block receipts. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("[Drift hallucinating]") or not trace_tooltip.contains("Fix: Replace summon_rain with clear_brush"):
+		_fail("Clean revision history dropped blocked-run repair detail. tooltip=%s" % trace_tooltip)
 		return
 
 

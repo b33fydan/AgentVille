@@ -1469,8 +1469,16 @@ func _record_skill_forge_history_from_result(result: Dictionary) -> void:
 		detail = _skill_forge_first_issue_text(result)
 
 	var text := "%s %s" % [_skill_forge_status_text(status), skill_name]
+	if status == "blocked":
+		var drift_level := str(run.get("drift", {}).get("level", "")).strip_edges()
+		if drift_level != "" and drift_level != "steady":
+			text += " [Drift %s]" % drift_level
 	if detail != "":
 		text += ": %s" % detail
+	if status == "blocked":
+		var suggestion := str(run.get("failure_suggestion", "")).strip_edges()
+		if suggestion != "":
+			text += " Fix: %s" % suggestion
 	_record_skill_forge_history_text(text)
 
 
