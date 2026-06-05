@@ -246,6 +246,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	var trace_detail := "queued work order"
 	if status_text == "Crew Waiting":
 		trace_detail = "waiting for crew: work order"
+	_record_skill_forge_work_stage_history(order, status_text)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > %s" % status_text
 	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s %s: %s%s" % [
 		skill_name,
@@ -1577,12 +1578,24 @@ func _skill_forge_result_history_stage(result: Dictionary) -> String:
 	return "Forge Receipt" if directive_kind != "" else ""
 
 
+func _record_skill_forge_work_stage_history(order: Dictionary, status_text: String) -> void:
+	status_text = status_text.strip_edges()
+	if status_text not in ["Crew Queued", "Crew Waiting"]:
+		return
+	var skill_name := str(order.get("skill_name", order.get("preference_label", "Skill Run"))).strip_edges()
+	if skill_name == "":
+		skill_name = "Skill Run"
+	_record_skill_forge_history_text("%s %s" % [status_text, skill_name])
+
+
 func _record_skill_forge_history_text(text: String) -> void:
 	text = text.strip_edges()
 	if text == "":
 		return
+	if not _skill_forge_history_entries.is_empty() and _skill_forge_history_entries[0] == text:
+		return
 	_skill_forge_history_entries.push_front(text)
-	while _skill_forge_history_entries.size() > 2:
+	while _skill_forge_history_entries.size() > 3:
 		_skill_forge_history_entries.pop_back()
 
 
