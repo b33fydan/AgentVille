@@ -136,6 +136,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("agent Chuck") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Skill Forge run trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("run forge_run_") or not trace_tooltip.contains("work order order_"):
+		_fail("Skill Forge run trace did not expose compact run/order identity. tooltip=%s" % trace_tooltip)
+		return
 
 	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 6)
 	if not _event_exists(events, "skill_forge_run", "started"):

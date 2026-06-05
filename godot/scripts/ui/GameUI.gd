@@ -226,7 +226,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 			str(event.get("agent_name", "")),
 			event.get("grid_pos", Vector2i(-1, -1)),
 			event.get("forge_source_context", {})
-		),
+		) + _skill_forge_identity_trace_suffix(str(event.get("forge_run_id", "")), str(event.get("work_order_id", ""))),
 		receipt_text,
 		_skill_forge_history_tooltip_suffix()
 	]
@@ -253,7 +253,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 			str(order.get("agent_name", "")),
 			order.get("target_tile", Vector2i(-1, -1)),
 			order.get("source_context", {})
-		),
+		) + _skill_forge_identity_trace_suffix(str(order.get("forge_run_id", "")), str(order.get("id", ""))),
 		trace_detail,
 		order_label,
 		_skill_forge_history_tooltip_suffix()
@@ -1426,6 +1426,7 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 		run.get("target_tile", Vector2i(-1, -1)),
 		run.get("source_context", {})
 	)
+	text += _skill_forge_identity_trace_suffix(str(run.get("id", "")), str(result.get("drafted_order_id", "")))
 	if action != "":
 		text += " | directive %s" % action
 	if directive_kind != "":
@@ -1482,6 +1483,19 @@ func _skill_forge_context_trace_suffix(agent_name: String, target_value, source_
 	if source_text != "":
 		parts.append("source %s" % source_text)
 
+	if parts.is_empty():
+		return ""
+	return " | %s" % " | ".join(parts)
+
+
+func _skill_forge_identity_trace_suffix(run_id: String, order_id: String = "") -> String:
+	var parts: Array[String] = []
+	run_id = run_id.strip_edges()
+	order_id = order_id.strip_edges()
+	if run_id != "":
+		parts.append("run %s" % run_id)
+	if order_id != "":
+		parts.append("work order %s" % order_id)
 	if parts.is_empty():
 		return ""
 	return " | %s" % " | ".join(parts)
