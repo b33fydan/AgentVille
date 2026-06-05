@@ -124,6 +124,10 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if result_label == null or not result_label.text.contains("Passed"):
 		_fail("Skill Forge result label did not show the completed run status. text=%s" % (result_label.text if result_label else ""))
 		return
+	var result_tooltip := str(result_label.tooltip_text)
+	if not result_tooltip.contains("run forge_run_") or not result_tooltip.contains("work order order_"):
+		_fail("Skill Forge result tooltip did not expose compact run/order identity. tooltip=%s" % result_tooltip)
+		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
@@ -200,6 +204,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	var result_tooltip := str(result_label.tooltip_text)
 	if not result_tooltip.contains("selected tile had no brush") or not result_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge result tooltip did not keep receipt detail and repair hint. tooltip=%s" % result_tooltip)
+		return
+	if not result_tooltip.contains("run forge_run_") or not result_tooltip.contains("work order order_"):
+		_fail("Failed Forge result tooltip did not expose compact run/order identity. tooltip=%s" % result_tooltip)
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label

@@ -1375,6 +1375,7 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 		text += " | Order blocked: %s" % blocked_reason
 	if status in ["failed", "blocked"] and suggestion != "":
 		text += " | Fix: %s" % suggestion
+	text += _skill_forge_identity_trace_suffix(str(run.get("id", "")), str(result.get("drafted_order_id", "")))
 	text += _skill_forge_history_tooltip_suffix()
 	return text
 

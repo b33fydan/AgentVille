@@ -200,6 +200,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not result_tooltip.contains("Order blocked: target changed") or not result_tooltip.contains("Clear Patch"):
 		_fail("Order-blocked result tooltip did not keep the blocked-order detail. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("run forge_run_"):
+		_fail("Order-blocked result tooltip did not expose compact run identity. tooltip=%s" % result_tooltip)
+		return
 
 	scene.queue_free()
 	await process_frame
