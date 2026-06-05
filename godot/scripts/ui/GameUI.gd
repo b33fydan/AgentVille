@@ -1239,7 +1239,7 @@ func _refresh_skill_forge_panel() -> void:
 		]
 	if _skill_forge_trace_label:
 		_skill_forge_trace_label.text = _skill_forge_preview_trace_text(preview)
-		_skill_forge_trace_label.tooltip_text = "Preview trace for %s: spec tools %s%s" % [
+		_skill_forge_trace_label.tooltip_text = "Preview trace for %s | Stage: Spec Preview | spec tools %s%s" % [
 			str(preview.get("name", "Skill Run")),
 			str(preview.get("tools_label", "")),
 			_skill_forge_history_tooltip_suffix()

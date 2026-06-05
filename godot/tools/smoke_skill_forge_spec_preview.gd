@@ -90,6 +90,11 @@ func _test_panel_renders_structured_contract() -> void:
 	if not meta_label.text.contains("Receipt Clear Patch run"):
 		_fail("Panel meta did not show the receipt label. text=%s" % meta_label.text)
 		return
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	var trace_tooltip := str(trace_label.tooltip_text) if trace_label != null else ""
+	if trace_label == null or not trace_tooltip.contains("Stage: Spec Preview"):
+		_fail("Panel preview trace did not expose the spec-preview stage. tooltip=%s" % trace_tooltip)
+		return
 
 	scene.queue_free()
 

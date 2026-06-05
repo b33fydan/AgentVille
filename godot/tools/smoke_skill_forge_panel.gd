@@ -60,6 +60,11 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if lesson_label == null or not lesson_label.text.contains("tend_crop"):
 		_fail("Skill Forge default preview should expose Tend Crops tools. text=%s" % (lesson_label.text if lesson_label else ""))
 		return
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	var preview_tooltip := str(trace_label.tooltip_text) if trace_label != null else ""
+	if trace_label == null or not preview_tooltip.contains("Stage: Spec Preview"):
+		_fail("Skill Forge default preview did not expose the spec-preview stage. tooltip=%s" % preview_tooltip)
+		return
 
 	if not game_ui.is_pointer_over_ui(run_button.get_global_rect().get_center()):
 		_fail("Skill Forge run button was not registered as part of the UI hit region.")
@@ -101,6 +106,10 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	if trace_label == null or str(trace_label.text) != "Spec > clear_brush":
 		_fail("Clear Patch preview did not expose the compact Forge trace. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	var preview_tooltip := str(trace_label.tooltip_text)
+	if not preview_tooltip.contains("Stage: Spec Preview"):
+		_fail("Clear Patch preview did not expose the spec-preview stage. tooltip=%s" % preview_tooltip)
 		return
 
 
@@ -177,6 +186,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	if not preview_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Forge preview tooltip did not keep the harness endpoint in recent run history. tooltip=%s" % preview_tooltip)
+		return
+	if not preview_tooltip.contains("Stage: Spec Preview"):
+		_fail("Forge preview tooltip did not restore the spec-preview stage after template switch. tooltip=%s" % preview_tooltip)
 		return
 
 
