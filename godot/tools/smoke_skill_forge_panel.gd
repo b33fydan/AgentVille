@@ -142,6 +142,21 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		_fail("Skill Forge UI run did not record a passed event. events=%s" % str(events))
 		return
 
+	var buttons: Dictionary = game_ui.get("_skill_forge_template_buttons")
+	var tend_button = buttons.get("tend_crops_starter", null) as Button
+	if tend_button == null:
+		_fail("Tend Crops template button missing after run.")
+		return
+	tend_button.pressed.emit()
+
+	if str(trace_label.text) != "Spec > tend_crop":
+		_fail("Switching templates did not restore Tend Crops preview trace. text=%s" % str(trace_label.text))
+		return
+	var preview_tooltip := str(trace_label.tooltip_text)
+	if not preview_tooltip.contains("Preview trace for Tend Crops") or not preview_tooltip.contains("History: Passed Clear Patch"):
+		_fail("Forge preview tooltip did not keep recent run history after template switch. tooltip=%s" % preview_tooltip)
+		return
+
 
 func _entries_contain(entries: Array, needle: String) -> bool:
 	for entry in entries:
