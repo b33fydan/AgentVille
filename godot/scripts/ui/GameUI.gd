@@ -2003,7 +2003,9 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 		"held_truce":
 			return _with_origin_suffix("Held truce: %s" % label if label != "" else "Influenced by a held truce", origin_suffix)
 		"skill_forge":
-			return "Skill Forge: %s" % label if label != "" else "Drafted by Skill Forge"
+			var tooltip := "Skill Forge: %s" % label if label != "" else "Drafted by Skill Forge"
+			tooltip += _skill_forge_identity_trace_suffix(str(order.get("forge_run_id", "")), str(order.get("id", "")))
+			return tooltip
 	return ""
 
 
