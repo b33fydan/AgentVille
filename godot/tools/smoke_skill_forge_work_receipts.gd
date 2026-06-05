@@ -9,6 +9,9 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _test_forge_order_completion_keeps_skill_context()
+	if _failed:
+		return
+	await _test_forge_waiting_order_traces_busy_crew()
 	if not _failed:
 		quit()
 
@@ -129,6 +132,56 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if formatted_summary.contains("skill_forge"):
 		_fail("Formatted day summary leaked raw Forge source. saw=%s" % formatted_summary)
+		return
+
+	scene.queue_free()
+	await process_frame
+
+
+func _test_forge_waiting_order_traces_busy_crew() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	root.size = Vector2i(1600, 900)
+	await process_frame
+	await process_frame
+
+	var game_ui = scene.get_node("GameUI")
+	_select_template(game_ui, "clear_patch_starter")
+	if _failed:
+		return
+
+	var run_button = game_ui.get("_skill_forge_run_button") as Button
+	if run_button == null:
+		_fail("Skill Forge run button missing before waiting trace smoke.")
+		return
+	run_button.pressed.emit()
+	await process_frame
+
+	var order_id := _latest_forge_order_id(scene, "clear_patch_starter")
+	if order_id == "" or not scene.work_orders.has(order_id):
+		_fail("Clear Patch did not draft a Forge work order for waiting trace smoke.")
+		return
+
+	var agent_manager = scene.get_node("FarmWorld/AgentManager")
+	agent_manager.agents.clear()
+	scene.call("_on_work_order_requested", order_id)
+	await process_frame
+
+	var order: Dictionary = scene.work_orders.get(order_id, {})
+	if str(order.get("status", "")) != "waiting" or str(order.get("status_text", "")) != "Waiting crew":
+		_fail("Forge work order did not enter waiting state with busy crew. order=%s" % str(order))
+		return
+
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Crew Waiting":
+		_fail("Forge panel did not trace waiting crew work. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	var trace_tooltip := str(trace_label.tooltip_text)
+	if not trace_tooltip.contains("waiting for crew") or not trace_tooltip.contains("Clear Patch") or not trace_tooltip.contains("source Starter Lab"):
+		_fail("Forge waiting trace did not preserve readable work context. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("History: Passed Clear Patch"):
+		_fail("Forge waiting trace did not preserve recent receipt history. tooltip=%s" % trace_tooltip)
 		return
 
 	scene.queue_free()

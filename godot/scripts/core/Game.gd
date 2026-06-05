@@ -2647,6 +2647,7 @@ func _mark_order_waiting(order_id: String) -> void:
 	work_orders[order_id] = order
 	_refresh_work_orders()
 	_refresh_crafting_demands()
+	_maybe_update_skill_forge_work_order_trace(order, "Crew Waiting")
 
 
 func _reserve_required_item_for_order(order: Dictionary) -> bool:

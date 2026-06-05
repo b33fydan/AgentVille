@@ -243,18 +243,22 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	var status_text := trace_status.strip_edges()
 	if status_text == "":
 		status_text = "Crew Queued"
+	var trace_detail := "queued work order"
+	if status_text == "Crew Waiting":
+		trace_detail = "waiting for crew: work order"
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > %s" % status_text
-	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s queued work order: %s%s" % [
+	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s %s: %s%s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
 			str(order.get("agent_name", "")),
 			order.get("target_tile", Vector2i(-1, -1)),
 			order.get("source_context", {})
 		),
+		trace_detail,
 		order_label,
 		_skill_forge_history_tooltip_suffix()
 	]
-	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
+	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#8a503e") if status_text == "Crew Waiting" else Color("#4f6f8f"))
 
 
 func set_work_order(order: Dictionary) -> void:
