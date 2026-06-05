@@ -1324,12 +1324,16 @@ func _skill_forge_status_color(status: String) -> Color:
 
 
 func _skill_forge_result_tooltip(result: Dictionary) -> String:
+	var status := str(result.get("status", "")).strip_edges()
 	var run: Dictionary = result.get("run", {})
 	var detail := str(run.get("result_detail", "")).strip_edges()
 	var drift := str(run.get("drift", {}).get("level", "steady")).strip_edges()
+	var suggestion := str(run.get("failure_suggestion", "")).strip_edges()
 	var text := "Drift: %s" % drift
 	if detail != "":
 		text += " | %s" % detail
+	if status in ["failed", "blocked"] and suggestion != "":
+		text += " | Fix: %s" % suggestion
 	text += _skill_forge_history_tooltip_suffix()
 	return text
 
@@ -1481,7 +1485,7 @@ func _record_skill_forge_history_from_result(result: Dictionary) -> void:
 			text += " [Drift %s]" % drift_level
 	if detail != "":
 		text += ": %s" % detail
-	if status == "blocked":
+	if status in ["blocked", "failed"]:
 		var suggestion := str(run.get("failure_suggestion", "")).strip_edges()
 		if suggestion != "":
 			text += " Fix: %s" % suggestion

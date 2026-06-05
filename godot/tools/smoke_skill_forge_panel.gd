@@ -24,6 +24,9 @@ func _run() -> void:
 	await _test_run_button_records_receipts(scene, game_ui)
 	if _failed:
 		return
+	await _test_failed_harness_receipt_keeps_repair_hint(scene, game_ui)
+	if _failed:
+		return
 
 	scene.queue_free()
 	if not _failed:
@@ -155,6 +158,62 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	var preview_tooltip := str(trace_label.tooltip_text)
 	if not preview_tooltip.contains("Preview trace for Tend Crops") or not preview_tooltip.contains("History: Passed Clear Patch"):
 		_fail("Forge preview tooltip did not keep recent run history after template switch. tooltip=%s" % preview_tooltip)
+		return
+
+
+func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> void:
+	var buttons_value = game_ui.get("_skill_forge_template_buttons")
+	if typeof(buttons_value) != TYPE_DICTIONARY:
+		_fail("Skill Forge panel did not expose template buttons before failed receipt smoke.")
+		return
+	var buttons: Dictionary = buttons_value
+	var clear_button = buttons.get("clear_patch_starter", null) as Button
+	if clear_button == null:
+		_fail("Clear Patch template button missing before failed receipt smoke.")
+		return
+	clear_button.pressed.emit()
+
+	var templates = scene.get("_skill_forge_templates")
+	var harness = scene.get("_skill_forge_run_harness")
+	if templates == null or harness == null:
+		_fail("Skill Forge internals were missing before failed receipt smoke.")
+		return
+
+	var spec: Dictionary = templates.get_template_spec("clear_patch_starter")
+	var start_result: Dictionary = harness.start_manual_run(spec, scene.call("_skill_forge_request_for_template", "clear_patch_starter"))
+	scene.call("_apply_skill_forge_result", start_result)
+	await process_frame
+
+	var failed_result: Dictionary = harness.complete_run(start_result, false, {
+		"result_detail": "selected tile had no brush"
+	})
+	scene.call("_apply_skill_forge_result", failed_result)
+	await process_frame
+
+	var result_label = game_ui.get("_skill_forge_result_label") as Label
+	if result_label == null or not str(result_label.text).contains("Failed"):
+		_fail("Failed Forge receipt did not update the result label. text=%s" % (result_label.text if result_label else ""))
+		return
+	var result_tooltip := str(result_label.tooltip_text)
+	if not result_tooltip.contains("selected tile had no brush") or not result_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
+		_fail("Failed Forge result tooltip did not keep receipt detail and repair hint. tooltip=%s" % result_tooltip)
+		return
+
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
+		_fail("Failed Forge receipt did not keep the harness trace. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	var trace_tooltip := str(trace_label.tooltip_text)
+	if not trace_tooltip.contains("harness receipt selected tile had no brush"):
+		_fail("Failed Forge trace did not keep the harness receipt detail. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("History: Failed Clear Patch") or not trace_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
+		_fail("Failed Forge trace history did not keep the repair hint. tooltip=%s" % trace_tooltip)
+		return
+
+	var field_log_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(field_log_entries, "Skill Forge failed Clear Patch") or not _entries_contain(field_log_entries, "Pick a brush tile or revise the condition."):
+		_fail("Failed Forge receipt did not leave readable Field Log copy. entries=%s" % str(field_log_entries))
 		return
 
 
