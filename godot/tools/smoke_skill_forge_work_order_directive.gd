@@ -189,6 +189,15 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		_fail("Order-blocked trace did not explain the blocked directive. tooltip=%s" % trace_tooltip)
 		return
 
+	var result_label = game_ui.get("_skill_forge_result_label") as Label
+	if result_label == null or not str(result_label.text).contains("Order Blocked"):
+		_fail("Order-blocked Clear Patch did not update the result label. text=%s" % (result_label.text if result_label else ""))
+		return
+	var result_tooltip := str(result_label.tooltip_text)
+	if not result_tooltip.contains("Order blocked: target changed") or not result_tooltip.contains("Clear Patch"):
+		_fail("Order-blocked result tooltip did not keep the blocked-order detail. tooltip=%s" % result_tooltip)
+		return
+
 	scene.queue_free()
 	await process_frame
 

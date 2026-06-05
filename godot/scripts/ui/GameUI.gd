@@ -200,9 +200,10 @@ func set_skill_forge_result(result: Dictionary) -> void:
 	var run: Dictionary = result.get("run", {})
 	var skill_name := str(run.get("skill_name", "Skill Run")).strip_edges()
 	_record_skill_forge_history_from_result(result)
-	_skill_forge_result_label.text = "%s: %s" % [_skill_forge_status_text(status), skill_name]
+	var status_text := "Order Blocked" if _skill_forge_result_has_blocked_order(result) else _skill_forge_status_text(status)
+	_skill_forge_result_label.text = "%s: %s" % [status_text, skill_name]
 	_skill_forge_result_label.tooltip_text = _skill_forge_result_tooltip(result)
-	_skill_forge_result_label.add_theme_color_override("font_color", _skill_forge_status_color(status))
+	_skill_forge_result_label.add_theme_color_override("font_color", _skill_forge_result_status_color(result))
 	if status == "blocked":
 		_show_skill_forge_blocked_result(result)
 	else:
@@ -1323,15 +1324,27 @@ func _skill_forge_status_color(status: String) -> Color:
 	return Color("#5f7f39")
 
 
+func _skill_forge_result_status_color(result: Dictionary) -> Color:
+	if _skill_forge_result_has_blocked_order(result):
+		return Color("#8a503e")
+	return _skill_forge_status_color(str(result.get("status", "")).strip_edges())
+
+
 func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var status := str(result.get("status", "")).strip_edges()
 	var run: Dictionary = result.get("run", {})
 	var detail := str(run.get("result_detail", "")).strip_edges()
 	var drift := str(run.get("drift", {}).get("level", "steady")).strip_edges()
 	var suggestion := str(run.get("failure_suggestion", "")).strip_edges()
+	var blocked_reason := str(result.get("drafted_order_blocked_reason", "")).strip_edges()
+	var blocked_detail := str(result.get("drafted_order_blocked_detail", "")).strip_edges()
 	var text := "Drift: %s" % drift
 	if detail != "":
 		text += " | %s" % detail
+	if blocked_detail != "":
+		text += " | Order blocked: %s" % blocked_detail
+	elif blocked_reason != "":
+		text += " | Order blocked: %s" % blocked_reason
 	if status in ["failed", "blocked"] and suggestion != "":
 		text += " | Fix: %s" % suggestion
 	text += _skill_forge_history_tooltip_suffix()
@@ -1404,12 +1417,18 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 
 
 func _skill_forge_result_trace_color(result: Dictionary) -> Color:
+	if _skill_forge_result_has_blocked_order(result):
+		return Color("#8a503e")
 	match str(result.get("status", "")).strip_edges():
 		"blocked", "failed":
 			return Color("#8a503e")
 		"passed":
 			return Color("#4f7a3a")
 	return Color("#4f6f8f")
+
+
+func _skill_forge_result_has_blocked_order(result: Dictionary) -> bool:
+	return str(result.get("drafted_order_blocked_reason", "")).strip_edges() != "" or str(result.get("drafted_order_blocked_detail", "")).strip_edges() != ""
 
 
 func _skill_forge_final_tool_label(tools_label: String) -> String:
