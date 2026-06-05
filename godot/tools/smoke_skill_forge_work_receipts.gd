@@ -77,6 +77,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("History: Passed Clear Patch"):
 		_fail("Forge queued-work trace did not preserve recent receipt history. tooltip=%s" % queued_trace_tooltip)
 		return
+	if not queued_trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
+		_fail("Forge queued-work trace history did not name the harness receipt endpoint. tooltip=%s" % queued_trace_tooltip)
+		return
 
 	if _active_agent_badge_text(scene) != "Forge":
 		_fail("Assigned Forge work did not show a Forge reason badge. saw=%s" % _active_agent_badge_text(scene))
@@ -118,6 +121,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not trace_tooltip.contains("History: Agent Receipt Clear Patch") or not trace_tooltip.contains("Passed Clear Patch"):
 		_fail("Forge trace tooltip did not keep recent Forge receipt history. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
+		_fail("Forge trace tooltip did not keep the harness endpoint in recent history. tooltip=%s" % trace_tooltip)
 		return
 	var completed_agent := str(completed_event.get("agent_name", ""))
 	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]
@@ -191,6 +197,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not trace_tooltip.contains("History: Passed Clear Patch"):
 		_fail("Forge waiting trace did not preserve recent receipt history. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
+		_fail("Forge waiting trace history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
 		return
 
 	scene.queue_free()

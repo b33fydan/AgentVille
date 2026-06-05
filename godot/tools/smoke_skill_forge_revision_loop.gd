@@ -92,6 +92,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not blocked_tooltip.contains("[Drift hallucinating]") or not blocked_tooltip.contains("Fix: Replace summon_rain with clear_brush"):
 		_fail("Blocked draft history did not keep Drift and Fix detail. tooltip=%s" % blocked_tooltip)
 		return
+	if not blocked_tooltip.contains("Blocked Clear Patch (Spec Blocked)"):
+		_fail("Blocked draft history did not name the spec-blocked endpoint. tooltip=%s" % blocked_tooltip)
+		return
 
 
 func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
@@ -124,6 +127,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	var trace_tooltip := str(trace_label.tooltip_text)
 	if not trace_tooltip.contains("History: Passed Clear Patch") or not trace_tooltip.contains("Blocked Clear Patch"):
 		_fail("Clean revision history did not keep the recent pass/block receipts. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)") or not trace_tooltip.contains("Blocked Clear Patch (Spec Blocked)"):
+		_fail("Clean revision history did not name the harness/spec endpoints. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("[Drift hallucinating]") or not trace_tooltip.contains("Fix: Replace summon_rain with clear_brush"):
 		_fail("Clean revision history dropped blocked-run repair detail. tooltip=%s" % trace_tooltip)

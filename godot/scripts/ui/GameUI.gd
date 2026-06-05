@@ -1529,7 +1529,8 @@ func _skill_forge_source_context_text(source_context) -> String:
 
 func _record_skill_forge_history_from_result(result: Dictionary) -> void:
 	var status := str(result.get("status", "")).strip_edges()
-	if status not in ["passed", "failed", "blocked"]:
+	var has_blocked_order := _skill_forge_result_has_blocked_order(result)
+	if status not in ["passed", "failed", "blocked"] and not has_blocked_order:
 		return
 
 	var run: Dictionary = result.get("run", {})
@@ -1537,10 +1538,15 @@ func _record_skill_forge_history_from_result(result: Dictionary) -> void:
 	if skill_name == "":
 		skill_name = "Skill Run"
 	var detail := str(run.get("result_detail", "")).strip_edges()
-	if detail == "" and status == "blocked":
+	if has_blocked_order:
+		detail = str(result.get("drafted_order_blocked_detail", result.get("drafted_order_blocked_reason", ""))).strip_edges()
+	elif detail == "" and status == "blocked":
 		detail = _skill_forge_first_issue_text(result)
 
-	var text := "%s %s" % [_skill_forge_status_text(status), skill_name]
+	var text := "Order Blocked %s" % skill_name if has_blocked_order else "%s %s" % [_skill_forge_status_text(status), skill_name]
+	var history_stage := _skill_forge_result_history_stage(result)
+	if history_stage != "" and not has_blocked_order:
+		text += " (%s)" % history_stage
 	if status == "blocked":
 		var drift_level := str(run.get("drift", {}).get("level", "")).strip_edges()
 		if drift_level != "" and drift_level != "steady":
@@ -1552,6 +1558,23 @@ func _record_skill_forge_history_from_result(result: Dictionary) -> void:
 		if suggestion != "":
 			text += " Fix: %s" % suggestion
 	_record_skill_forge_history_text(text)
+
+
+func _skill_forge_result_history_stage(result: Dictionary) -> String:
+	if _skill_forge_result_has_blocked_order(result):
+		return "Order Blocked"
+
+	var status := str(result.get("status", "")).strip_edges()
+	var directive: Dictionary = result.get("directive", {})
+	if directive.is_empty():
+		return "Spec Blocked" if status == "blocked" else ""
+
+	var directive_kind := str(directive.get("kind", "")).strip_edges()
+	if directive_kind == "work_order_directive" and str(result.get("drafted_order_id", "")).strip_edges() != "":
+		return "Harness Receipt" if status in ["passed", "failed"] else "Work Order"
+	if directive_kind == "skill_directive":
+		return "Forge Receipt"
+	return "Forge Receipt" if directive_kind != "" else ""
 
 
 func _record_skill_forge_history_text(text: String) -> void:

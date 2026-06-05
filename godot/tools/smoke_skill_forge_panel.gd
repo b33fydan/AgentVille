@@ -137,6 +137,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("History: Passed Clear Patch"):
 		_fail("Skill Forge run history did not remember the passed harness receipt. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
+		_fail("Skill Forge run history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("agent Chuck") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Skill Forge run trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
@@ -165,6 +168,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	var preview_tooltip := str(trace_label.tooltip_text)
 	if not preview_tooltip.contains("Preview trace for Tend Crops") or not preview_tooltip.contains("History: Passed Clear Patch"):
 		_fail("Forge preview tooltip did not keep recent run history after template switch. tooltip=%s" % preview_tooltip)
+		return
+	if not preview_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
+		_fail("Forge preview tooltip did not keep the harness endpoint in recent run history. tooltip=%s" % preview_tooltip)
 		return
 
 
@@ -219,6 +225,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		return
 	if not trace_tooltip.contains("History: Failed Clear Patch") or not trace_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge trace history did not keep the repair hint. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Failed Clear Patch (Harness Receipt)"):
+		_fail("Failed Forge trace history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
 		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")

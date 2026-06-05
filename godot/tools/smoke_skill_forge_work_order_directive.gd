@@ -131,6 +131,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("receipt-only") or not trace_tooltip.contains("crew-order path"):
 		_fail("Tend Crops trace did not explain why no crew order was drafted. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Passed Tend Crops (Forge Receipt)") or not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
+		_fail("Tend Crops trace history did not name Forge/harness receipt endpoints. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("agent Marigold") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Tend Crops trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
@@ -191,6 +194,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not trace_tooltip.contains("order blocked: target changed") or not trace_tooltip.contains("clear_brush") or not trace_tooltip.contains("Clear Patch"):
 		_fail("Order-blocked trace did not explain the blocked directive. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("History: Order Blocked Clear Patch"):
+		_fail("Order-blocked trace history did not name the blocked-order endpoint. tooltip=%s" % trace_tooltip)
+		return
 
 	var result_label = game_ui.get("_skill_forge_result_label") as Label
 	if result_label == null or not str(result_label.text).contains("Order Blocked"):
@@ -199,6 +205,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	var result_tooltip := str(result_label.tooltip_text)
 	if not result_tooltip.contains("Order blocked: target changed") or not result_tooltip.contains("Clear Patch"):
 		_fail("Order-blocked result tooltip did not keep the blocked-order detail. tooltip=%s" % result_tooltip)
+		return
+	if not result_tooltip.contains("History: Order Blocked Clear Patch"):
+		_fail("Order-blocked result tooltip did not keep the blocked-order history endpoint. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("run forge_run_"):
 		_fail("Order-blocked result tooltip did not expose compact run identity. tooltip=%s" % result_tooltip)
