@@ -143,6 +143,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Skill Forge run history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Stage: Harness Receipt"):
+		_fail("Skill Forge run trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("agent Chuck") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Skill Forge run trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
@@ -234,6 +237,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		return
 	if not trace_tooltip.contains("Failed Clear Patch (Harness Receipt)"):
 		_fail("Failed Forge trace history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Stage: Harness Receipt"):
+		_fail("Failed Forge trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
 		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")

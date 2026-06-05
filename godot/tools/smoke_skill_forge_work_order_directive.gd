@@ -137,6 +137,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("receipt-only") or not trace_tooltip.contains("crew-order path"):
 		_fail("Tend Crops trace did not explain why no crew order was drafted. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Stage: Forge Receipt"):
+		_fail("Tend Crops trace did not expose the Forge-only receipt stage. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Passed Tend Crops (Forge Receipt)") or not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Tend Crops trace history did not name Forge/harness receipt endpoints. tooltip=%s" % trace_tooltip)
 		return
@@ -202,6 +205,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		return
 	if not trace_tooltip.contains("History: Order Blocked Clear Patch"):
 		_fail("Order-blocked trace history did not name the blocked-order endpoint. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Stage: Order Blocked"):
+		_fail("Order-blocked trace did not expose the order-blocked stage. tooltip=%s" % trace_tooltip)
 		return
 
 	var result_label = game_ui.get("_skill_forge_result_label") as Label

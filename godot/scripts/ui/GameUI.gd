@@ -220,7 +220,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 		skill_name = "Skill Run"
 	_record_skill_forge_history_text("Agent Receipt %s" % skill_name)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > Agent Receipt"
-	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s ended in agent receipt: %s%s" % [
+	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s | Stage: Agent Receipt | ended in agent receipt: %s%s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
 			str(event.get("agent_name", "")),
@@ -248,13 +248,14 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 		trace_detail = "waiting for crew: work order"
 	_record_skill_forge_work_stage_history(order, status_text)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > %s" % status_text
-	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s %s: %s%s" % [
+	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s | Stage: %s | %s: %s%s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
 			str(order.get("agent_name", "")),
 			order.get("target_tile", Vector2i(-1, -1)),
 			order.get("source_context", {})
 		) + _skill_forge_identity_trace_suffix(str(order.get("forge_run_id", "")), str(order.get("id", ""))),
+		status_text,
 		trace_detail,
 		order_label,
 		_skill_forge_history_tooltip_suffix()
@@ -1432,6 +1433,9 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 		run.get("source_context", {})
 	)
 	text += _skill_forge_identity_trace_suffix(str(run.get("id", "")), str(result.get("drafted_order_id", "")))
+	var stage := _skill_forge_result_history_stage(result)
+	if stage != "":
+		text += " | Stage: %s" % stage
 	if action != "":
 		text += " | directive %s" % action
 	if directive_kind != "":
