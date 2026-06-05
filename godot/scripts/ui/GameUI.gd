@@ -1372,6 +1372,8 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 		text += " | directive %s" % action
 	if directive_kind != "":
 		text += " (%s)" % directive_kind
+	if directive_kind == "skill_directive":
+		text += " | receipt-only until this action has a crew-order path"
 	if order_label != "":
 		text += " | work order %s" % order_label
 	if detail != "":

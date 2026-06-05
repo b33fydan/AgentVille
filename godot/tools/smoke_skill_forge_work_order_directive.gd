@@ -115,6 +115,15 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		_fail("Tend Crops receipt-only run did not still pass. entries=%s" % str(field_log_entries))
 		return
 
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Spec > Directive > Forge Receipt":
+		_fail("Tend Crops did not show a Forge-only receipt trace. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	var trace_tooltip := str(trace_label.tooltip_text)
+	if not trace_tooltip.contains("receipt-only") or not trace_tooltip.contains("crew-order path"):
+		_fail("Tend Crops trace did not explain why no crew order was drafted. tooltip=%s" % trace_tooltip)
+		return
+
 
 func _select_template(game_ui, template_id: String) -> void:
 	var buttons_value = game_ui.get("_skill_forge_template_buttons")
