@@ -233,6 +233,30 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f7a3a"))
 
 
+func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -> void:
+	if _skill_forge_trace_label == null:
+		return
+	var skill_name := str(order.get("skill_name", order.get("preference_label", "Skill Run"))).strip_edges()
+	if skill_name == "":
+		skill_name = "Skill Run"
+	var order_label := str(order.get("label", "Crew task")).strip_edges()
+	var status_text := trace_status.strip_edges()
+	if status_text == "":
+		status_text = "Crew Queued"
+	_skill_forge_trace_label.text = "Spec > Directive > Work Order > %s" % status_text
+	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s queued work order: %s%s" % [
+		skill_name,
+		_skill_forge_context_trace_suffix(
+			str(order.get("agent_name", "")),
+			order.get("target_tile", Vector2i(-1, -1)),
+			order.get("source_context", {})
+		),
+		order_label,
+		_skill_forge_history_tooltip_suffix()
+	]
+	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
+
+
 func set_work_order(order: Dictionary) -> void:
 	set_work_orders([order])
 

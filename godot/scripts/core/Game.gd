@@ -614,6 +614,14 @@ func _maybe_update_skill_forge_receipt_trace(payload: Dictionary, receipt: Strin
 	game_ui.set_skill_forge_work_receipt_trace(payload, receipt)
 
 
+func _maybe_update_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -> void:
+	var forge_run_id := str(order.get("forge_run_id", "")).strip_edges()
+	var skill_name := str(order.get("skill_name", order.get("preference_label", ""))).strip_edges()
+	if str(order.get("source", "")).strip_edges() != "skill_forge" and forge_run_id == "" and skill_name == "":
+		return
+	game_ui.set_skill_forge_work_order_trace(order, trace_status)
+
+
 func _on_crafting_demand_target_requested(demand_id: String) -> void:
 	if not crafting_demands.has(demand_id):
 		game_ui.show_message("Unknown crew demand.")
@@ -2311,6 +2319,8 @@ func _queue_build_order(order_id: String, quiet: bool = false) -> bool:
 	if not assigned:
 		_release_order_reservation(order)
 		_mark_order_waiting(order_id)
+	else:
+		_maybe_update_skill_forge_work_order_trace(order, "Crew Queued")
 	return assigned
 
 
@@ -2345,6 +2355,8 @@ func _queue_directive_order(order_id: String, quiet: bool = false) -> bool:
 	var assigned := bool(_agent_manager.call("assign_directive", agent_action, target_tile, "work order: %s" % str(order.get("label", "crew task")), directive_extra))
 	if not assigned:
 		_mark_order_waiting(order_id)
+	else:
+		_maybe_update_skill_forge_work_order_trace(order, "Crew Queued")
 	return assigned
 
 

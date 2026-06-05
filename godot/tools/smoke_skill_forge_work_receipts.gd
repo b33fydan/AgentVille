@@ -61,6 +61,17 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Field Log did not include Forge context when the work order was queued. entries=%s" % str(queued_field_log_entries))
 		return
 
+	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Crew Queued":
+		_fail("Forge panel did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	var queued_trace_tooltip := str(trace_label.tooltip_text)
+	if not queued_trace_tooltip.contains("queued work order") or not queued_trace_tooltip.contains("Clear Patch") or not queued_trace_tooltip.contains("source Starter Lab"):
+		_fail("Forge queued-work trace did not preserve readable work context. tooltip=%s" % queued_trace_tooltip)
+		return
+	if not queued_trace_tooltip.contains("History: Passed Clear Patch"):
+		_fail("Forge queued-work trace did not preserve recent receipt history. tooltip=%s" % queued_trace_tooltip)
+		return
+
 	if _active_agent_badge_text(scene) != "Forge":
 		_fail("Assigned Forge work did not show a Forge reason badge. saw=%s" % _active_agent_badge_text(scene))
 		return
