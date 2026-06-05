@@ -92,11 +92,17 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Agent Receipt":
 		_fail("Forge panel did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
 		return
-	if not str(trace_label.tooltip_text).contains(receipt):
-		_fail("Forge trace tooltip did not preserve the readable agent receipt. tooltip=%s receipt=%s" % [str(trace_label.tooltip_text), receipt])
+	var trace_tooltip := str(trace_label.tooltip_text)
+	if not trace_tooltip.contains(receipt):
+		_fail("Forge trace tooltip did not preserve the readable agent receipt. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
 		return
-	if not str(trace_label.tooltip_text).contains("History: Agent Receipt Clear Patch") or not str(trace_label.tooltip_text).contains("Passed Clear Patch"):
-		_fail("Forge trace tooltip did not keep recent Forge receipt history. tooltip=%s" % str(trace_label.tooltip_text))
+	if not trace_tooltip.contains("History: Agent Receipt Clear Patch") or not trace_tooltip.contains("Passed Clear Patch"):
+		_fail("Forge trace tooltip did not keep recent Forge receipt history. tooltip=%s" % trace_tooltip)
+		return
+	var completed_agent := str(completed_event.get("agent_name", ""))
+	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]
+	if not trace_tooltip.contains("agent %s" % completed_agent) or not trace_tooltip.contains(completed_target) or not trace_tooltip.contains("source Starter Lab"):
+		_fail("Forge agent receipt trace did not preserve final agent/target/source context. tooltip=%s event=%s" % [trace_tooltip, str(completed_event)])
 		return
 
 	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)

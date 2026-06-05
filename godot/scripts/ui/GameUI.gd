@@ -219,8 +219,13 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 		skill_name = "Skill Run"
 	_record_skill_forge_history_text("Agent Receipt %s" % skill_name)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > Agent Receipt"
-	_skill_forge_trace_label.tooltip_text = "Forge trace for %s ended in agent receipt: %s%s" % [
+	_skill_forge_trace_label.tooltip_text = "Forge trace for %s%s ended in agent receipt: %s%s" % [
 		skill_name,
+		_skill_forge_context_trace_suffix(
+			str(event.get("agent_name", "")),
+			event.get("grid_pos", Vector2i(-1, -1)),
+			event.get("forge_source_context", {})
+		),
 		receipt_text,
 		_skill_forge_history_tooltip_suffix()
 	]
@@ -1368,6 +1373,11 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	var order_label := str(result.get("drafted_order_label", "")).strip_edges()
 	var detail := str(run.get("result_detail", "")).strip_edges()
 	var text := "Forge trace for %s" % (skill_name if skill_name != "" else "Skill Run")
+	text += _skill_forge_context_trace_suffix(
+		str(run.get("agent_name", "")),
+		run.get("target_tile", Vector2i(-1, -1)),
+		run.get("source_context", {})
+	)
 	if action != "":
 		text += " | directive %s" % action
 	if directive_kind != "":
@@ -1398,6 +1408,50 @@ func _skill_forge_final_tool_label(tools_label: String) -> String:
 	if parts.is_empty():
 		return tools_label
 	return str(parts[parts.size() - 1]).strip_edges()
+
+
+func _skill_forge_context_trace_suffix(agent_name: String, target_value, source_context) -> String:
+	var parts: Array[String] = []
+	agent_name = agent_name.strip_edges()
+	if agent_name != "":
+		parts.append("agent %s" % agent_name)
+
+	var target_text := _skill_forge_trace_tile_text(target_value)
+	if target_text != "":
+		parts.append("target %s" % target_text)
+
+	var source_text := _skill_forge_source_context_text(source_context)
+	if source_text != "":
+		parts.append("source %s" % source_text)
+
+	if parts.is_empty():
+		return ""
+	return " | %s" % " | ".join(parts)
+
+
+func _skill_forge_trace_tile_text(value) -> String:
+	var tile := Vector2i(-1, -1)
+	match typeof(value):
+		TYPE_VECTOR2I:
+			tile = value
+		TYPE_ARRAY:
+			if value.size() >= 2:
+				tile = Vector2i(int(value[0]), int(value[1]))
+		TYPE_DICTIONARY:
+			tile = Vector2i(int(value.get("x", -1)), int(value.get("y", -1)))
+	if tile == Vector2i(-1, -1):
+		return ""
+	return "%s,%s" % [tile.x, tile.y]
+
+
+func _skill_forge_source_context_text(source_context) -> String:
+	if typeof(source_context) != TYPE_DICTIONARY:
+		return ""
+	var source := str(source_context.get("source", "")).strip_edges()
+	var label := str(source_context.get("label", "")).strip_edges()
+	if label != "":
+		return label if source == "" or source == "skill_forge" else "%s: %s" % [source.replace("_", " ").capitalize(), label]
+	return source.replace("_", " ").capitalize()
 
 
 func _record_skill_forge_history_from_result(result: Dictionary) -> void:

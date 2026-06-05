@@ -123,6 +123,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("receipt-only") or not trace_tooltip.contains("crew-order path"):
 		_fail("Tend Crops trace did not explain why no crew order was drafted. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("agent Marigold") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
+		_fail("Tend Crops trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
+		return
 
 
 func _select_template(game_ui, template_id: String) -> void:
