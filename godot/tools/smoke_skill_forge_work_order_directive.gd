@@ -66,6 +66,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if str(order.get("skill_name", "")) != "Clear Patch":
 		_fail("Forge work order did not keep a readable skill name. order=%s" % str(order))
 		return
+	if str(order.get("agent_name", "")) != "Chuck":
+		_fail("Forge work order did not keep the readable harness agent. order=%s" % str(order))
+		return
 	if str(order.get("forge_run_id", "")).strip_edges() == "":
 		_fail("Forge work order did not keep its run id. order=%s" % str(order))
 		return
@@ -97,6 +100,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 		return
 	if _visible_next_text(game_ui) != "Next: Send crew order":
 		_fail("Forge drafted order did not expose the send-order next step. text=%s" % _visible_next_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
+		_fail("Forge drafted order did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
 		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
@@ -160,6 +166,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		return
 	if _visible_next_text(game_ui) != "Next: Field Log receipt":
 		_fail("Tend Crops did not expose the Forge-only next step. text=%s" % _visible_next_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run: Marigold @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
+		_fail("Tend Crops did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
 		return
 
 
@@ -251,6 +260,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if _visible_next_text(game_ui) != "Next: Pick valid target":
 		_fail("Order-blocked Clear Patch did not expose the target-repair next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
+		_fail("Order-blocked Clear Patch did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+		return
 
 	scene.queue_free()
 	await process_frame
@@ -315,6 +327,13 @@ func _visible_next_text(game_ui) -> String:
 	if next_label == null or not next_label.visible:
 		return ""
 	return str(next_label.text)
+
+
+func _visible_detail_text(game_ui) -> String:
+	var detail_label = game_ui.get("_skill_forge_detail_label") as Label
+	if detail_label == null or not detail_label.visible:
+		return ""
+	return str(detail_label.text)
 
 
 func _fail(message: String) -> void:

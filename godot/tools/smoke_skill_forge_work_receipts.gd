@@ -71,6 +71,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("queued work order") or not queued_trace_tooltip.contains("Clear Patch") or not queued_trace_tooltip.contains("source Starter Lab"):
 		_fail("Forge queued-work trace did not preserve readable work context. tooltip=%s" % queued_trace_tooltip)
 		return
+	if not queued_trace_tooltip.contains("agent Chuck"):
+		_fail("Forge queued-work trace did not preserve the readable harness agent. tooltip=%s order=%s" % [queued_trace_tooltip, str(order)])
+		return
 	if not queued_trace_tooltip.contains("Stage: Crew Queued"):
 		_fail("Forge queued-work trace did not expose the crew-queued stage. tooltip=%s" % queued_trace_tooltip)
 		return
@@ -95,6 +98,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if _visible_next_text(game_ui) != "Next: Agent Receipt":
 		_fail("Forge queued-work next step did not point to the agent receipt. text=%s" % _visible_next_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
+		_fail("Forge queued-work did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
 		return
 	var queued_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not queued_chip_tooltip.contains("Stage: Crew Queued"):
@@ -163,6 +169,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	var completed_agent := str(completed_event.get("agent_name", ""))
 	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]
+	if not _visible_detail_text(game_ui).begins_with("Run: %s @ " % completed_agent) or not _visible_detail_text(game_ui).contains("| Starter Lab"):
+		_fail("Forge completed-work did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+		return
 	if not trace_tooltip.contains("agent %s" % completed_agent) or not trace_tooltip.contains(completed_target) or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Forge agent receipt trace did not preserve final agent/target/source context. tooltip=%s event=%s" % [trace_tooltip, str(completed_event)])
 		return
@@ -228,6 +237,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not trace_tooltip.contains("waiting for crew") or not trace_tooltip.contains("Clear Patch") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Forge waiting trace did not preserve readable work context. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("agent Chuck"):
+		_fail("Forge waiting trace did not preserve the readable harness agent. tooltip=%s order=%s" % [trace_tooltip, str(order)])
+		return
 	if not trace_tooltip.contains("Stage: Crew Waiting"):
 		_fail("Forge waiting trace did not expose the crew-waiting stage. tooltip=%s" % trace_tooltip)
 		return
@@ -252,6 +264,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if _visible_next_text(game_ui) != "Next: Wait for free crew":
 		_fail("Forge waiting next step did not point to crew availability. text=%s" % _visible_next_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
+		_fail("Forge waiting work did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
 		return
 	var waiting_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not waiting_chip_tooltip.contains("Stage: Crew Waiting"):
@@ -321,6 +336,13 @@ func _visible_next_text(game_ui) -> String:
 	if next_label == null or not next_label.visible:
 		return ""
 	return str(next_label.text)
+
+
+func _visible_detail_text(game_ui) -> String:
+	var detail_label = game_ui.get("_skill_forge_detail_label") as Label
+	if detail_label == null or not detail_label.visible:
+		return ""
+	return str(detail_label.text)
 
 
 func _completed_forge_world_action(scene: Node, order: Dictionary) -> Dictionary:

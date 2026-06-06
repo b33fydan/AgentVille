@@ -560,6 +560,8 @@ func _maybe_draft_skill_forge_work_order(result: Dictionary) -> String:
 		"forge_run_id": forge_run_id,
 		"skill_id": str(directive.get("skill_id", "")),
 		"skill_name": skill_name,
+		"agent_id": str(directive.get("agent_id", "")),
+		"agent_name": str(directive.get("agent_name", "")),
 		"directive_id": str(directive.get("id", "")),
 		"directive_kind": str(directive.get("kind", "")),
 		"source_context": directive.get("source_context", {})

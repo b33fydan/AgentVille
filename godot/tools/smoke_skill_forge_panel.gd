@@ -94,6 +94,9 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _visible_next_text(game_ui) != "Next: Run or Check":
 		_fail("Skill Forge default preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
+	if _visible_detail_text(game_ui) != "":
+		_fail("Skill Forge default preview should keep the run detail hidden until a concrete run exists. text=%s" % _visible_detail_text(game_ui))
+		return
 	if not _stage_tooltip(game_ui).contains("Preview trace for Tend Crops"):
 		_fail("Skill Forge default preview stage tooltip did not keep preview detail. tooltip=%s" % _stage_tooltip(game_ui))
 		return
@@ -160,6 +163,9 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 		return
 	if _visible_next_text(game_ui) != "Next: Run or Check":
 		_fail("Clear Patch preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
+		return
+	if _visible_detail_text(game_ui) != "":
+		_fail("Clear Patch preview should keep the run detail hidden until a concrete run exists. text=%s" % _visible_detail_text(game_ui))
 		return
 
 
@@ -230,6 +236,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_next_text(game_ui) != "Next: Send crew order":
 		_fail("Skill Forge run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
+		_fail("Skill Forge run did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+		return
 
 	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 6)
 	if not _event_exists(events, "skill_forge_run", "started"):
@@ -267,6 +276,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	if _visible_next_text(game_ui) != "Next: Run or Check":
 		_fail("Forge next-step line did not restore the Tend Crops preview action. text=%s" % _visible_next_text(game_ui))
+		return
+	if _visible_detail_text(game_ui) != "":
+		_fail("Forge preview should hide run detail after template switch. text=%s" % _visible_detail_text(game_ui))
 		return
 
 
@@ -350,6 +362,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if _visible_next_text(game_ui) != "Next: Revise and rerun":
 		_fail("Failed Forge receipt did not expose the repair next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
+		_fail("Failed Forge receipt did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
 	if not _entries_contain(field_log_entries, "Skill Forge failed Clear Patch") or not _entries_contain(field_log_entries, "Pick a brush tile or revise the condition."):
@@ -390,6 +405,13 @@ func _visible_next_text(game_ui) -> String:
 	if next_label == null or not next_label.visible:
 		return ""
 	return str(next_label.text)
+
+
+func _visible_detail_text(game_ui) -> String:
+	var detail_label = game_ui.get("_skill_forge_detail_label") as Label
+	if detail_label == null or not detail_label.visible:
+		return ""
+	return str(detail_label.text)
 
 
 func _visible_history_text(game_ui) -> String:
