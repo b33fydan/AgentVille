@@ -100,6 +100,9 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _visible_receipt_text(game_ui) != "":
 		_fail("Skill Forge default preview should keep the receipt line hidden until a concrete receipt exists. text=%s" % _visible_receipt_text(game_ui))
 		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Skill Forge default preview should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
+		return
 	if not _stage_tooltip(game_ui).contains("Preview trace for Tend Crops"):
 		_fail("Skill Forge default preview stage tooltip did not keep preview detail. tooltip=%s" % _stage_tooltip(game_ui))
 		return
@@ -172,6 +175,9 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 		return
 	if _visible_receipt_text(game_ui) != "":
 		_fail("Clear Patch preview should keep the receipt line hidden until a concrete receipt exists. text=%s" % _visible_receipt_text(game_ui))
+		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Clear Patch preview should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
 		return
 
 
@@ -248,6 +254,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
 		_fail("Skill Forge run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Skill Forge steady run should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
+		return
 
 	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 6)
 	if not _event_exists(events, "skill_forge_run", "started"):
@@ -291,6 +300,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	if _visible_receipt_text(game_ui) != "":
 		_fail("Forge preview should hide receipt detail after template switch. text=%s" % _visible_receipt_text(game_ui))
+		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Forge preview should hide Drift after template switch. text=%s" % _visible_drift_text(game_ui))
 		return
 
 
@@ -380,6 +392,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if not _visible_receipt_text(game_ui).contains("selected tile had no brush"):
 		_fail("Failed Forge receipt did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Failed steady Forge receipt should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
+		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
 	if not _entries_contain(field_log_entries, "Skill Forge failed Clear Patch") or not _entries_contain(field_log_entries, "Pick a brush tile or revise the condition."):
@@ -434,6 +449,13 @@ func _visible_receipt_text(game_ui) -> String:
 	if receipt_label == null or not receipt_label.visible:
 		return ""
 	return str(receipt_label.text)
+
+
+func _visible_drift_text(game_ui) -> String:
+	var drift_label = game_ui.get("_skill_forge_drift_label") as Label
+	if drift_label == null or not drift_label.visible:
+		return ""
+	return str(drift_label.text)
 
 
 func _visible_history_text(game_ui) -> String:

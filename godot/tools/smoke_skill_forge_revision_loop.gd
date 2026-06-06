@@ -120,6 +120,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not _visible_receipt_text(game_ui).contains("summon_rain"):
 		_fail("Blocked draft did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
+	if not _visible_drift_text(game_ui).contains("hallucinating") or not _visible_drift_text(game_ui).contains("Replace summon_rain with clear_brush"):
+		_fail("Blocked draft did not expose visible Hallucination Drift and fix copy. text=%s" % _visible_drift_text(game_ui))
+		return
 	if not _stage_tooltip(game_ui).contains("Fix: Replace summon_rain with clear_brush"):
 		_fail("Blocked draft current-stage tooltip did not keep repair detail. tooltip=%s" % _stage_tooltip(game_ui))
 		return
@@ -184,6 +187,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if not _visible_receipt_text(game_ui).contains("replaced summon_rain with clear_brush"):
 		_fail("Clean revision did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Clean revision should clear the visible Drift cue. text=%s" % _visible_drift_text(game_ui))
+		return
 
 
 func _entries_contain(entries: Array, needle: String) -> bool:
@@ -242,6 +248,13 @@ func _visible_receipt_text(game_ui) -> String:
 	if receipt_label == null or not receipt_label.visible:
 		return ""
 	return str(receipt_label.text)
+
+
+func _visible_drift_text(game_ui) -> String:
+	var drift_label = game_ui.get("_skill_forge_drift_label") as Label
+	if drift_label == null or not drift_label.visible:
+		return ""
+	return str(drift_label.text)
 
 
 func _fail(message: String) -> void:

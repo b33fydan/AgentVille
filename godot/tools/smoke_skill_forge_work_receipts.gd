@@ -105,6 +105,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _visible_receipt_text(game_ui).contains("queued work order"):
 		_fail("Forge queued-work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Forge queued-work should clear visible Drift. text=%s" % _visible_drift_text(game_ui))
+		return
 	var queued_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not queued_chip_tooltip.contains("Stage: Crew Queued"):
 		_fail("Forge work order chip did not expose the crew-queued stage. tooltip=%s" % queued_chip_tooltip)
@@ -177,6 +180,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not _visible_receipt_text(game_ui).contains("%s cleared" % completed_agent):
 		_fail("Forge completed-work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Forge completed-work should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
 		return
 	if not trace_tooltip.contains("agent %s" % completed_agent) or not trace_tooltip.contains(completed_target) or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Forge agent receipt trace did not preserve final agent/target/source context. tooltip=%s event=%s" % [trace_tooltip, str(completed_event)])
@@ -277,6 +283,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not _visible_receipt_text(game_ui).contains("waiting for crew"):
 		_fail("Forge waiting work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Forge waiting work should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
+		return
 	var waiting_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not waiting_chip_tooltip.contains("Stage: Crew Waiting"):
 		_fail("Forge work order chip did not expose the crew-waiting stage. tooltip=%s" % waiting_chip_tooltip)
@@ -359,6 +368,13 @@ func _visible_receipt_text(game_ui) -> String:
 	if receipt_label == null or not receipt_label.visible:
 		return ""
 	return str(receipt_label.text)
+
+
+func _visible_drift_text(game_ui) -> String:
+	var drift_label = game_ui.get("_skill_forge_drift_label") as Label
+	if drift_label == null or not drift_label.visible:
+		return ""
+	return str(drift_label.text)
 
 
 func _completed_forge_world_action(scene: Node, order: Dictionary) -> Dictionary:
