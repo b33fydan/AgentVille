@@ -95,6 +95,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Stage: Work Order Ready"):
 		_fail("Forge work order chip tooltip did not expose the ready stage. tooltip=%s" % str(preference.tooltip_text))
 		return
+	if _visible_next_text(game_ui) != "Next: Send crew order":
+		_fail("Forge drafted order did not expose the send-order next step. text=%s" % _visible_next_text(game_ui))
+		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
 	if not _entries_contain(field_log_entries, "Forge order drafted: Clear Patch"):
@@ -154,6 +157,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		return
 	if _visible_stage_text(game_ui) != "Now: Forge Receipt | Tend Crops":
 		_fail("Tend Crops did not expose the Forge-only current stage line. text=%s" % _visible_stage_text(game_ui))
+		return
+	if _visible_next_text(game_ui) != "Next: Field Log receipt":
+		_fail("Tend Crops did not expose the Forge-only next step. text=%s" % _visible_next_text(game_ui))
 		return
 
 
@@ -242,6 +248,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if _visible_stage_text(game_ui) != "Now: Order Blocked | Clear Patch":
 		_fail("Order-blocked Clear Patch did not expose the blocked current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
+	if _visible_next_text(game_ui) != "Next: Pick valid target":
+		_fail("Order-blocked Clear Patch did not expose the target-repair next step. text=%s" % _visible_next_text(game_ui))
+		return
 
 	scene.queue_free()
 	await process_frame
@@ -299,6 +308,13 @@ func _visible_stage_text(game_ui) -> String:
 	if stage_label == null or not stage_label.visible:
 		return ""
 	return str(stage_label.text)
+
+
+func _visible_next_text(game_ui) -> String:
+	var next_label = game_ui.get("_skill_forge_next_label") as Label
+	if next_label == null or not next_label.visible:
+		return ""
+	return str(next_label.text)
 
 
 func _fail(message: String) -> void:

@@ -111,6 +111,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Now: Spec Blocked | Clear Patch":
 		_fail("Blocked draft did not expose the spec-blocked current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
+	if _visible_next_text(game_ui) != "Next: Use Fix":
+		_fail("Blocked draft did not expose the Fix next step. text=%s" % _visible_next_text(game_ui))
+		return
 	if not _stage_tooltip(game_ui).contains("Fix: Replace summon_rain with clear_brush"):
 		_fail("Blocked draft current-stage tooltip did not keep repair detail. tooltip=%s" % _stage_tooltip(game_ui))
 		return
@@ -166,6 +169,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Now: Harness Receipt | Clear Patch":
 		_fail("Clean revision did not expose the harness receipt current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
+	if _visible_next_text(game_ui) != "Next: Send crew order":
+		_fail("Clean revision did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
+		return
 
 
 func _entries_contain(entries: Array, needle: String) -> bool:
@@ -203,6 +209,13 @@ func _visible_stage_text(game_ui) -> String:
 func _stage_tooltip(game_ui) -> String:
 	var stage_label = game_ui.get("_skill_forge_stage_label") as Label
 	return str(stage_label.tooltip_text) if stage_label != null else ""
+
+
+func _visible_next_text(game_ui) -> String:
+	var next_label = game_ui.get("_skill_forge_next_label") as Label
+	if next_label == null or not next_label.visible:
+		return ""
+	return str(next_label.text)
 
 
 func _fail(message: String) -> void:

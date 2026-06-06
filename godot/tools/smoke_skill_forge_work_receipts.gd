@@ -93,6 +93,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _visible_stage_text(game_ui) != "Now: Crew Queued | Clear Patch":
 		_fail("Forge queued-work current stage did not expose the crew-queued state. text=%s" % _visible_stage_text(game_ui))
 		return
+	if _visible_next_text(game_ui) != "Next: Agent Receipt":
+		_fail("Forge queued-work next step did not point to the agent receipt. text=%s" % _visible_next_text(game_ui))
+		return
 	var queued_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not queued_chip_tooltip.contains("Stage: Crew Queued"):
 		_fail("Forge work order chip did not expose the crew-queued stage. tooltip=%s" % queued_chip_tooltip)
@@ -154,6 +157,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if _visible_stage_text(game_ui) != "Now: Agent Receipt | Clear Patch":
 		_fail("Forge completed-work current stage did not expose the agent receipt endpoint. text=%s" % _visible_stage_text(game_ui))
+		return
+	if _visible_next_text(game_ui) != "Next: Day Summary":
+		_fail("Forge completed-work next step did not point to the day summary. text=%s" % _visible_next_text(game_ui))
 		return
 	var completed_agent := str(completed_event.get("agent_name", ""))
 	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]
@@ -244,6 +250,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if _visible_stage_text(game_ui) != "Now: Crew Waiting | Clear Patch":
 		_fail("Forge waiting current stage did not expose the crew-waiting state. text=%s" % _visible_stage_text(game_ui))
 		return
+	if _visible_next_text(game_ui) != "Next: Wait for free crew":
+		_fail("Forge waiting next step did not point to crew availability. text=%s" % _visible_next_text(game_ui))
+		return
 	var waiting_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not waiting_chip_tooltip.contains("Stage: Crew Waiting"):
 		_fail("Forge work order chip did not expose the crew-waiting stage. tooltip=%s" % waiting_chip_tooltip)
@@ -305,6 +314,13 @@ func _visible_stage_text(game_ui) -> String:
 	if stage_label == null or not stage_label.visible:
 		return ""
 	return str(stage_label.text)
+
+
+func _visible_next_text(game_ui) -> String:
+	var next_label = game_ui.get("_skill_forge_next_label") as Label
+	if next_label == null or not next_label.visible:
+		return ""
+	return str(next_label.text)
 
 
 func _completed_forge_world_action(scene: Node, order: Dictionary) -> Dictionary:
