@@ -89,6 +89,12 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Crew Queued Clear Patch"):
 		_fail("Forge queued-work trace did not remember the crew-queued stage. tooltip=%s" % queued_trace_tooltip)
 		return
+	if _result_text(game_ui) != "Crew Queued: Clear Patch":
+		_fail("Forge queued-work header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
+		return
+	if not _result_tooltip(game_ui).contains("Stage: Crew Queued") or not _result_tooltip(game_ui).contains("queued work order"):
+		_fail("Forge queued-work header tooltip did not keep queue trace detail. tooltip=%s" % _result_tooltip(game_ui))
+		return
 	var queued_history_text := _visible_history_text(game_ui)
 	if queued_history_text != "Trail: Passed Clear Patch (Harness Receipt) > Crew Queued Clear Patch":
 		_fail("Forge queued-work visible history trail did not summarize the lifecycle. text=%s" % queued_history_text)
@@ -156,6 +162,12 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not trace_tooltip.contains("History: Agent Receipt Clear Patch") or not trace_tooltip.contains("Passed Clear Patch"):
 		_fail("Forge trace tooltip did not keep recent Forge receipt history. tooltip=%s" % trace_tooltip)
+		return
+	if _result_text(game_ui) != "Agent Receipt: Clear Patch":
+		_fail("Forge completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
+		return
+	if not _result_tooltip(game_ui).contains("Stage: Agent Receipt") or not _result_tooltip(game_ui).contains(receipt):
+		_fail("Forge completed-work header tooltip did not keep receipt trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Forge trace tooltip did not keep the harness endpoint in recent history. tooltip=%s" % trace_tooltip)
@@ -267,6 +279,12 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not trace_tooltip.contains("Crew Waiting Clear Patch"):
 		_fail("Forge waiting trace did not remember the crew-waiting stage. tooltip=%s" % trace_tooltip)
 		return
+	if _result_text(game_ui) != "Crew Waiting: Clear Patch":
+		_fail("Forge waiting-work header did not follow the waiting lifecycle. text=%s" % _result_text(game_ui))
+		return
+	if not _result_tooltip(game_ui).contains("Stage: Crew Waiting") or not _result_tooltip(game_ui).contains("waiting for crew"):
+		_fail("Forge waiting-work header tooltip did not keep waiting trace detail. tooltip=%s" % _result_tooltip(game_ui))
+		return
 	var waiting_history_text := _visible_history_text(game_ui)
 	if waiting_history_text != "Trail: Passed Clear Patch (Harness Receipt) > Crew Waiting Clear Patch":
 		_fail("Forge waiting visible history trail did not summarize the lifecycle. text=%s" % waiting_history_text)
@@ -333,6 +351,16 @@ func _work_order_chip_tooltip(game_ui, order_id: String) -> String:
 	var row: Dictionary = rows.get(order_id, {})
 	var preference = row.get("preference", null) as Label
 	return str(preference.tooltip_text) if preference != null else ""
+
+
+func _result_text(game_ui) -> String:
+	var result_label = game_ui.get("_skill_forge_result_label") as Label
+	return str(result_label.text) if result_label != null else ""
+
+
+func _result_tooltip(game_ui) -> String:
+	var result_label = game_ui.get("_skill_forge_result_label") as Label
+	return str(result_label.tooltip_text) if result_label != null else ""
 
 
 func _visible_history_text(game_ui) -> String:

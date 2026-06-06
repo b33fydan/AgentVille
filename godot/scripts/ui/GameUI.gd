@@ -195,8 +195,7 @@ func set_skill_forge_result(result: Dictionary) -> void:
 	if _skill_forge_result_label == null:
 		return
 	if result.is_empty():
-		_skill_forge_result_label.text = "Ready"
-		_skill_forge_result_label.add_theme_color_override("font_color", Color("#5f7f39"))
+		_set_skill_forge_result_header("Ready", "", "", Color("#5f7f39"))
 		_skill_forge_last_blocked_template_id = ""
 		_skill_forge_history_entries.clear()
 		_set_skill_forge_detail_line("")
@@ -212,9 +211,7 @@ func set_skill_forge_result(result: Dictionary) -> void:
 	var skill_name := str(run.get("skill_name", "Skill Run")).strip_edges()
 	_record_skill_forge_history_from_result(result)
 	var status_text := "Order Blocked" if _skill_forge_result_has_blocked_order(result) else _skill_forge_status_text(status)
-	_skill_forge_result_label.text = "%s: %s" % [status_text, skill_name]
-	_skill_forge_result_label.tooltip_text = _skill_forge_result_tooltip(result)
-	_skill_forge_result_label.add_theme_color_override("font_color", _skill_forge_result_status_color(result))
+	_set_skill_forge_result_header(status_text, skill_name, _skill_forge_result_tooltip(result), _skill_forge_result_status_color(result))
 	if status == "blocked":
 		_show_skill_forge_blocked_result(result)
 	else:
@@ -243,6 +240,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	]
 	_skill_forge_trace_label.tooltip_text = trace_tooltip
 	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f7a3a"))
+	_set_skill_forge_result_header("Agent Receipt", skill_name, trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_detail_line(
 		_skill_forge_run_detail_text(str(event.get("agent_name", "")), event.get("grid_pos", Vector2i(-1, -1)), event.get("forge_source_context", {})),
 		trace_tooltip,
@@ -285,6 +283,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	_skill_forge_trace_label.tooltip_text = trace_tooltip
 	var stage_color := Color("#8a503e") if status_text == "Crew Waiting" else Color("#4f6f8f")
 	_skill_forge_trace_label.add_theme_color_override("font_color", stage_color)
+	_set_skill_forge_result_header(status_text, skill_name, trace_tooltip, stage_color)
 	_set_skill_forge_detail_line(
 		_skill_forge_run_detail_text(str(order.get("agent_name", "")), order.get("target_tile", Vector2i(-1, -1)), order.get("source_context", {})),
 		trace_tooltip,
@@ -1450,6 +1449,21 @@ func _skill_forge_revision_tooltip(has_active: bool, is_enabled: bool) -> String
 	if has_active:
 		return "Check a blocked spec to unlock Fix | Stage: Spec Preview"
 	return "Load a starter spec before applying a fix"
+
+
+func _set_skill_forge_result_header(status_text: String, skill_name: String, tooltip_text: String = "", color: Color = Color("#5f7f39")) -> void:
+	if _skill_forge_result_label == null:
+		return
+	status_text = status_text.strip_edges()
+	skill_name = skill_name.strip_edges()
+	if status_text == "":
+		status_text = "Ready"
+	if skill_name != "":
+		_skill_forge_result_label.text = "%s: %s" % [status_text, skill_name]
+	else:
+		_skill_forge_result_label.text = status_text
+	_skill_forge_result_label.tooltip_text = tooltip_text
+	_skill_forge_result_label.add_theme_color_override("font_color", color)
 
 
 func _skill_forge_first_issue_text(result: Dictionary) -> String:
