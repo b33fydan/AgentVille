@@ -1123,7 +1123,6 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 
 	_skill_forge_run_button = Button.new()
 	_skill_forge_run_button.text = "Run"
-	_skill_forge_run_button.tooltip_text = "Run the selected starter spec through the local harness"
 	_skill_forge_run_button.custom_minimum_size = Vector2(56, 19)
 	_skill_forge_run_button.focus_mode = Control.FOCUS_NONE
 	_skill_forge_run_button.add_theme_font_size_override("font_size", 10)
@@ -1136,7 +1135,6 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 
 	_skill_forge_review_button = Button.new()
 	_skill_forge_review_button.text = "Check"
-	_skill_forge_review_button.tooltip_text = "Check a flawed draft against the local validator"
 	_skill_forge_review_button.custom_minimum_size = Vector2(52, 19)
 	_skill_forge_review_button.focus_mode = Control.FOCUS_NONE
 	_skill_forge_review_button.add_theme_font_size_override("font_size", 10)
@@ -1149,7 +1147,6 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 
 	_skill_forge_revision_button = Button.new()
 	_skill_forge_revision_button.text = "Fix"
-	_skill_forge_revision_button.tooltip_text = "Apply the suggested starter-spec revision"
 	_skill_forge_revision_button.custom_minimum_size = Vector2(42, 19)
 	_skill_forge_revision_button.focus_mode = Control.FOCUS_NONE
 	_skill_forge_revision_button.disabled = true
@@ -1208,6 +1205,7 @@ func _refresh_skill_forge_panel() -> void:
 		_skill_forge_review_button.add_theme_color_override("font_color", Color("#4b4337") if has_active else Color("#8c8274"))
 		_skill_forge_review_button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
 	_set_skill_forge_revision_button_enabled(has_active and _skill_forge_last_blocked_template_id == _active_skill_forge_template_id)
+	_refresh_skill_forge_action_tooltips(has_active)
 
 	if not has_active:
 		if _skill_forge_summary_label:
@@ -1304,12 +1302,35 @@ func _show_skill_forge_blocked_result(result: Dictionary) -> void:
 func _set_skill_forge_revision_button_enabled(is_enabled: bool) -> void:
 	if _skill_forge_revision_button == null:
 		return
+	var has_active := _active_skill_forge_template_id != "" and _skill_forge_template_previews.has(_active_skill_forge_template_id)
 	_skill_forge_revision_button.disabled = not is_enabled
 	_skill_forge_revision_button.add_theme_stylebox_override("normal", _craft_button_style(is_enabled))
 	_skill_forge_revision_button.add_theme_stylebox_override("hover", _craft_button_style(true))
 	_skill_forge_revision_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
 	_skill_forge_revision_button.add_theme_color_override("font_color", Color("#2d3b1d") if is_enabled else Color("#8c8274"))
 	_skill_forge_revision_button.add_theme_color_override("font_disabled_color", Color("#8c8274"))
+	_skill_forge_revision_button.tooltip_text = _skill_forge_revision_tooltip(has_active, is_enabled)
+
+
+func _refresh_skill_forge_action_tooltips(has_active: bool) -> void:
+	if _skill_forge_run_button:
+		if has_active:
+			_skill_forge_run_button.tooltip_text = "Run the selected starter spec through the local harness | Stage: Spec Preview -> Harness Receipt"
+		else:
+			_skill_forge_run_button.tooltip_text = "Load a starter spec before running the harness"
+	if _skill_forge_review_button:
+		if has_active:
+			_skill_forge_review_button.tooltip_text = "Check a flawed draft against the local validator | Stage: Spec Preview -> Spec Blocked"
+		else:
+			_skill_forge_review_button.tooltip_text = "Load a starter spec before checking a draft"
+
+
+func _skill_forge_revision_tooltip(has_active: bool, is_enabled: bool) -> String:
+	if is_enabled:
+		return "Apply the suggested starter-spec revision | Stage: Spec Blocked -> Spec Fixed"
+	if has_active:
+		return "Check a blocked spec to unlock Fix | Stage: Spec Preview"
+	return "Load a starter spec before applying a fix"
 
 
 func _skill_forge_first_issue_text(result: Dictionary) -> String:

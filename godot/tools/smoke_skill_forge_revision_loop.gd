@@ -74,6 +74,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if fix_button == null or fix_button.disabled:
 		_fail("Blocked draft did not enable the Fix button.")
 		return
+	if not str(fix_button.tooltip_text).contains("Stage: Spec Blocked -> Spec Fixed"):
+		_fail("Enabled Fix button did not expose the blocked-to-fixed teaching stage. tooltip=%s" % str(fix_button.tooltip_text))
+		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
 	if not _entries_contain(field_log_entries, "Skill Forge blocked Clear Patch"):

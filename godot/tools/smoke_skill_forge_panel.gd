@@ -50,6 +50,19 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if run_button.disabled:
 		_fail("Skill Forge run button should be enabled for the default valid starter template.")
 		return
+	if not str(run_button.tooltip_text).contains("Stage: Spec Preview -> Harness Receipt"):
+		_fail("Skill Forge run button did not expose its teaching stage path. tooltip=%s" % str(run_button.tooltip_text))
+		return
+
+	var review_button = game_ui.get("_skill_forge_review_button") as Button
+	if review_button == null or not str(review_button.tooltip_text).contains("Stage: Spec Preview -> Spec Blocked"):
+		_fail("Skill Forge Check button did not expose its teaching stage path. tooltip=%s" % (str(review_button.tooltip_text) if review_button else ""))
+		return
+
+	var fix_button = game_ui.get("_skill_forge_revision_button") as Button
+	if fix_button == null or not str(fix_button.tooltip_text).contains("Stage: Spec Preview"):
+		_fail("Skill Forge Fix button did not expose its locked preview stage. tooltip=%s" % (str(fix_button.tooltip_text) if fix_button else ""))
+		return
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label
 	if summary_label == null or not summary_label.text.contains("Trigger manual"):
