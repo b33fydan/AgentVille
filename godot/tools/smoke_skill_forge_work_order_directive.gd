@@ -104,6 +104,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
 		_fail("Forge drafted order did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
 		return
+	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
+		_fail("Forge drafted order did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
 	if not _entries_contain(field_log_entries, "Forge order drafted: Clear Patch"):
@@ -169,6 +172,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		return
 	if not _visible_detail_text(game_ui).begins_with("Run: Marigold @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
 		_fail("Tend Crops did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+		return
+	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed crop-tending checks"):
+		_fail("Tend Crops did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 
 
@@ -263,6 +269,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
 		_fail("Order-blocked Clear Patch did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
 		return
+	if not _visible_receipt_text(game_ui).contains("target changed"):
+		_fail("Order-blocked Clear Patch did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
 
 	scene.queue_free()
 	await process_frame
@@ -334,6 +343,13 @@ func _visible_detail_text(game_ui) -> String:
 	if detail_label == null or not detail_label.visible:
 		return ""
 	return str(detail_label.text)
+
+
+func _visible_receipt_text(game_ui) -> String:
+	var receipt_label = game_ui.get("_skill_forge_receipt_label") as Label
+	if receipt_label == null or not receipt_label.visible:
+		return ""
+	return str(receipt_label.text)
 
 
 func _fail(message: String) -> void:

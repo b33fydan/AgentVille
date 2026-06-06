@@ -65,6 +65,7 @@ var _skill_forge_trace_label: Label
 var _skill_forge_detail_label: Label
 var _skill_forge_stage_label: Label
 var _skill_forge_next_label: Label
+var _skill_forge_receipt_label: Label
 var _skill_forge_history_label: Label
 var _skill_forge_result_label: Label
 var _skill_forge_run_button: Button
@@ -200,6 +201,7 @@ func set_skill_forge_result(result: Dictionary) -> void:
 		_set_skill_forge_detail_line("")
 		_set_skill_forge_stage_line("", "")
 		_set_skill_forge_next_line("")
+		_set_skill_forge_receipt_line("")
 		_refresh_skill_forge_panel()
 		return
 
@@ -246,6 +248,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	)
 	_set_skill_forge_stage_line("Agent Receipt", skill_name, trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_next_line("Day Summary", trace_tooltip, Color("#6f8568"))
+	_set_skill_forge_receipt_line(receipt_text, trace_tooltip, Color("#4f7a3a"))
 	_refresh_skill_forge_history_label()
 
 
@@ -286,6 +289,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	)
 	_set_skill_forge_stage_line(status_text, skill_name, trace_tooltip, stage_color)
 	_set_skill_forge_next_line(_skill_forge_work_stage_next_text(status_text), trace_tooltip, Color("#6f8568"))
+	_set_skill_forge_receipt_line(_skill_forge_work_stage_receipt_text(status_text, order_label), trace_tooltip, stage_color)
 	_refresh_skill_forge_history_label()
 
 
@@ -1074,7 +1078,7 @@ func _build_work_order_controls(parent: VBoxContainer) -> void:
 
 func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 160)
+	card.custom_minimum_size = Vector2(0, 172)
 	card.add_theme_stylebox_override("panel", _soft_box(Color("#eef7ee"), 10, 1))
 	parent.add_child(card)
 
@@ -1170,6 +1174,14 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_next_label.add_theme_font_size_override("font_size", 8)
 	_skill_forge_next_label.add_theme_color_override("font_color", Color("#6f8568"))
 	stack.add_child(_skill_forge_next_label)
+
+	_skill_forge_receipt_label = Label.new()
+	_skill_forge_receipt_label.text = ""
+	_skill_forge_receipt_label.visible = false
+	_skill_forge_receipt_label.clip_text = true
+	_skill_forge_receipt_label.add_theme_font_size_override("font_size", 8)
+	_skill_forge_receipt_label.add_theme_color_override("font_color", Color("#6f8568"))
+	stack.add_child(_skill_forge_receipt_label)
 
 	_skill_forge_history_label = Label.new()
 	_skill_forge_history_label.text = ""
@@ -1278,6 +1290,7 @@ func _refresh_skill_forge_panel() -> void:
 		_set_skill_forge_detail_line("")
 		_set_skill_forge_stage_line("", "")
 		_set_skill_forge_next_line("")
+		_set_skill_forge_receipt_line("")
 		_refresh_skill_forge_history_label()
 		return
 
@@ -1304,6 +1317,7 @@ func _refresh_skill_forge_panel() -> void:
 	_set_skill_forge_detail_line("")
 	_set_skill_forge_stage_line("Spec Preview", str(preview.get("name", "Skill Run")), _skill_forge_preview_trace_tooltip(preview), Color("#4f6f8f"))
 	_set_skill_forge_next_line("Run or Check", _skill_forge_preview_trace_tooltip(preview), Color("#6f8568"))
+	_set_skill_forge_receipt_line("")
 	_refresh_skill_forge_history_label()
 
 
@@ -1529,6 +1543,7 @@ func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
 		trace_color
 	)
 	_set_skill_forge_next_line(_skill_forge_result_next_line_text(result), trace_tooltip, Color("#6f8568"))
+	_set_skill_forge_receipt_line(_skill_forge_result_receipt_line_text(result), trace_tooltip, trace_color)
 	_refresh_skill_forge_history_label()
 
 
@@ -1761,12 +1776,38 @@ func _skill_forge_result_next_line_text(result: Dictionary) -> String:
 	return ""
 
 
+func _skill_forge_result_receipt_line_text(result: Dictionary) -> String:
+	if _skill_forge_result_has_blocked_order(result):
+		return str(result.get("drafted_order_blocked_detail", result.get("drafted_order_blocked_reason", ""))).strip_edges()
+
+	var status := str(result.get("status", "")).strip_edges()
+	var run: Dictionary = result.get("run", {})
+	var detail := str(run.get("result_detail", "")).strip_edges()
+	if detail != "":
+		return detail
+	if status == "blocked":
+		return _skill_forge_first_issue_text(result)
+	if status == "started":
+		return "harness started"
+	return ""
+
+
 func _skill_forge_work_stage_next_text(status_text: String) -> String:
 	match status_text.strip_edges():
 		"Crew Queued":
 			return "Agent Receipt"
 		"Crew Waiting":
 			return "Wait for free crew"
+	return ""
+
+
+func _skill_forge_work_stage_receipt_text(status_text: String, order_label: String) -> String:
+	order_label = order_label.strip_edges()
+	match status_text.strip_edges():
+		"Crew Queued":
+			return "queued work order: %s" % order_label if order_label != "" else "queued work order"
+		"Crew Waiting":
+			return "waiting for crew: %s" % order_label if order_label != "" else "waiting for crew"
 	return ""
 
 
@@ -1848,6 +1889,30 @@ func _set_skill_forge_next_line(next_step_text: String, tooltip_text: String = "
 	_skill_forge_next_label.visible = true
 	_skill_forge_next_label.tooltip_text = tooltip_text
 	_skill_forge_next_label.add_theme_color_override("font_color", color)
+
+
+func _set_skill_forge_receipt_line(receipt_text: String, tooltip_text: String = "", color: Color = Color("#6f8568")) -> void:
+	if _skill_forge_receipt_label == null:
+		return
+	receipt_text = _skill_forge_compact_receipt_text(receipt_text)
+	if receipt_text == "":
+		_skill_forge_receipt_label.text = ""
+		_skill_forge_receipt_label.visible = false
+		_skill_forge_receipt_label.tooltip_text = ""
+		return
+	_skill_forge_receipt_label.text = "Receipt: %s" % receipt_text
+	_skill_forge_receipt_label.visible = true
+	_skill_forge_receipt_label.tooltip_text = tooltip_text
+	_skill_forge_receipt_label.add_theme_color_override("font_color", color)
+
+
+func _skill_forge_compact_receipt_text(receipt_text: String) -> String:
+	receipt_text = receipt_text.strip_edges()
+	if receipt_text.ends_with("."):
+		receipt_text = receipt_text.substr(0, receipt_text.length() - 1)
+	if receipt_text.length() > 72:
+		return "%s..." % receipt_text.substr(0, 69)
+	return receipt_text
 
 
 func _skill_forge_visible_history_text() -> String:

@@ -117,6 +117,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
 		_fail("Blocked draft did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
 		return
+	if not _visible_receipt_text(game_ui).contains("summon_rain"):
+		_fail("Blocked draft did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
 	if not _stage_tooltip(game_ui).contains("Fix: Replace summon_rain with clear_brush"):
 		_fail("Blocked draft current-stage tooltip did not keep repair detail. tooltip=%s" % _stage_tooltip(game_ui))
 		return
@@ -178,6 +181,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
 		_fail("Clean revision did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
 		return
+	if not _visible_receipt_text(game_ui).contains("replaced summon_rain with clear_brush"):
+		_fail("Clean revision did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
 
 
 func _entries_contain(entries: Array, needle: String) -> bool:
@@ -229,6 +235,13 @@ func _visible_detail_text(game_ui) -> String:
 	if detail_label == null or not detail_label.visible:
 		return ""
 	return str(detail_label.text)
+
+
+func _visible_receipt_text(game_ui) -> String:
+	var receipt_label = game_ui.get("_skill_forge_receipt_label") as Label
+	if receipt_label == null or not receipt_label.visible:
+		return ""
+	return str(receipt_label.text)
 
 
 func _fail(message: String) -> void:
