@@ -88,6 +88,9 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if not preview_tooltip.contains("check crop_state on selected_tile") or not preview_tooltip.contains("receipt Tend Crops run"):
 		_fail("Skill Forge default preview did not expose check/receipt contract details. tooltip=%s" % preview_tooltip)
 		return
+	if _visible_history_text(game_ui) != "":
+		_fail("Skill Forge history trail should stay hidden before a run. text=%s" % _visible_history_text(game_ui))
+		return
 
 	if not game_ui.is_pointer_over_ui(run_button.get_global_rect().get_center()):
 		_fail("Skill Forge run button was not registered as part of the UI hit region.")
@@ -196,6 +199,13 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("run forge_run_") or not trace_tooltip.contains("work order order_"):
 		_fail("Skill Forge run trace did not expose compact run/order identity. tooltip=%s" % trace_tooltip)
 		return
+	var history_text := _visible_history_text(game_ui)
+	if history_text != "Trail: Passed Clear Patch (Harness Receipt)":
+		_fail("Skill Forge visible history trail did not summarize the harness receipt. text=%s" % history_text)
+		return
+	if _history_tooltip(game_ui).contains("Trail:") or not _history_tooltip(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
+		_fail("Skill Forge history tooltip did not keep full receipt detail. tooltip=%s" % _history_tooltip(game_ui))
+		return
 
 	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 6)
 	if not _event_exists(events, "skill_forge_run", "started"):
@@ -224,6 +234,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	if not preview_tooltip.contains("Stage: Spec Preview"):
 		_fail("Forge preview tooltip did not restore the spec-preview stage after template switch. tooltip=%s" % preview_tooltip)
+		return
+	if _visible_history_text(game_ui) != "Trail: Passed Clear Patch (Harness Receipt)":
+		_fail("Forge visible history trail did not survive template switch. text=%s" % _visible_history_text(game_ui))
 		return
 
 
@@ -291,6 +304,13 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if not trace_tooltip.contains("Stage: Harness Receipt"):
 		_fail("Failed Forge trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
 		return
+	var failed_history_text := _visible_history_text(game_ui)
+	if not failed_history_text.contains("Failed Clear Patch (Harness Receipt)") or failed_history_text.contains("selected tile had no brush"):
+		_fail("Failed Forge visible history trail was not compact. text=%s" % failed_history_text)
+		return
+	if not _history_tooltip(game_ui).contains("selected tile had no brush") or not _history_tooltip(game_ui).contains("Fix: Pick a brush tile or revise the condition."):
+		_fail("Failed Forge history tooltip did not keep full repair detail. tooltip=%s" % _history_tooltip(game_ui))
+		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
 	if not _entries_contain(field_log_entries, "Skill Forge failed Clear Patch") or not _entries_contain(field_log_entries, "Pick a brush tile or revise the condition."):
@@ -312,6 +332,18 @@ func _event_exists(events: Array, event_type: String, status: String) -> bool:
 		if str(event.get("status", "")) == status:
 			return true
 	return false
+
+
+func _visible_history_text(game_ui) -> String:
+	var history_label = game_ui.get("_skill_forge_history_label") as Label
+	if history_label == null or not history_label.visible:
+		return ""
+	return str(history_label.text)
+
+
+func _history_tooltip(game_ui) -> String:
+	var history_label = game_ui.get("_skill_forge_history_label") as Label
+	return str(history_label.tooltip_text) if history_label != null else ""
 
 
 func _fail(message: String) -> void:

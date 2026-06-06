@@ -62,6 +62,7 @@ var _skill_forge_summary_label: Label
 var _skill_forge_lesson_label: Label
 var _skill_forge_meta_label: Label
 var _skill_forge_trace_label: Label
+var _skill_forge_history_label: Label
 var _skill_forge_result_label: Label
 var _skill_forge_run_button: Button
 var _skill_forge_review_button: Button
@@ -231,6 +232,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 		_skill_forge_history_tooltip_suffix()
 	]
 	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f7a3a"))
+	_refresh_skill_forge_history_label()
 
 
 func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -> void:
@@ -261,6 +263,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 		_skill_forge_history_tooltip_suffix()
 	]
 	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#8a503e") if status_text == "Crew Waiting" else Color("#4f6f8f"))
+	_refresh_skill_forge_history_label()
 
 
 func set_work_order(order: Dictionary) -> void:
@@ -1048,7 +1051,7 @@ func _build_work_order_controls(parent: VBoxContainer) -> void:
 
 func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 108)
+	card.custom_minimum_size = Vector2(0, 122)
 	card.add_theme_stylebox_override("panel", _soft_box(Color("#eef7ee"), 10, 1))
 	parent.add_child(card)
 
@@ -1120,6 +1123,14 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_trace_label.add_theme_font_size_override("font_size", 9)
 	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 	stack.add_child(_skill_forge_trace_label)
+
+	_skill_forge_history_label = Label.new()
+	_skill_forge_history_label.text = ""
+	_skill_forge_history_label.visible = false
+	_skill_forge_history_label.clip_text = true
+	_skill_forge_history_label.add_theme_font_size_override("font_size", 8)
+	_skill_forge_history_label.add_theme_color_override("font_color", Color("#6f8568"))
+	stack.add_child(_skill_forge_history_label)
 
 	_skill_forge_run_button = Button.new()
 	_skill_forge_run_button.text = "Run"
@@ -1217,6 +1228,7 @@ func _refresh_skill_forge_panel() -> void:
 		if _skill_forge_trace_label:
 			_skill_forge_trace_label.text = "Spec > Receipt"
 			_skill_forge_trace_label.tooltip_text = ""
+		_refresh_skill_forge_history_label()
 		return
 
 	var preview: Dictionary = _skill_forge_template_previews[_active_skill_forge_template_id]
@@ -1239,6 +1251,7 @@ func _refresh_skill_forge_panel() -> void:
 		_skill_forge_trace_label.text = _skill_forge_preview_trace_text(preview)
 		_skill_forge_trace_label.tooltip_text = _skill_forge_preview_trace_tooltip(preview)
 		_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
+	_refresh_skill_forge_history_label()
 
 
 func _skill_forge_button_text(preview: Dictionary) -> String:
@@ -1448,6 +1461,7 @@ func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
 	_skill_forge_trace_label.text = _skill_forge_result_trace_text(result)
 	_skill_forge_trace_label.tooltip_text = _skill_forge_result_trace_tooltip(result)
 	_skill_forge_trace_label.add_theme_color_override("font_color", _skill_forge_result_trace_color(result))
+	_refresh_skill_forge_history_label()
 
 
 func _skill_forge_result_trace_text(result: Dictionary) -> String:
@@ -1653,6 +1667,51 @@ func _record_skill_forge_history_text(text: String) -> void:
 	_skill_forge_history_entries.push_front(text)
 	while _skill_forge_history_entries.size() > 3:
 		_skill_forge_history_entries.pop_back()
+	_refresh_skill_forge_history_label()
+
+
+func _refresh_skill_forge_history_label() -> void:
+	if _skill_forge_history_label == null:
+		return
+	var text := _skill_forge_visible_history_text()
+	_skill_forge_history_label.text = text
+	_skill_forge_history_label.visible = text != ""
+	_skill_forge_history_label.tooltip_text = _skill_forge_full_history_text()
+
+
+func _skill_forge_visible_history_text() -> String:
+	if _skill_forge_history_entries.is_empty():
+		return ""
+	var entries: Array[String] = []
+	for entry in _skill_forge_history_entries:
+		entries.append(str(entry))
+	entries.reverse()
+	var compact_entries: Array[String] = []
+	for entry in entries:
+		var compact_entry := _skill_forge_compact_history_entry(str(entry))
+		if compact_entry != "":
+			compact_entries.append(compact_entry)
+	if compact_entries.is_empty():
+		return ""
+	return "Trail: %s" % " > ".join(compact_entries)
+
+
+func _skill_forge_full_history_text() -> String:
+	if _skill_forge_history_entries.is_empty():
+		return ""
+	var entries: Array[String] = []
+	for entry in _skill_forge_history_entries:
+		entries.append(str(entry))
+	entries.reverse()
+	return "History: %s" % " ; ".join(entries)
+
+
+func _skill_forge_compact_history_entry(text: String) -> String:
+	text = text.strip_edges()
+	var detail_index := text.find(":")
+	if detail_index != -1:
+		text = text.substr(0, detail_index).strip_edges()
+	return text
 
 
 func _skill_forge_history_tooltip_suffix() -> String:
