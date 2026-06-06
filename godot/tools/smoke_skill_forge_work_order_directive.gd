@@ -152,6 +152,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("agent Marigold") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Tend Crops trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
+	if _visible_stage_text(game_ui) != "Now: Forge Receipt | Tend Crops":
+		_fail("Tend Crops did not expose the Forge-only current stage line. text=%s" % _visible_stage_text(game_ui))
+		return
 
 
 func _test_clear_patch_order_blocked_trace() -> void:
@@ -236,6 +239,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not result_tooltip.contains("run forge_run_"):
 		_fail("Order-blocked result tooltip did not expose compact run identity. tooltip=%s" % result_tooltip)
 		return
+	if _visible_stage_text(game_ui) != "Now: Order Blocked | Clear Patch":
+		_fail("Order-blocked Clear Patch did not expose the blocked current stage line. text=%s" % _visible_stage_text(game_ui))
+		return
 
 	scene.queue_free()
 	await process_frame
@@ -286,6 +292,13 @@ func _work_order_event_exists(events: Array, order_id: String, status: String) -
 		if str(event.get("order_id", "")) == order_id and str(event.get("status", "")) == status:
 			return true
 	return false
+
+
+func _visible_stage_text(game_ui) -> String:
+	var stage_label = game_ui.get("_skill_forge_stage_label") as Label
+	if stage_label == null or not stage_label.visible:
+		return ""
+	return str(stage_label.text)
 
 
 func _fail(message: String) -> void:

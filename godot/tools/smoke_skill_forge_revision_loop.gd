@@ -108,6 +108,12 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not blocked_tooltip.contains("Stage: Spec Blocked"):
 		_fail("Blocked draft trace did not expose the spec-blocked stage. tooltip=%s" % blocked_tooltip)
 		return
+	if _visible_stage_text(game_ui) != "Now: Spec Blocked | Clear Patch":
+		_fail("Blocked draft did not expose the spec-blocked current stage line. text=%s" % _visible_stage_text(game_ui))
+		return
+	if not _stage_tooltip(game_ui).contains("Fix: Replace summon_rain with clear_brush"):
+		_fail("Blocked draft current-stage tooltip did not keep repair detail. tooltip=%s" % _stage_tooltip(game_ui))
+		return
 
 
 func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
@@ -157,6 +163,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("[Drift hallucinating]") or not trace_tooltip.contains("Fix: Replace summon_rain with clear_brush"):
 		_fail("Clean revision history dropped blocked-run repair detail. tooltip=%s" % trace_tooltip)
 		return
+	if _visible_stage_text(game_ui) != "Now: Harness Receipt | Clear Patch":
+		_fail("Clean revision did not expose the harness receipt current stage line. text=%s" % _visible_stage_text(game_ui))
+		return
 
 
 func _entries_contain(entries: Array, needle: String) -> bool:
@@ -182,6 +191,18 @@ func _event_has_drift(events: Array, status: String, drift_level: String) -> boo
 		if str(event.get("status", "")) == status and str(event.get("drift_level", "")) == drift_level:
 			return true
 	return false
+
+
+func _visible_stage_text(game_ui) -> String:
+	var stage_label = game_ui.get("_skill_forge_stage_label") as Label
+	if stage_label == null or not stage_label.visible:
+		return ""
+	return str(stage_label.text)
+
+
+func _stage_tooltip(game_ui) -> String:
+	var stage_label = game_ui.get("_skill_forge_stage_label") as Label
+	return str(stage_label.tooltip_text) if stage_label != null else ""
 
 
 func _fail(message: String) -> void:

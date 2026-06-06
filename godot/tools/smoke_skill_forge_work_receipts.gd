@@ -90,6 +90,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if queued_history_text != "Trail: Passed Clear Patch (Harness Receipt) > Crew Queued Clear Patch":
 		_fail("Forge queued-work visible history trail did not summarize the lifecycle. text=%s" % queued_history_text)
 		return
+	if _visible_stage_text(game_ui) != "Now: Crew Queued | Clear Patch":
+		_fail("Forge queued-work current stage did not expose the crew-queued state. text=%s" % _visible_stage_text(game_ui))
+		return
 	var queued_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not queued_chip_tooltip.contains("Stage: Crew Queued"):
 		_fail("Forge work order chip did not expose the crew-queued stage. tooltip=%s" % queued_chip_tooltip)
@@ -148,6 +151,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	var completed_history_text := _visible_history_text(game_ui)
 	if completed_history_text != "Trail: Passed Clear Patch (Harness Receipt) > Crew Queued Clear Patch > Agent Receipt Clear Patch":
 		_fail("Forge completed-work visible history trail did not summarize the lifecycle. text=%s" % completed_history_text)
+		return
+	if _visible_stage_text(game_ui) != "Now: Agent Receipt | Clear Patch":
+		_fail("Forge completed-work current stage did not expose the agent receipt endpoint. text=%s" % _visible_stage_text(game_ui))
 		return
 	var completed_agent := str(completed_event.get("agent_name", ""))
 	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]
@@ -235,6 +241,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if waiting_history_text != "Trail: Passed Clear Patch (Harness Receipt) > Crew Waiting Clear Patch":
 		_fail("Forge waiting visible history trail did not summarize the lifecycle. text=%s" % waiting_history_text)
 		return
+	if _visible_stage_text(game_ui) != "Now: Crew Waiting | Clear Patch":
+		_fail("Forge waiting current stage did not expose the crew-waiting state. text=%s" % _visible_stage_text(game_ui))
+		return
 	var waiting_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not waiting_chip_tooltip.contains("Stage: Crew Waiting"):
 		_fail("Forge work order chip did not expose the crew-waiting stage. tooltip=%s" % waiting_chip_tooltip)
@@ -289,6 +298,13 @@ func _visible_history_text(game_ui) -> String:
 	if history_label == null or not history_label.visible:
 		return ""
 	return str(history_label.text)
+
+
+func _visible_stage_text(game_ui) -> String:
+	var stage_label = game_ui.get("_skill_forge_stage_label") as Label
+	if stage_label == null or not stage_label.visible:
+		return ""
+	return str(stage_label.text)
 
 
 func _completed_forge_world_action(scene: Node, order: Dictionary) -> Dictionary:
