@@ -86,6 +86,10 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Crew Queued Clear Patch"):
 		_fail("Forge queued-work trace did not remember the crew-queued stage. tooltip=%s" % queued_trace_tooltip)
 		return
+	var queued_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
+	if not queued_chip_tooltip.contains("Stage: Crew Queued"):
+		_fail("Forge work order chip did not expose the crew-queued stage. tooltip=%s" % queued_chip_tooltip)
+		return
 
 	if _active_agent_badge_text(scene) != "Forge":
 		_fail("Assigned Forge work did not show a Forge reason badge. saw=%s" % _active_agent_badge_text(scene))
@@ -219,6 +223,10 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not trace_tooltip.contains("Crew Waiting Clear Patch"):
 		_fail("Forge waiting trace did not remember the crew-waiting stage. tooltip=%s" % trace_tooltip)
 		return
+	var waiting_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
+	if not waiting_chip_tooltip.contains("Stage: Crew Waiting"):
+		_fail("Forge work order chip did not expose the crew-waiting stage. tooltip=%s" % waiting_chip_tooltip)
+		return
 
 	scene.queue_free()
 	await process_frame
@@ -255,6 +263,13 @@ func _active_agent_badge_text(scene: Node) -> String:
 		if badge != null and badge.visible:
 			return str(badge.text)
 	return ""
+
+
+func _work_order_chip_tooltip(game_ui, order_id: String) -> String:
+	var rows: Dictionary = game_ui.get("_work_order_rows")
+	var row: Dictionary = rows.get(order_id, {})
+	var preference = row.get("preference", null) as Label
+	return str(preference.tooltip_text) if preference != null else ""
 
 
 func _completed_forge_world_action(scene: Node, order: Dictionary) -> Dictionary:

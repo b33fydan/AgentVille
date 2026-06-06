@@ -2049,8 +2049,26 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 		"skill_forge":
 			var tooltip := "Skill Forge: %s" % label if label != "" else "Drafted by Skill Forge"
 			tooltip += _skill_forge_identity_trace_suffix(str(order.get("forge_run_id", "")), str(order.get("id", "")))
+			var stage := _skill_forge_work_order_stage_label(order)
+			if stage != "":
+				tooltip += " | Stage: %s" % stage
 			return tooltip
 	return ""
+
+
+func _skill_forge_work_order_stage_label(order: Dictionary) -> String:
+	match str(order.get("status", "ready")).strip_edges():
+		"ready":
+			return "Work Order Ready"
+		"queued":
+			return "Crew Queued"
+		"waiting":
+			return "Crew Waiting"
+		"gathering":
+			return "Crew Gathering"
+		"done":
+			return "Agent Receipt"
+	return str(order.get("status_text", "")).strip_edges()
 
 
 func _work_order_preference_color(order: Dictionary) -> Color:

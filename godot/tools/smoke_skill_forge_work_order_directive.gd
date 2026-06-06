@@ -92,6 +92,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("run %s" % str(order.get("forge_run_id", ""))) or not str(preference.tooltip_text).contains("work order %s" % order_id):
 		_fail("Forge work order chip tooltip did not preserve run/order identity. tooltip=%s order=%s" % [str(preference.tooltip_text), str(order)])
 		return
+	if not str(preference.tooltip_text).contains("Stage: Work Order Ready"):
+		_fail("Forge work order chip tooltip did not expose the ready stage. tooltip=%s" % str(preference.tooltip_text))
+		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
 	if not _entries_contain(field_log_entries, "Forge order drafted: Clear Patch"):
