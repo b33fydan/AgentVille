@@ -216,7 +216,7 @@ func set_skill_forge_result(result: Dictionary) -> void:
 		_show_skill_forge_blocked_result(result)
 	else:
 		_skill_forge_last_blocked_template_id = ""
-		_refresh_skill_forge_panel()
+		_refresh_skill_forge_panel(false)
 		_set_skill_forge_trace_from_result(result)
 
 
@@ -1267,7 +1267,7 @@ func _rebuild_skill_forge_template_buttons() -> void:
 		_skill_forge_template_buttons[template_id] = button
 
 
-func _refresh_skill_forge_panel() -> void:
+func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
 	var has_active := _active_skill_forge_template_id != "" and _skill_forge_template_previews.has(_active_skill_forge_template_id)
 	for template_id in _skill_forge_template_buttons.keys():
 		var button := _skill_forge_template_buttons[template_id] as Button
@@ -1289,6 +1289,8 @@ func _refresh_skill_forge_panel() -> void:
 	_refresh_skill_forge_action_tooltips(has_active)
 
 	if not has_active:
+		if show_preview_header:
+			_set_skill_forge_result_header("Ready", "", "", Color("#5f7f39"))
 		if _skill_forge_summary_label:
 			_skill_forge_summary_label.text = "No starter templates loaded."
 		if _skill_forge_meta_label:
@@ -1307,6 +1309,9 @@ func _refresh_skill_forge_panel() -> void:
 		return
 
 	var preview: Dictionary = _skill_forge_template_previews[_active_skill_forge_template_id]
+	var preview_tooltip := _skill_forge_preview_trace_tooltip(preview)
+	if show_preview_header:
+		_set_skill_forge_result_header("Spec Preview", str(preview.get("name", "Skill Run")), preview_tooltip, Color("#4f6f8f"))
 	if _skill_forge_summary_label:
 		_skill_forge_summary_label.text = "Trigger %s | Context %s" % [
 			str(preview.get("trigger_type", "manual")),
@@ -1324,11 +1329,11 @@ func _refresh_skill_forge_panel() -> void:
 		]
 	if _skill_forge_trace_label:
 		_skill_forge_trace_label.text = _skill_forge_preview_trace_text(preview)
-		_skill_forge_trace_label.tooltip_text = _skill_forge_preview_trace_tooltip(preview)
+		_skill_forge_trace_label.tooltip_text = preview_tooltip
 		_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 	_set_skill_forge_detail_line("")
-	_set_skill_forge_stage_line("Spec Preview", str(preview.get("name", "Skill Run")), _skill_forge_preview_trace_tooltip(preview), Color("#4f6f8f"))
-	_set_skill_forge_next_line("Run or Check", _skill_forge_preview_trace_tooltip(preview), Color("#6f8568"))
+	_set_skill_forge_stage_line("Spec Preview", str(preview.get("name", "Skill Run")), preview_tooltip, Color("#4f6f8f"))
+	_set_skill_forge_next_line("Run or Check", preview_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line("")
 	_set_skill_forge_drift_line("")
 	_refresh_skill_forge_history_label()

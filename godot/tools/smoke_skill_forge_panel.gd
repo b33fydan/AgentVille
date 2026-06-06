@@ -70,6 +70,12 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if fix_button == null or not str(fix_button.tooltip_text).contains("Stage: Spec Preview"):
 		_fail("Skill Forge Fix button did not expose its locked preview stage. tooltip=%s" % (str(fix_button.tooltip_text) if fix_button else ""))
 		return
+	if _result_text(game_ui) != "Spec Preview: Tend Crops":
+		_fail("Skill Forge default preview header did not name the active starter. text=%s" % _result_text(game_ui))
+		return
+	if not _result_tooltip(game_ui).contains("Preview trace for Tend Crops") or not _result_tooltip(game_ui).contains("Stage: Spec Preview"):
+		_fail("Skill Forge default preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
+		return
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label
 	if summary_label == null or not summary_label.text.contains("Trigger manual"):
@@ -137,6 +143,12 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if active_id != "clear_patch_starter":
 		_fail("Selecting Clear Patch did not update the active template. active=%s" % active_id)
 		return
+	if _result_text(game_ui) != "Spec Preview: Clear Patch":
+		_fail("Clear Patch preview header did not name the selected starter. text=%s" % _result_text(game_ui))
+		return
+	if not _result_tooltip(game_ui).contains("Preview trace for Clear Patch") or not _result_tooltip(game_ui).contains("Stage: Spec Preview"):
+		_fail("Clear Patch preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
+		return
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label
 	if summary_label == null or not summary_label.text.contains("Context selected_tile"):
@@ -200,6 +212,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	var result_label = game_ui.get("_skill_forge_result_label") as Label
 	if result_label == null or not result_label.text.contains("Passed"):
 		_fail("Skill Forge result label did not show the completed run status. text=%s" % (result_label.text if result_label else ""))
+		return
+	if _result_text(game_ui) != "Passed: Clear Patch":
+		_fail("Skill Forge run header should stay on the harness result. text=%s" % _result_text(game_ui))
 		return
 	var result_tooltip := str(result_label.tooltip_text)
 	if not result_tooltip.contains("run forge_run_") or not result_tooltip.contains("work order order_"):
@@ -289,6 +304,12 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_history_text(game_ui) != "Trail: Passed Clear Patch (Harness Receipt)":
 		_fail("Forge visible history trail did not survive template switch. text=%s" % _visible_history_text(game_ui))
 		return
+	if _result_text(game_ui) != "Spec Preview: Tend Crops":
+		_fail("Forge preview switch should restore the active starter header. text=%s" % _result_text(game_ui))
+		return
+	if not _result_tooltip(game_ui).contains("Preview trace for Tend Crops") or not _result_tooltip(game_ui).contains("History: Passed Clear Patch"):
+		_fail("Forge preview switch header tooltip did not keep preview and history detail. tooltip=%s" % _result_tooltip(game_ui))
+		return
 	if _visible_stage_text(game_ui) != "Now: Spec Preview | Tend Crops":
 		_fail("Forge current-stage line did not restore the Tend Crops preview. text=%s" % _visible_stage_text(game_ui))
 		return
@@ -338,6 +359,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	var result_label = game_ui.get("_skill_forge_result_label") as Label
 	if result_label == null or not str(result_label.text).contains("Failed"):
 		_fail("Failed Forge receipt did not update the result label. text=%s" % (result_label.text if result_label else ""))
+		return
+	if _result_text(game_ui) != "Failed: Clear Patch":
+		_fail("Failed Forge receipt header should stay on the harness result. text=%s" % _result_text(game_ui))
 		return
 	var result_tooltip := str(result_label.tooltip_text)
 	if not result_tooltip.contains("selected tile had no brush") or not result_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
@@ -416,6 +440,16 @@ func _event_exists(events: Array, event_type: String, status: String) -> bool:
 		if str(event.get("status", "")) == status:
 			return true
 	return false
+
+
+func _result_text(game_ui) -> String:
+	var result_label = game_ui.get("_skill_forge_result_label") as Label
+	return str(result_label.text) if result_label != null else ""
+
+
+func _result_tooltip(game_ui) -> String:
+	var result_label = game_ui.get("_skill_forge_result_label") as Label
+	return str(result_label.tooltip_text) if result_label != null else ""
 
 
 func _visible_stage_text(game_ui) -> String:

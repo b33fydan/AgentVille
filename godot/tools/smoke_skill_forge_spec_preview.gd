@@ -96,6 +96,14 @@ func _test_panel_renders_structured_contract() -> void:
 	if not meta_label.text.contains("Receipt Clear Patch run"):
 		_fail("Panel meta did not show the receipt label. text=%s" % meta_label.text)
 		return
+	var result_label = game_ui.get("_skill_forge_result_label") as Label
+	if result_label == null or str(result_label.text) != "Spec Preview: Clear Patch":
+		_fail("Panel header did not name the active preview. text=%s" % (result_label.text if result_label else ""))
+		return
+	var result_tooltip := str(result_label.tooltip_text)
+	if not result_tooltip.contains("Preview trace for Clear Patch") or not result_tooltip.contains("Stage: Spec Preview"):
+		_fail("Panel header tooltip did not keep preview trace detail. tooltip=%s" % result_tooltip)
+		return
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	var trace_tooltip := str(trace_label.tooltip_text) if trace_label != null else ""
 	if trace_label == null or not trace_tooltip.contains("Stage: Spec Preview"):
