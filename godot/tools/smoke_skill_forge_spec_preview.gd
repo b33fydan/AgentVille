@@ -101,6 +101,12 @@ func _test_panel_renders_structured_contract() -> void:
 	if trace_label == null or not trace_tooltip.contains("Stage: Spec Preview"):
 		_fail("Panel preview trace did not expose the spec-preview stage. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("check tile_state on selected_tile"):
+		_fail("Panel preview trace did not expose the success check contract. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("receipt Clear Patch run"):
+		_fail("Panel preview trace did not expose the receipt contract. tooltip=%s" % trace_tooltip)
+		return
 
 	scene.queue_free()
 

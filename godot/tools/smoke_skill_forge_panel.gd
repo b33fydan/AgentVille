@@ -85,6 +85,9 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if trace_label == null or not preview_tooltip.contains("Stage: Spec Preview"):
 		_fail("Skill Forge default preview did not expose the spec-preview stage. tooltip=%s" % preview_tooltip)
 		return
+	if not preview_tooltip.contains("check crop_state on selected_tile") or not preview_tooltip.contains("receipt Tend Crops run"):
+		_fail("Skill Forge default preview did not expose check/receipt contract details. tooltip=%s" % preview_tooltip)
+		return
 
 	if not game_ui.is_pointer_over_ui(run_button.get_global_rect().get_center()):
 		_fail("Skill Forge run button was not registered as part of the UI hit region.")
@@ -136,6 +139,9 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	var preview_tooltip := str(trace_label.tooltip_text)
 	if not preview_tooltip.contains("Stage: Spec Preview"):
 		_fail("Clear Patch preview did not expose the spec-preview stage. tooltip=%s" % preview_tooltip)
+		return
+	if not preview_tooltip.contains("check tile_state on selected_tile") or not preview_tooltip.contains("receipt Clear Patch run"):
+		_fail("Clear Patch preview did not expose check/receipt contract details. tooltip=%s" % preview_tooltip)
 		return
 
 

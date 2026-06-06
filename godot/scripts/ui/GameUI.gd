@@ -1237,11 +1237,7 @@ func _refresh_skill_forge_panel() -> void:
 		]
 	if _skill_forge_trace_label:
 		_skill_forge_trace_label.text = _skill_forge_preview_trace_text(preview)
-		_skill_forge_trace_label.tooltip_text = "Preview trace for %s | Stage: Spec Preview | spec tools %s%s" % [
-			str(preview.get("name", "Skill Run")),
-			str(preview.get("tools_label", "")),
-			_skill_forge_history_tooltip_suffix()
-		]
+		_skill_forge_trace_label.tooltip_text = _skill_forge_preview_trace_tooltip(preview)
 		_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 
 
@@ -1265,6 +1261,23 @@ func _skill_forge_template_tooltip(preview: Dictionary) -> String:
 	if trace_text != "":
 		parts.append("Preview: %s" % trace_text)
 	return " | ".join(parts)
+
+
+func _skill_forge_preview_trace_tooltip(preview: Dictionary) -> String:
+	var parts: Array[String] = [
+		"Preview trace for %s" % str(preview.get("name", "Skill Run")),
+		"Stage: Spec Preview"
+	]
+	var tools_label := str(preview.get("tools_label", "")).strip_edges()
+	if tools_label != "":
+		parts.append("spec tools %s" % tools_label)
+	var check_label := str(preview.get("check_label", preview.get("success_check", ""))).strip_edges()
+	if check_label != "":
+		parts.append("check %s" % check_label)
+	var receipt_label := str(preview.get("receipt_label", "")).strip_edges()
+	if receipt_label != "":
+		parts.append("receipt %s" % receipt_label)
+	return " | ".join(parts) + _skill_forge_history_tooltip_suffix()
 
 
 func _on_skill_forge_template_pressed(template_id: String) -> void:
