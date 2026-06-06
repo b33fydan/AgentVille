@@ -59,6 +59,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Stage: Spec Blocked"):
 		_fail("Blocked draft result tooltip did not expose the spec-blocked stage. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Trace: Spec > Blocked Receipt"):
+		_fail("Blocked draft result tooltip did not expose the spec-blocked trace path. tooltip=%s" % result_tooltip)
+		return
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label
 	if summary_label == null or not summary_label.text.contains("summon_rain"):
@@ -119,6 +122,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	var result_tooltip := str(result_label.tooltip_text)
 	if not result_tooltip.contains("Stage: Harness Receipt"):
 		_fail("Clean revision result tooltip did not expose the harness receipt stage. tooltip=%s" % result_tooltip)
+		return
+	if not result_tooltip.contains("Trace: Spec > Directive > Work Order > Harness Receipt"):
+		_fail("Clean revision result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
 		return
 	if not fix_button.disabled:
 		_fail("Fix button should disable after the clean revision passes.")

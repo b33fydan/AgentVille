@@ -1418,6 +1418,9 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var text := "Drift: %s" % drift
 	if stage != "":
 		text += " | Stage: %s" % stage
+	var trace_text := _skill_forge_result_trace_text(result)
+	if trace_text != "":
+		text += " | Trace: %s" % trace_text
 	if detail != "":
 		text += " | %s" % detail
 	if blocked_detail != "":
