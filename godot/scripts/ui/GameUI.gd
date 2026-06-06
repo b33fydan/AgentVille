@@ -1176,7 +1176,7 @@ func _rebuild_skill_forge_template_buttons() -> void:
 		var preview: Dictionary = _skill_forge_template_previews[template_id]
 		var button := Button.new()
 		button.text = _skill_forge_button_text(preview)
-		button.tooltip_text = str(preview.get("lesson", preview.get("summary", "")))
+		button.tooltip_text = _skill_forge_template_tooltip(preview)
 		button.custom_minimum_size = Vector2(0, 22)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_NONE
@@ -1253,6 +1253,18 @@ func _skill_forge_button_text(preview: Dictionary) -> String:
 		"Clear Patch":
 			return "CLR\nPatch"
 	return name
+
+
+func _skill_forge_template_tooltip(preview: Dictionary) -> String:
+	var parts: Array[String] = []
+	var lesson := str(preview.get("lesson", preview.get("summary", ""))).strip_edges()
+	if lesson != "":
+		parts.append(lesson)
+	parts.append("Stage: Starter Spec -> Spec Preview")
+	var trace_text := _skill_forge_preview_trace_text(preview)
+	if trace_text != "":
+		parts.append("Preview: %s" % trace_text)
+	return " | ".join(parts)
 
 
 func _on_skill_forge_template_pressed(template_id: String) -> void:

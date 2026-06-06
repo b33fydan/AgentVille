@@ -62,6 +62,12 @@ func _test_panel_renders_structured_contract() -> void:
 	if clear_button == null:
 		_fail("Clear Patch template button missing.")
 		return
+	if not str(clear_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
+		_fail("Clear Patch template tooltip did not expose the starter-to-preview stage. tooltip=%s" % str(clear_button.tooltip_text))
+		return
+	if not str(clear_button.tooltip_text).contains("Preview: Spec > clear_brush"):
+		_fail("Clear Patch template tooltip did not expose the compact preview trace. tooltip=%s" % str(clear_button.tooltip_text))
+		return
 	clear_button.pressed.emit()
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label

@@ -42,6 +42,13 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if not buttons.has("tend_crops_starter") or not buttons.has("clear_patch_starter"):
 		_fail("Skill Forge panel did not expose both starter templates. buttons=%s" % str(buttons.keys()))
 		return
+	var tend_button = buttons.get("tend_crops_starter", null) as Button
+	if tend_button == null or not str(tend_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
+		_fail("Tend Crops template button did not expose the starter-to-preview stage. tooltip=%s" % (str(tend_button.tooltip_text) if tend_button else ""))
+		return
+	if not str(tend_button.tooltip_text).contains("Preview: Spec > tend_crop"):
+		_fail("Tend Crops template button did not expose its preview trace. tooltip=%s" % str(tend_button.tooltip_text))
+		return
 
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
 	if run_button == null:
@@ -93,6 +100,12 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	var clear_button = buttons.get("clear_patch_starter", null) as Button
 	if clear_button == null:
 		_fail("Clear Patch template button missing.")
+		return
+	if not str(clear_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
+		_fail("Clear Patch template button did not expose the starter-to-preview stage. tooltip=%s" % str(clear_button.tooltip_text))
+		return
+	if not str(clear_button.tooltip_text).contains("Preview: Spec > clear_brush"):
+		_fail("Clear Patch template button did not expose its preview trace. tooltip=%s" % str(clear_button.tooltip_text))
 		return
 
 	clear_button.pressed.emit()
