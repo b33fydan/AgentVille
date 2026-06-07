@@ -2007,13 +2007,31 @@ func _skill_forge_visible_history_text() -> String:
 	for entry in _skill_forge_history_entries:
 		entries.append(str(entry))
 	entries.reverse()
+
+	var shared_skill := ""
+	var has_mixed_or_unknown_skill := false
+	for entry in entries:
+		var skill_name := _skill_forge_history_skill_name(str(entry))
+		if skill_name == "":
+			has_mixed_or_unknown_skill = true
+			break
+		if shared_skill == "":
+			shared_skill = skill_name
+		elif shared_skill != skill_name:
+			has_mixed_or_unknown_skill = true
+			break
+
 	var compact_entries: Array[String] = []
 	for entry in entries:
 		var compact_entry := _skill_forge_compact_history_entry(str(entry))
+		if not has_mixed_or_unknown_skill and shared_skill != "":
+			compact_entry = _skill_forge_compact_history_step(str(entry))
 		if compact_entry != "":
 			compact_entries.append(compact_entry)
 	if compact_entries.is_empty():
 		return ""
+	if not has_mixed_or_unknown_skill and shared_skill != "":
+		return "Trail: %s: %s" % [shared_skill, " > ".join(compact_entries)]
 	return "Trail: %s" % " > ".join(compact_entries)
 
 
@@ -2033,6 +2051,52 @@ func _skill_forge_compact_history_entry(text: String) -> String:
 	if detail_index != -1:
 		text = text.substr(0, detail_index).strip_edges()
 	return text
+
+
+func _skill_forge_history_skill_name(text: String) -> String:
+	text = text.strip_edges()
+	for prefix in ["Order Blocked ", "Crew Queued ", "Crew Waiting ", "Agent Receipt ", "Passed ", "Failed ", "Blocked "]:
+		var prefix_text := str(prefix)
+		if text.begins_with(prefix_text):
+			return _skill_forge_history_head(text.substr(prefix_text.length()))
+	return ""
+
+
+func _skill_forge_compact_history_step(text: String) -> String:
+	text = text.strip_edges()
+	for prefix in ["Order Blocked ", "Crew Queued ", "Crew Waiting ", "Agent Receipt "]:
+		var prefix_text := str(prefix)
+		if text.begins_with(prefix_text):
+			return prefix_text.strip_edges()
+	for prefix in ["Passed ", "Failed ", "Blocked "]:
+		var prefix_text := str(prefix)
+		if text.begins_with(prefix_text):
+			var status_text := prefix_text.strip_edges()
+			var stage_text := _skill_forge_parenthetical_history_stage(text)
+			if stage_text != "":
+				return "%s (%s)" % [status_text, stage_text]
+			return status_text
+	return _skill_forge_compact_history_entry(text)
+
+
+func _skill_forge_history_head(text: String) -> String:
+	text = text.strip_edges()
+	var end_index := text.length()
+	for marker in [" (", " [", ":"]:
+		var marker_index := text.find(marker)
+		if marker_index != -1 and marker_index < end_index:
+			end_index = marker_index
+	return text.substr(0, end_index).strip_edges()
+
+
+func _skill_forge_parenthetical_history_stage(text: String) -> String:
+	var start_index := text.find("(")
+	if start_index == -1:
+		return ""
+	var end_index := text.find(")", start_index)
+	if end_index == -1 or end_index <= start_index:
+		return ""
+	return text.substr(start_index + 1, end_index - start_index - 1).strip_edges()
 
 
 func _skill_forge_history_tooltip_suffix() -> String:

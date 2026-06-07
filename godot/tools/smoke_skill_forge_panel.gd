@@ -257,7 +257,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		_fail("Skill Forge run trace did not expose compact run/order identity. tooltip=%s" % trace_tooltip)
 		return
 	var history_text := _visible_history_text(game_ui)
-	if history_text != "Trail: Passed Clear Patch (Harness Receipt)":
+	if history_text != "Trail: Clear Patch: Passed (Harness Receipt)":
 		_fail("Skill Forge visible history trail did not summarize the harness receipt. text=%s" % history_text)
 		return
 	if _history_tooltip(game_ui).contains("Trail:") or not _history_tooltip(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
@@ -310,7 +310,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not preview_tooltip.contains("Stage: Spec Preview"):
 		_fail("Forge preview tooltip did not restore the spec-preview stage after template switch. tooltip=%s" % preview_tooltip)
 		return
-	if _visible_history_text(game_ui) != "Trail: Passed Clear Patch (Harness Receipt)":
+	if _visible_history_text(game_ui) != "Trail: Clear Patch: Passed (Harness Receipt)":
 		_fail("Forge visible history trail did not survive template switch. text=%s" % _visible_history_text(game_ui))
 		return
 	if _result_text(game_ui) != "Spec Preview: Tend Crops":
@@ -404,7 +404,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		_fail("Failed Forge trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
 		return
 	var failed_history_text := _visible_history_text(game_ui)
-	if not failed_history_text.contains("Failed Clear Patch (Harness Receipt)") or failed_history_text.contains("selected tile had no brush"):
+	if failed_history_text != "Trail: Clear Patch: Passed (Harness Receipt) > Failed (Harness Receipt)" or failed_history_text.contains("selected tile had no brush"):
 		_fail("Failed Forge visible history trail was not compact. text=%s" % failed_history_text)
 		return
 	if not _history_tooltip(game_ui).contains("selected tile had no brush") or not _history_tooltip(game_ui).contains("Fix: Pick a brush tile or revise the condition."):
