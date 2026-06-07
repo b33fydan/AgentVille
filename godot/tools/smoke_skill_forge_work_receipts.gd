@@ -108,6 +108,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Crew Queued":
 		_fail("Forge queued-work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
+	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
+		_fail("Forge queued-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
+		return
 	if _visible_next_text(game_ui) != "Next: Agent Receipt":
 		_fail("Forge queued-work next step did not point to the agent receipt. text=%s" % _visible_next_text(game_ui))
 		return
@@ -193,6 +196,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Agent Receipt":
 		_fail("Forge completed-work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
+		return
+	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
+		_fail("Forge completed-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
 	if _visible_next_text(game_ui) != "Next: Day Summary":
 		_fail("Forge completed-work next step did not point to the day summary. text=%s" % _visible_next_text(game_ui))
@@ -310,6 +316,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Crew Waiting":
 		_fail("Forge waiting work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
+	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
+		_fail("Forge waiting work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
+		return
 	if _visible_next_text(game_ui) != "Next: Wait for free crew":
 		_fail("Forge waiting next step did not point to crew availability. text=%s" % _visible_next_text(game_ui))
 		return
@@ -400,6 +409,13 @@ func _visible_route_text(game_ui) -> String:
 	if route_label == null or not route_label.visible:
 		return ""
 	return str(route_label.text)
+
+
+func _visible_ref_text(game_ui) -> String:
+	var ref_label = game_ui.get("_skill_forge_ref_label") as Label
+	if ref_label == null or not ref_label.visible:
+		return ""
+	return str(ref_label.text)
 
 
 func _visible_next_text(game_ui) -> String:

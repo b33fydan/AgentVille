@@ -63,6 +63,7 @@ var _skill_forge_lesson_label: Label
 var _skill_forge_meta_label: Label
 var _skill_forge_trace_label: Label
 var _skill_forge_route_label: Label
+var _skill_forge_ref_label: Label
 var _skill_forge_detail_label: Label
 var _skill_forge_stage_label: Label
 var _skill_forge_next_label: Label
@@ -201,6 +202,7 @@ func set_skill_forge_result(result: Dictionary) -> void:
 		_skill_forge_history_entries.clear()
 		_set_skill_forge_detail_line("")
 		_set_skill_forge_route_line("")
+		_set_skill_forge_ref_line("")
 		_set_skill_forge_stage_line("", "")
 		_set_skill_forge_next_line("")
 		_set_skill_forge_receipt_line("")
@@ -249,6 +251,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 		Color("#4f7a3a")
 	)
 	_set_skill_forge_route_line("Spec > Crew Order > Agent Receipt", trace_tooltip, Color("#4f7a3a"))
+	_set_skill_forge_ref_line(_skill_forge_ref_line_text(str(event.get("forge_run_id", "")), str(event.get("work_order_id", ""))), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_stage_line("Agent Receipt", skill_name, trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_next_line("Day Summary", trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(receipt_text, trace_tooltip, Color("#4f7a3a"))
@@ -293,6 +296,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 		stage_color
 	)
 	_set_skill_forge_route_line(_skill_forge_work_stage_route_text(status_text), trace_tooltip, stage_color)
+	_set_skill_forge_ref_line(_skill_forge_ref_line_text(str(order.get("forge_run_id", "")), str(order.get("id", ""))), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_stage_line(status_text, skill_name, trace_tooltip, stage_color)
 	_set_skill_forge_next_line(_skill_forge_work_stage_next_text(status_text), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(_skill_forge_work_stage_receipt_text(status_text, order_label), trace_tooltip, stage_color)
@@ -1166,6 +1170,14 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_route_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 	stack.add_child(_skill_forge_route_label)
 
+	_skill_forge_ref_label = Label.new()
+	_skill_forge_ref_label.text = ""
+	_skill_forge_ref_label.visible = false
+	_skill_forge_ref_label.clip_text = true
+	_skill_forge_ref_label.add_theme_font_size_override("font_size", 8)
+	_skill_forge_ref_label.add_theme_color_override("font_color", Color("#6f8568"))
+	stack.add_child(_skill_forge_ref_label)
+
 	_skill_forge_detail_label = Label.new()
 	_skill_forge_detail_label.text = ""
 	_skill_forge_detail_label.visible = false
@@ -1314,6 +1326,7 @@ func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
 			_skill_forge_trace_label.tooltip_text = ""
 		_set_skill_forge_detail_line("")
 		_set_skill_forge_route_line("")
+		_set_skill_forge_ref_line("")
 		_set_skill_forge_stage_line("", "")
 		_set_skill_forge_next_line("")
 		_set_skill_forge_receipt_line("")
@@ -1346,6 +1359,7 @@ func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
 		_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 	_set_skill_forge_detail_line("")
 	_set_skill_forge_route_line(_skill_forge_preview_route_line_text(preview), preview_tooltip, Color("#4f6f8f"))
+	_set_skill_forge_ref_line("")
 	_set_skill_forge_stage_line("Spec Preview", str(preview.get("name", "Skill Run")), preview_tooltip, Color("#4f6f8f"))
 	_set_skill_forge_next_line(_skill_forge_preview_next_text(preview), preview_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line("")
@@ -1621,6 +1635,7 @@ func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
 		trace_color
 	)
 	_set_skill_forge_route_line(_skill_forge_result_route_line_text(result), trace_tooltip, trace_color)
+	_set_skill_forge_ref_line(_skill_forge_ref_line_text(str(run.get("id", "")), str(result.get("drafted_order_id", ""))), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_stage_line(
 		_skill_forge_result_stage_line_text(result),
 		str(run.get("skill_name", "Skill Run")),
@@ -1759,6 +1774,17 @@ func _skill_forge_identity_trace_suffix(run_id: String, order_id: String = "") -
 	if parts.is_empty():
 		return ""
 	return " | %s" % " | ".join(parts)
+
+
+func _skill_forge_ref_line_text(run_id: String, order_id: String = "") -> String:
+	var parts: Array[String] = []
+	run_id = run_id.strip_edges()
+	order_id = order_id.strip_edges()
+	if run_id != "":
+		parts.append("run %s" % run_id)
+	if order_id != "":
+		parts.append("order %s" % order_id)
+	return " | ".join(parts)
 
 
 func _skill_forge_trace_tile_text(value) -> String:
@@ -2014,6 +2040,21 @@ func _set_skill_forge_route_line(route_text: String, tooltip_text: String = "", 
 	_skill_forge_route_label.visible = true
 	_skill_forge_route_label.tooltip_text = tooltip_text
 	_skill_forge_route_label.add_theme_color_override("font_color", color)
+
+
+func _set_skill_forge_ref_line(ref_text: String, tooltip_text: String = "", color: Color = Color("#6f8568")) -> void:
+	if _skill_forge_ref_label == null:
+		return
+	ref_text = ref_text.strip_edges()
+	if ref_text == "":
+		_skill_forge_ref_label.text = ""
+		_skill_forge_ref_label.visible = false
+		_skill_forge_ref_label.tooltip_text = ""
+		return
+	_skill_forge_ref_label.text = "Ref: %s" % ref_text
+	_skill_forge_ref_label.visible = true
+	_skill_forge_ref_label.tooltip_text = tooltip_text
+	_skill_forge_ref_label.add_theme_color_override("font_color", color)
 
 
 func _set_skill_forge_next_line(next_step_text: String, tooltip_text: String = "", color: Color = Color("#6f8568")) -> void:

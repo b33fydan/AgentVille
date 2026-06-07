@@ -97,6 +97,9 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _visible_route_text(game_ui) != "Route: Spec > Forge Receipt":
 		_fail("Skill Forge default preview did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
+	if _visible_ref_text(game_ui) != "":
+		_fail("Skill Forge default preview should keep run refs hidden. text=%s" % _visible_ref_text(game_ui))
+		return
 	if not preview_tooltip.contains("route Forge Receipt"):
 		_fail("Skill Forge default preview did not expose its Forge-only route. tooltip=%s" % preview_tooltip)
 		return
@@ -180,6 +183,9 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 		return
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order":
 		_fail("Clear Patch preview did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
+		return
+	if _visible_ref_text(game_ui) != "":
+		_fail("Clear Patch preview should keep run refs hidden. text=%s" % _visible_ref_text(game_ui))
 		return
 	var preview_tooltip := str(trace_label.tooltip_text)
 	if not preview_tooltip.contains("Stage: Spec Preview"):
@@ -275,6 +281,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Harness Receipt":
 		_fail("Skill Forge run did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
+	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
+		_fail("Skill Forge run did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
+		return
 	if not _stage_tooltip(game_ui).contains("Stage: Harness Receipt") or not _stage_tooltip(game_ui).contains("run forge_run_"):
 		_fail("Skill Forge current-stage tooltip did not keep harness trace identity. tooltip=%s" % _stage_tooltip(game_ui))
 		return
@@ -333,6 +342,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	if _visible_route_text(game_ui) != "Route: Spec > Forge Receipt":
 		_fail("Forge preview switch did not restore the compact route line. text=%s" % _visible_route_text(game_ui))
+		return
+	if _visible_ref_text(game_ui) != "":
+		_fail("Forge preview switch should hide concrete run refs. text=%s" % _visible_ref_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next: Run for Forge receipt or Check":
 		_fail("Forge next-step line did not restore the Tend Crops preview action. text=%s" % _visible_next_text(game_ui))
@@ -430,6 +442,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Harness Receipt":
 		_fail("Failed Forge receipt did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
+	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
+		_fail("Failed Forge receipt did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
+		return
 	if not _stage_tooltip(game_ui).contains("selected tile had no brush"):
 		_fail("Failed Forge current-stage tooltip did not keep receipt detail. tooltip=%s" % _stage_tooltip(game_ui))
 		return
@@ -490,6 +505,13 @@ func _visible_route_text(game_ui) -> String:
 	if route_label == null or not route_label.visible:
 		return ""
 	return str(route_label.text)
+
+
+func _visible_ref_text(game_ui) -> String:
+	var ref_label = game_ui.get("_skill_forge_ref_label") as Label
+	if ref_label == null or not ref_label.visible:
+		return ""
+	return str(ref_label.text)
 
 
 func _stage_tooltip(game_ui) -> String:

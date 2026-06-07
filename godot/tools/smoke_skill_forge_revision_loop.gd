@@ -111,6 +111,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Now: Spec Blocked | Clear Patch":
 		_fail("Blocked draft did not expose the spec-blocked current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
+	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or _visible_ref_text(game_ui).contains("| order "):
+		_fail("Blocked draft did not expose compact run-only refs. text=%s" % _visible_ref_text(game_ui))
+		return
 	if _visible_next_text(game_ui) != "Next: Use Fix":
 		_fail("Blocked draft did not expose the Fix next step. text=%s" % _visible_next_text(game_ui))
 		return
@@ -180,6 +183,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Now: Harness Receipt | Clear Patch":
 		_fail("Clean revision did not expose the harness receipt current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
+	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
+		_fail("Clean revision did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
+		return
 	if _visible_next_text(game_ui) != "Next: Send crew order":
 		_fail("Clean revision did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
 		return
@@ -224,6 +230,13 @@ func _visible_stage_text(game_ui) -> String:
 	if stage_label == null or not stage_label.visible:
 		return ""
 	return str(stage_label.text)
+
+
+func _visible_ref_text(game_ui) -> String:
+	var ref_label = game_ui.get("_skill_forge_ref_label") as Label
+	if ref_label == null or not ref_label.visible:
+		return ""
+	return str(ref_label.text)
 
 
 func _stage_tooltip(game_ui) -> String:
