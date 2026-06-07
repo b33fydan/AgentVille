@@ -89,6 +89,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Crew Queued Clear Patch"):
 		_fail("Forge queued-work trace did not remember the crew-queued stage. tooltip=%s" % queued_trace_tooltip)
 		return
+	if queued_trace_tooltip.find("History: Passed Clear Patch") == -1 or queued_trace_tooltip.find("Crew Queued Clear Patch") <= queued_trace_tooltip.find("History: Passed Clear Patch"):
+		_fail("Forge queued-work trace history was not chronological. tooltip=%s" % queued_trace_tooltip)
+		return
 	if _result_text(game_ui) != "Crew Queued: Clear Patch":
 		_fail("Forge queued-work header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
 		return
@@ -163,8 +166,11 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not trace_tooltip.contains("run %s" % str(order.get("forge_run_id", ""))) or not trace_tooltip.contains("work order %s" % order_id):
 		_fail("Forge agent receipt trace did not preserve run/order identity. tooltip=%s order=%s" % [trace_tooltip, str(order)])
 		return
-	if not trace_tooltip.contains("History: Agent Receipt Clear Patch") or not trace_tooltip.contains("Passed Clear Patch"):
-		_fail("Forge trace tooltip did not keep recent Forge receipt history. tooltip=%s" % trace_tooltip)
+	var passed_history_index := trace_tooltip.find("History: Passed Clear Patch")
+	var queued_history_index := trace_tooltip.find("Crew Queued Clear Patch")
+	var receipt_history_index := trace_tooltip.find("Agent Receipt Clear Patch")
+	if passed_history_index == -1 or queued_history_index <= passed_history_index or receipt_history_index <= queued_history_index:
+		_fail("Forge trace tooltip did not keep chronological Forge receipt history. tooltip=%s" % trace_tooltip)
 		return
 	if _result_text(game_ui) != "Agent Receipt: Clear Patch":
 		_fail("Forge completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
@@ -284,6 +290,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not trace_tooltip.contains("Crew Waiting Clear Patch"):
 		_fail("Forge waiting trace did not remember the crew-waiting stage. tooltip=%s" % trace_tooltip)
+		return
+	if trace_tooltip.find("History: Passed Clear Patch") == -1 or trace_tooltip.find("Crew Waiting Clear Patch") <= trace_tooltip.find("History: Passed Clear Patch"):
+		_fail("Forge waiting trace history was not chronological. tooltip=%s" % trace_tooltip)
 		return
 	if _result_text(game_ui) != "Crew Waiting: Clear Patch":
 		_fail("Forge waiting-work header did not follow the waiting lifecycle. text=%s" % _result_text(game_ui))

@@ -2108,11 +2108,7 @@ func _skill_forge_visible_history_text() -> String:
 func _skill_forge_full_history_text() -> String:
 	if _skill_forge_history_entries.is_empty():
 		return ""
-	var entries: Array[String] = []
-	for entry in _skill_forge_history_entries:
-		entries.append(str(entry))
-	entries.reverse()
-	return "History: %s" % " ; ".join(entries)
+	return "History: %s" % " ; ".join(_skill_forge_chronological_history_entries())
 
 
 func _skill_forge_compact_history_entry(text: String) -> String:
@@ -2172,7 +2168,15 @@ func _skill_forge_parenthetical_history_stage(text: String) -> String:
 func _skill_forge_history_tooltip_suffix() -> String:
 	if _skill_forge_history_entries.is_empty():
 		return ""
-	return " | History: %s" % " ; ".join(_skill_forge_history_entries)
+	return " | History: %s" % " ; ".join(_skill_forge_chronological_history_entries())
+
+
+func _skill_forge_chronological_history_entries() -> Array[String]:
+	var entries: Array[String] = []
+	for entry in _skill_forge_history_entries:
+		entries.append(str(entry))
+	entries.reverse()
+	return entries
 
 
 func _add_work_order_action_button(parent: HBoxContainer, action_id: String, label: String, tooltip: String) -> void:
