@@ -114,8 +114,8 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _visible_next_text(game_ui) != "Next: Agent Receipt":
 		_fail("Forge queued-work next step did not point to the agent receipt. text=%s" % _visible_next_text(game_ui))
 		return
-	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
-		_fail("Forge queued-work did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Forge queued-work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
 	if not _visible_receipt_text(game_ui).contains("queued work order"):
 		_fail("Forge queued-work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
@@ -205,8 +205,8 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	var completed_agent := str(completed_event.get("agent_name", ""))
 	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]
-	if not _visible_detail_text(game_ui).begins_with("Run: %s @ " % completed_agent) or not _visible_detail_text(game_ui).contains("| Starter Lab"):
-		_fail("Forge completed-work did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+	if not _visible_detail_text(game_ui).begins_with("Context: agent %s | target " % completed_agent) or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Forge completed-work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
 	if not _visible_receipt_text(game_ui).contains("%s cleared" % completed_agent):
 		_fail("Forge completed-work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
@@ -322,8 +322,8 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if _visible_next_text(game_ui) != "Next: Wait for free crew":
 		_fail("Forge waiting next step did not point to crew availability. text=%s" % _visible_next_text(game_ui))
 		return
-	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
-		_fail("Forge waiting work did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Forge waiting work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
 	if not _visible_receipt_text(game_ui).contains("waiting for crew"):
 		_fail("Forge waiting work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))

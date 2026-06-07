@@ -117,8 +117,8 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if _visible_next_text(game_ui) != "Next: Use Fix":
 		_fail("Blocked draft did not expose the Fix next step. text=%s" % _visible_next_text(game_ui))
 		return
-	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
-		_fail("Blocked draft did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Blocked draft did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
 	if not _visible_receipt_text(game_ui).contains("summon_rain"):
 		_fail("Blocked draft did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
@@ -189,8 +189,8 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if _visible_next_text(game_ui) != "Next: Send crew order":
 		_fail("Clean revision did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
 		return
-	if not _visible_detail_text(game_ui).begins_with("Run: Chuck @ ") or not _visible_detail_text(game_ui).contains("| Starter Lab"):
-		_fail("Clean revision did not expose compact run detail. text=%s" % _visible_detail_text(game_ui))
+	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Clean revision did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
 	if not _visible_receipt_text(game_ui).contains("replaced summon_rain with clear_brush"):
 		_fail("Clean revision did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))

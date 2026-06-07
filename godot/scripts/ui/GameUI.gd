@@ -1815,17 +1815,16 @@ func _skill_forge_source_context_text(source_context) -> String:
 func _skill_forge_run_detail_text(agent_name: String, target_value, source_context) -> String:
 	var primary_parts: Array[String] = []
 	agent_name = agent_name.strip_edges()
+	if agent_name != "":
+		primary_parts.append("agent %s" % agent_name)
+
 	var target_text := _skill_forge_trace_tile_text(target_value)
-	if agent_name != "" and target_text != "":
-		primary_parts.append("%s @ %s" % [agent_name, target_text])
-	elif agent_name != "":
-		primary_parts.append(agent_name)
-	elif target_text != "":
+	if target_text != "":
 		primary_parts.append("target %s" % target_text)
 
 	var source_text := _skill_forge_source_context_text(source_context)
 	if source_text != "":
-		primary_parts.append(source_text)
+		primary_parts.append("source %s" % source_text)
 	return " | ".join(primary_parts)
 
 
@@ -2021,7 +2020,7 @@ func _set_skill_forge_detail_line(detail_text: String, tooltip_text: String = ""
 		_skill_forge_detail_label.visible = false
 		_skill_forge_detail_label.tooltip_text = ""
 		return
-	_skill_forge_detail_label.text = "Run: %s" % detail_text
+	_skill_forge_detail_label.text = "Context: %s" % detail_text
 	_skill_forge_detail_label.visible = true
 	_skill_forge_detail_label.tooltip_text = tooltip_text
 	_skill_forge_detail_label.add_theme_color_override("font_color", color)
