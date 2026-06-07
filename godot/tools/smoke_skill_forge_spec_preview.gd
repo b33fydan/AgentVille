@@ -65,7 +65,7 @@ func _test_panel_renders_structured_contract() -> void:
 	if not str(clear_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
 		_fail("Clear Patch template tooltip did not expose the starter-to-preview stage. tooltip=%s" % str(clear_button.tooltip_text))
 		return
-	if not str(clear_button.tooltip_text).contains("Preview: Spec > clear_brush"):
+	if not str(clear_button.tooltip_text).contains("Preview: Spec > clear_brush > Crew Order"):
 		_fail("Clear Patch template tooltip did not expose the compact preview trace. tooltip=%s" % str(clear_button.tooltip_text))
 		return
 	clear_button.pressed.emit()
@@ -101,13 +101,19 @@ func _test_panel_renders_structured_contract() -> void:
 		_fail("Panel header did not name the active preview. text=%s" % (result_label.text if result_label else ""))
 		return
 	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("Preview trace for Clear Patch") or not result_tooltip.contains("Stage: Spec Preview"):
+	if not result_tooltip.contains("Preview trace for Clear Patch") or not result_tooltip.contains("route Crew Order"):
 		_fail("Panel header tooltip did not keep preview trace detail. tooltip=%s" % result_tooltip)
 		return
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	var trace_tooltip := str(trace_label.tooltip_text) if trace_label != null else ""
 	if trace_label == null or not trace_tooltip.contains("Stage: Spec Preview"):
 		_fail("Panel preview trace did not expose the spec-preview stage. tooltip=%s" % trace_tooltip)
+		return
+	if str(trace_label.text) != "Spec > clear_brush > Crew Order":
+		_fail("Panel preview trace did not show the crew-order endpoint. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	if not trace_tooltip.contains("route Crew Order"):
+		_fail("Panel preview trace did not expose the crew-order route. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("check tile_state on selected_tile"):
 		_fail("Panel preview trace did not expose the success check contract. tooltip=%s" % trace_tooltip)
