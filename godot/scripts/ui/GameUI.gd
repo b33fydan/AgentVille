@@ -62,6 +62,7 @@ var _skill_forge_summary_label: Label
 var _skill_forge_lesson_label: Label
 var _skill_forge_meta_label: Label
 var _skill_forge_trace_label: Label
+var _skill_forge_route_label: Label
 var _skill_forge_detail_label: Label
 var _skill_forge_stage_label: Label
 var _skill_forge_next_label: Label
@@ -199,6 +200,7 @@ func set_skill_forge_result(result: Dictionary) -> void:
 		_skill_forge_last_blocked_template_id = ""
 		_skill_forge_history_entries.clear()
 		_set_skill_forge_detail_line("")
+		_set_skill_forge_route_line("")
 		_set_skill_forge_stage_line("", "")
 		_set_skill_forge_next_line("")
 		_set_skill_forge_receipt_line("")
@@ -246,6 +248,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 		trace_tooltip,
 		Color("#4f7a3a")
 	)
+	_set_skill_forge_route_line("Spec > Crew Order > Agent Receipt", trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_stage_line("Agent Receipt", skill_name, trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_next_line("Day Summary", trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(receipt_text, trace_tooltip, Color("#4f7a3a"))
@@ -289,6 +292,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 		trace_tooltip,
 		stage_color
 	)
+	_set_skill_forge_route_line(_skill_forge_work_stage_route_text(status_text), trace_tooltip, stage_color)
 	_set_skill_forge_stage_line(status_text, skill_name, trace_tooltip, stage_color)
 	_set_skill_forge_next_line(_skill_forge_work_stage_next_text(status_text), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(_skill_forge_work_stage_receipt_text(status_text, order_label), trace_tooltip, stage_color)
@@ -1154,6 +1158,14 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 	stack.add_child(_skill_forge_trace_label)
 
+	_skill_forge_route_label = Label.new()
+	_skill_forge_route_label.text = ""
+	_skill_forge_route_label.visible = false
+	_skill_forge_route_label.clip_text = true
+	_skill_forge_route_label.add_theme_font_size_override("font_size", 8)
+	_skill_forge_route_label.add_theme_color_override("font_color", Color("#4f6f8f"))
+	stack.add_child(_skill_forge_route_label)
+
 	_skill_forge_detail_label = Label.new()
 	_skill_forge_detail_label.text = ""
 	_skill_forge_detail_label.visible = false
@@ -1301,6 +1313,7 @@ func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
 			_skill_forge_trace_label.text = "Spec > Receipt"
 			_skill_forge_trace_label.tooltip_text = ""
 		_set_skill_forge_detail_line("")
+		_set_skill_forge_route_line("")
 		_set_skill_forge_stage_line("", "")
 		_set_skill_forge_next_line("")
 		_set_skill_forge_receipt_line("")
@@ -1332,6 +1345,7 @@ func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
 		_skill_forge_trace_label.tooltip_text = preview_tooltip
 		_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 	_set_skill_forge_detail_line("")
+	_set_skill_forge_route_line(_skill_forge_preview_route_line_text(preview), preview_tooltip, Color("#4f6f8f"))
 	_set_skill_forge_stage_line("Spec Preview", str(preview.get("name", "Skill Run")), preview_tooltip, Color("#4f6f8f"))
 	_set_skill_forge_next_line(_skill_forge_preview_next_text(preview), preview_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line("")
@@ -1580,6 +1594,18 @@ func _skill_forge_preview_route_text(final_tool: String) -> String:
 	return ""
 
 
+func _skill_forge_preview_route_line_text(preview: Dictionary) -> String:
+	var final_tool := _skill_forge_final_tool_label(str(preview.get("tools_label", "")).strip_edges())
+	match _skill_forge_preview_route_text(final_tool):
+		"Crew Order":
+			return "Spec > Crew Order"
+		"Forge Receipt":
+			return "Spec > Forge Receipt"
+	if final_tool != "":
+		return "Spec > %s" % final_tool
+	return "Spec"
+
+
 func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
 	if _skill_forge_trace_label == null:
 		return
@@ -1594,6 +1620,7 @@ func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
 		trace_tooltip,
 		trace_color
 	)
+	_set_skill_forge_route_line(_skill_forge_result_route_line_text(result), trace_tooltip, trace_color)
 	_set_skill_forge_stage_line(
 		_skill_forge_result_stage_line_text(result),
 		str(run.get("skill_name", "Skill Run")),
@@ -1619,6 +1646,25 @@ func _skill_forge_result_trace_text(result: Dictionary) -> String:
 			return "Spec > Directive > Work Order > Harness Receipt" if status in ["passed", "failed"] else "Spec > Directive > Work Order"
 		return "Spec > Directive > Order Blocked"
 	return "Spec > Directive > Forge Receipt"
+
+
+func _skill_forge_result_route_line_text(result: Dictionary) -> String:
+	var status := str(result.get("status", "")).strip_edges()
+	var directive: Dictionary = result.get("directive", {})
+	if directive.is_empty():
+		return "Spec > Blocked Receipt" if status == "blocked" else "Spec > Receipt"
+	if _skill_forge_result_has_blocked_order(result):
+		return "Spec > Order Blocked"
+
+	var directive_kind := str(directive.get("kind", "")).strip_edges()
+	var has_order := str(result.get("drafted_order_id", "")).strip_edges() != ""
+	if directive_kind == "work_order_directive":
+		if has_order:
+			return "Spec > Crew Order > Harness Receipt" if status in ["passed", "failed"] else "Spec > Crew Order"
+		return "Spec > Order Blocked"
+	if directive_kind == "skill_directive":
+		return "Spec > Forge Receipt"
+	return "Spec > Directive"
 
 
 func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
@@ -1871,6 +1917,15 @@ func _skill_forge_work_stage_next_text(status_text: String) -> String:
 	return ""
 
 
+func _skill_forge_work_stage_route_text(status_text: String) -> String:
+	match status_text.strip_edges():
+		"Crew Queued":
+			return "Spec > Crew Order > Crew Queued"
+		"Crew Waiting":
+			return "Spec > Crew Order > Crew Waiting"
+	return "Spec > Crew Order"
+
+
 func _skill_forge_work_stage_receipt_text(status_text: String, order_label: String) -> String:
 	order_label = order_label.strip_edges()
 	match status_text.strip_edges():
@@ -1944,6 +1999,21 @@ func _set_skill_forge_detail_line(detail_text: String, tooltip_text: String = ""
 	_skill_forge_detail_label.visible = true
 	_skill_forge_detail_label.tooltip_text = tooltip_text
 	_skill_forge_detail_label.add_theme_color_override("font_color", color)
+
+
+func _set_skill_forge_route_line(route_text: String, tooltip_text: String = "", color: Color = Color("#4f6f8f")) -> void:
+	if _skill_forge_route_label == null:
+		return
+	route_text = route_text.strip_edges()
+	if route_text == "":
+		_skill_forge_route_label.text = ""
+		_skill_forge_route_label.visible = false
+		_skill_forge_route_label.tooltip_text = ""
+		return
+	_skill_forge_route_label.text = "Route: %s" % route_text
+	_skill_forge_route_label.visible = true
+	_skill_forge_route_label.tooltip_text = tooltip_text
+	_skill_forge_route_label.add_theme_color_override("font_color", color)
 
 
 func _set_skill_forge_next_line(next_step_text: String, tooltip_text: String = "", color: Color = Color("#6f8568")) -> void:
