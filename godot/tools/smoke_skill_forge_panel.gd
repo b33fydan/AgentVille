@@ -103,7 +103,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Now: Spec Preview | Tend Crops":
 		_fail("Skill Forge default preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Run or Check":
+	if _visible_next_text(game_ui) != "Next: Run for Forge receipt or Check":
 		_fail("Skill Forge default preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":
@@ -188,7 +188,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Now: Spec Preview | Clear Patch":
 		_fail("Clear Patch preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Run or Check":
+	if _visible_next_text(game_ui) != "Next: Run to crew order or Check":
 		_fail("Clear Patch preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":
@@ -322,7 +322,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Now: Spec Preview | Tend Crops":
 		_fail("Forge current-stage line did not restore the Tend Crops preview. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Run or Check":
+	if _visible_next_text(game_ui) != "Next: Run for Forge receipt or Check":
 		_fail("Forge next-step line did not restore the Tend Crops preview action. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":

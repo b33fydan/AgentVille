@@ -1333,7 +1333,7 @@ func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
 		_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 	_set_skill_forge_detail_line("")
 	_set_skill_forge_stage_line("Spec Preview", str(preview.get("name", "Skill Run")), preview_tooltip, Color("#4f6f8f"))
-	_set_skill_forge_next_line("Run or Check", preview_tooltip, Color("#6f8568"))
+	_set_skill_forge_next_line(_skill_forge_preview_next_text(preview), preview_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line("")
 	_set_skill_forge_drift_line("")
 	_refresh_skill_forge_history_label()
@@ -1559,6 +1559,16 @@ func _skill_forge_preview_trace_text(preview: Dictionary) -> String:
 	if route_text == "":
 		return "Spec > %s" % final_tool
 	return "Spec > %s > %s" % [final_tool, route_text]
+
+
+func _skill_forge_preview_next_text(preview: Dictionary) -> String:
+	var final_tool := _skill_forge_final_tool_label(str(preview.get("tools_label", "")).strip_edges())
+	match _skill_forge_preview_route_text(final_tool):
+		"Crew Order":
+			return "Run to crew order or Check"
+		"Forge Receipt":
+			return "Run for Forge receipt or Check"
+	return "Run or Check"
 
 
 func _skill_forge_preview_route_text(final_tool: String) -> String:
