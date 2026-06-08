@@ -2141,8 +2141,8 @@ func _skill_forge_visible_history_text() -> String:
 	if compact_entries.is_empty():
 		return ""
 	if not has_mixed_or_unknown_skill and shared_skill != "":
-		return "Trail: %s: %s" % [shared_skill, " > ".join(compact_entries)]
-	return "Trail: %s" % " > ".join(compact_entries)
+		return "Run Trail: %s: %s" % [shared_skill, " > ".join(compact_entries)]
+	return "Run Trail: %s" % " > ".join(compact_entries)
 
 
 func _skill_forge_full_history_text() -> String:

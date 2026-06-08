@@ -269,10 +269,10 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		_fail("Skill Forge run trace did not expose compact run/order identity. tooltip=%s" % trace_tooltip)
 		return
 	var history_text := _visible_history_text(game_ui)
-	if history_text != "Trail: Clear Patch: Passed (Harness Receipt)":
-		_fail("Skill Forge visible history trail did not summarize the harness receipt. text=%s" % history_text)
+	if history_text != "Run Trail: Clear Patch: Passed (Harness Receipt)":
+		_fail("Skill Forge visible Run Trail did not summarize the harness receipt. text=%s" % history_text)
 		return
-	if _history_tooltip(game_ui).contains("Trail:") or not _history_tooltip(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
+	if _history_tooltip(game_ui).contains("Run Trail:") or not _history_tooltip(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
 		_fail("Skill Forge history tooltip did not keep full receipt detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Now: Harness Receipt | Clear Patch":
@@ -328,8 +328,8 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not preview_tooltip.contains("Stage: Spec Preview"):
 		_fail("Forge preview tooltip did not restore the spec-preview stage after template switch. tooltip=%s" % preview_tooltip)
 		return
-	if _visible_history_text(game_ui) != "Trail: Clear Patch: Passed (Harness Receipt)":
-		_fail("Forge visible history trail did not survive template switch. text=%s" % _visible_history_text(game_ui))
+	if _visible_history_text(game_ui) != "Run Trail: Clear Patch: Passed (Harness Receipt)":
+		_fail("Forge visible Run Trail did not survive template switch. text=%s" % _visible_history_text(game_ui))
 		return
 	if _result_text(game_ui) != "Spec Preview: Tend Crops":
 		_fail("Forge preview switch should restore the active starter header. text=%s" % _result_text(game_ui))
@@ -430,8 +430,8 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		_fail("Failed Forge trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
 		return
 	var failed_history_text := _visible_history_text(game_ui)
-	if failed_history_text != "Trail: Clear Patch: Passed (Harness Receipt) > Failed (Harness Receipt)" or failed_history_text.contains("selected tile had no brush"):
-		_fail("Failed Forge visible history trail was not compact. text=%s" % failed_history_text)
+	if failed_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Failed (Harness Receipt)" or failed_history_text.contains("selected tile had no brush"):
+		_fail("Failed Forge visible Run Trail was not compact. text=%s" % failed_history_text)
 		return
 	if not _history_tooltip(game_ui).contains("selected tile had no brush") or not _history_tooltip(game_ui).contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge history tooltip did not keep full repair detail. tooltip=%s" % _history_tooltip(game_ui))

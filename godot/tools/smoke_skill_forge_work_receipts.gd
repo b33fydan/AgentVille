@@ -99,8 +99,8 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge queued-work header tooltip did not keep queue trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var queued_history_text := _visible_history_text(game_ui)
-	if queued_history_text != "Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued":
-		_fail("Forge queued-work visible history trail did not summarize the lifecycle. text=%s" % queued_history_text)
+	if queued_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued":
+		_fail("Forge queued-work visible Run Trail did not summarize the lifecycle. text=%s" % queued_history_text)
 		return
 	if _visible_stage_text(game_ui) != "Now: Crew Queued | Clear Patch":
 		_fail("Forge queued-work current stage did not expose the crew-queued state. text=%s" % _visible_stage_text(game_ui))
@@ -188,8 +188,8 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge trace tooltip did not keep the queued crew stage in recent history. tooltip=%s" % trace_tooltip)
 		return
 	var completed_history_text := _visible_history_text(game_ui)
-	if completed_history_text != "Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued > Agent Receipt":
-		_fail("Forge completed-work visible history trail did not summarize the lifecycle. text=%s" % completed_history_text)
+	if completed_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued > Agent Receipt":
+		_fail("Forge completed-work visible Run Trail did not summarize the lifecycle. text=%s" % completed_history_text)
 		return
 	if _visible_stage_text(game_ui) != "Now: Agent Receipt | Clear Patch":
 		_fail("Forge completed-work current stage did not expose the agent receipt endpoint. text=%s" % _visible_stage_text(game_ui))
@@ -307,8 +307,8 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		_fail("Forge waiting-work header tooltip did not keep waiting trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var waiting_history_text := _visible_history_text(game_ui)
-	if waiting_history_text != "Trail: Clear Patch: Passed (Harness Receipt) > Crew Waiting":
-		_fail("Forge waiting visible history trail did not summarize the lifecycle. text=%s" % waiting_history_text)
+	if waiting_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Waiting":
+		_fail("Forge waiting visible Run Trail did not summarize the lifecycle. text=%s" % waiting_history_text)
 		return
 	if _visible_stage_text(game_ui) != "Now: Crew Waiting | Clear Patch":
 		_fail("Forge waiting current stage did not expose the crew-waiting state. text=%s" % _visible_stage_text(game_ui))
