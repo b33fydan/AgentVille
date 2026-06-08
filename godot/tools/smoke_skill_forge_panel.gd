@@ -94,7 +94,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if trace_label == null or str(trace_label.text) != "Spec > tend_crop > Forge Receipt":
 		_fail("Skill Forge default preview did not expose the Forge-only preview route. text=%s" % (trace_label.text if trace_label else ""))
 		return
-	if _visible_route_text(game_ui) != "Route: Spec > Forge Receipt":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Forge Receipt":
 		_fail("Skill Forge default preview did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if _visible_ref_text(game_ui) != "":
@@ -181,7 +181,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if trace_label == null or str(trace_label.text) != "Spec > clear_brush > Crew Order":
 		_fail("Clear Patch preview did not expose the compact Forge trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
-	if _visible_route_text(game_ui) != "Route: Spec > Crew Order":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order":
 		_fail("Clear Patch preview did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if _visible_ref_text(game_ui) != "":
@@ -278,7 +278,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
 		_fail("Skill Forge run did not expose the harness receipt as the current stage. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Harness Receipt":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Harness Receipt":
 		_fail("Skill Forge run did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
@@ -340,7 +340,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":
 		_fail("Forge current-stage line did not restore the Tend Crops preview. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_route_text(game_ui) != "Route: Spec > Forge Receipt":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Forge Receipt":
 		_fail("Forge preview switch did not restore the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if _visible_ref_text(game_ui) != "":
@@ -439,7 +439,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
 		_fail("Failed Forge receipt did not keep the harness receipt as the current stage. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Harness Receipt":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Harness Receipt":
 		_fail("Failed Forge receipt did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):

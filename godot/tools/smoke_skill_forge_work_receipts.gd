@@ -105,7 +105,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _visible_stage_text(game_ui) != "Stage: Crew Queued | Clear Patch":
 		_fail("Forge queued-work current stage did not expose the crew-queued state. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Crew Queued":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Crew Queued":
 		_fail("Forge queued-work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
@@ -194,7 +194,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _visible_stage_text(game_ui) != "Stage: Agent Receipt | Clear Patch":
 		_fail("Forge completed-work current stage did not expose the agent receipt endpoint. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Agent Receipt":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Agent Receipt":
 		_fail("Forge completed-work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
@@ -313,7 +313,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if _visible_stage_text(game_ui) != "Stage: Crew Waiting | Clear Patch":
 		_fail("Forge waiting current stage did not expose the crew-waiting state. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Crew Waiting":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Crew Waiting":
 		_fail("Forge waiting work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):

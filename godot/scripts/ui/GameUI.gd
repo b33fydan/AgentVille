@@ -2035,7 +2035,7 @@ func _set_skill_forge_route_line(route_text: String, tooltip_text: String = "", 
 		_skill_forge_route_label.visible = false
 		_skill_forge_route_label.tooltip_text = ""
 		return
-	_skill_forge_route_label.text = "Route: %s" % route_text
+	_skill_forge_route_label.text = "Run Route: %s" % route_text
 	_skill_forge_route_label.visible = true
 	_skill_forge_route_label.tooltip_text = tooltip_text
 	_skill_forge_route_label.add_theme_color_override("font_color", color)
