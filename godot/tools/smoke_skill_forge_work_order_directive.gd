@@ -239,7 +239,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not trace_tooltip.contains("order blocked: target changed") or not trace_tooltip.contains("clear_brush") or not trace_tooltip.contains("Clear Patch"):
 		_fail("Order-blocked trace did not explain the blocked directive. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("History: Order Blocked Clear Patch"):
+	if not trace_tooltip.contains("Run History: Order Blocked Clear Patch"):
 		_fail("Order-blocked trace history did not name the blocked-order endpoint. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Stage: Order Blocked"):
@@ -260,7 +260,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not result_tooltip.contains("Trace: Spec > Directive > Order Blocked"):
 		_fail("Order-blocked result tooltip did not expose the blocked-order trace path. tooltip=%s" % result_tooltip)
 		return
-	if not result_tooltip.contains("History: Order Blocked Clear Patch"):
+	if not result_tooltip.contains("Run History: Order Blocked Clear Patch"):
 		_fail("Order-blocked result tooltip did not keep the blocked-order history endpoint. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("run forge_run_"):

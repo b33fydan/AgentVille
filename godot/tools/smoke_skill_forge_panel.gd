@@ -253,7 +253,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		_fail("Skill Forge run did not show the spec-to-order trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("History: Passed Clear Patch"):
+	if not trace_tooltip.contains("Run History: Passed Clear Patch"):
 		_fail("Skill Forge run history did not remember the passed harness receipt. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
@@ -319,7 +319,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		_fail("Switching templates did not restore Tend Crops preview trace. text=%s" % str(trace_label.text))
 		return
 	var preview_tooltip := str(trace_label.tooltip_text)
-	if not preview_tooltip.contains("Preview trace for Tend Crops") or not preview_tooltip.contains("History: Passed Clear Patch"):
+	if not preview_tooltip.contains("Preview trace for Tend Crops") or not preview_tooltip.contains("Run History: Passed Clear Patch"):
 		_fail("Forge preview tooltip did not keep recent run history after template switch. tooltip=%s" % preview_tooltip)
 		return
 	if not preview_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
@@ -334,7 +334,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _result_text(game_ui) != "Spec Preview: Tend Crops":
 		_fail("Forge preview switch should restore the active starter header. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("route Forge Receipt") or not _result_tooltip(game_ui).contains("History: Passed Clear Patch"):
+	if not _result_tooltip(game_ui).contains("route Forge Receipt") or not _result_tooltip(game_ui).contains("Run History: Passed Clear Patch"):
 		_fail("Forge preview switch header tooltip did not keep preview and history detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Now: Spec Preview | Tend Crops":
@@ -418,7 +418,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if not trace_tooltip.contains("harness receipt selected tile had no brush"):
 		_fail("Failed Forge trace did not keep the harness receipt detail. tooltip=%s" % trace_tooltip)
 		return
-	var passed_history_index := trace_tooltip.find("History: Passed Clear Patch")
+	var passed_history_index := trace_tooltip.find("Run History: Passed Clear Patch")
 	var failed_history_index := trace_tooltip.find("Failed Clear Patch")
 	if passed_history_index == -1 or failed_history_index <= passed_history_index or not trace_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge trace history did not keep chronological receipts and repair hint. tooltip=%s" % trace_tooltip)
