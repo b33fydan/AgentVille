@@ -167,7 +167,7 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("agent Marigold") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Tend Crops trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
-	if _visible_stage_text(game_ui) != "Now: Forge Receipt | Tend Crops":
+	if _visible_stage_text(game_ui) != "Stage: Forge Receipt | Tend Crops":
 		_fail("Tend Crops did not expose the Forge-only current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next: Field Log receipt":
@@ -266,7 +266,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not result_tooltip.contains("run forge_run_"):
 		_fail("Order-blocked result tooltip did not expose compact run identity. tooltip=%s" % result_tooltip)
 		return
-	if _visible_stage_text(game_ui) != "Now: Order Blocked | Clear Patch":
+	if _visible_stage_text(game_ui) != "Stage: Order Blocked | Clear Patch":
 		_fail("Order-blocked Clear Patch did not expose the blocked current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next: Pick valid target":

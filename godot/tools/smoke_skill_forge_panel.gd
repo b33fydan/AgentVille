@@ -106,7 +106,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if not preview_tooltip.contains("check crop_state on selected_tile") or not preview_tooltip.contains("receipt Tend Crops run"):
 		_fail("Skill Forge default preview did not expose check/receipt contract details. tooltip=%s" % preview_tooltip)
 		return
-	if _visible_stage_text(game_ui) != "Now: Spec Preview | Tend Crops":
+	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":
 		_fail("Skill Forge default preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next: Run for Forge receipt or Check":
@@ -197,7 +197,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if not preview_tooltip.contains("check tile_state on selected_tile") or not preview_tooltip.contains("receipt Clear Patch run"):
 		_fail("Clear Patch preview did not expose check/receipt contract details. tooltip=%s" % preview_tooltip)
 		return
-	if _visible_stage_text(game_ui) != "Now: Spec Preview | Clear Patch":
+	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Clear Patch":
 		_fail("Clear Patch preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next: Run to crew order or Check":
@@ -275,7 +275,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _history_tooltip(game_ui).contains("Run Trail:") or not _history_tooltip(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
 		_fail("Skill Forge history tooltip did not keep full receipt detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
-	if _visible_stage_text(game_ui) != "Now: Harness Receipt | Clear Patch":
+	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
 		_fail("Skill Forge run did not expose the harness receipt as the current stage. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Harness Receipt":
@@ -337,7 +337,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not _result_tooltip(game_ui).contains("route Forge Receipt") or not _result_tooltip(game_ui).contains("Run History: Passed Clear Patch"):
 		_fail("Forge preview switch header tooltip did not keep preview and history detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
-	if _visible_stage_text(game_ui) != "Now: Spec Preview | Tend Crops":
+	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":
 		_fail("Forge current-stage line did not restore the Tend Crops preview. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_route_text(game_ui) != "Route: Spec > Forge Receipt":
@@ -436,7 +436,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if not _history_tooltip(game_ui).contains("selected tile had no brush") or not _history_tooltip(game_ui).contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge history tooltip did not keep full repair detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
-	if _visible_stage_text(game_ui) != "Now: Harness Receipt | Clear Patch":
+	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
 		_fail("Failed Forge receipt did not keep the harness receipt as the current stage. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Harness Receipt":

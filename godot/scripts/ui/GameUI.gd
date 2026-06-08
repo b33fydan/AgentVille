@@ -2002,7 +2002,7 @@ func _set_skill_forge_stage_line(stage_text: String, detail_text: String, toolti
 		_skill_forge_stage_label.visible = false
 		_skill_forge_stage_label.tooltip_text = ""
 		return
-	var text := "Now: %s" % stage_text
+	var text := "Stage: %s" % stage_text
 	if detail_text != "":
 		text += " | %s" % detail_text
 	_skill_forge_stage_label.text = text
