@@ -120,7 +120,7 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Blocked draft did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("summon_rain"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("summon_rain"):
 		_fail("Blocked draft did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if not _visible_drift_text(game_ui).contains("hallucinating") or not _visible_drift_text(game_ui).contains("Replace summon_rain with clear_brush"):
@@ -192,7 +192,7 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Clean revision did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("replaced summon_rain with clear_brush"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("replaced summon_rain with clear_brush"):
 		_fail("Clean revision did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":

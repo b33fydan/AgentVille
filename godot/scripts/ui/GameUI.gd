@@ -2080,7 +2080,7 @@ func _set_skill_forge_receipt_line(receipt_text: String, tooltip_text: String = 
 		_skill_forge_receipt_label.visible = false
 		_skill_forge_receipt_label.tooltip_text = ""
 		return
-	_skill_forge_receipt_label.text = "Receipt: %s" % receipt_text
+	_skill_forge_receipt_label.text = "Run Receipt: %s" % receipt_text
 	_skill_forge_receipt_label.visible = true
 	_skill_forge_receipt_label.tooltip_text = tooltip_text
 	_skill_forge_receipt_label.add_theme_color_override("font_color", color)

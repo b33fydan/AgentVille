@@ -293,7 +293,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Skill Forge run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
 		_fail("Skill Forge run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":
@@ -454,7 +454,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Failed Forge receipt did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("selected tile had no brush"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("selected tile had no brush"):
 		_fail("Failed Forge receipt did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":

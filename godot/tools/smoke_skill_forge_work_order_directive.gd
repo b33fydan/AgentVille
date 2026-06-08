@@ -104,7 +104,7 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Forge drafted order did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
 		_fail("Forge drafted order did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":
@@ -176,7 +176,7 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Tend Crops did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed crop-tending checks"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed crop-tending checks"):
 		_fail("Tend Crops did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":
@@ -275,7 +275,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Order-blocked Clear Patch did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("target changed"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("target changed"):
 		_fail("Order-blocked Clear Patch did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":
