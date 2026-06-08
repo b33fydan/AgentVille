@@ -2020,7 +2020,7 @@ func _set_skill_forge_detail_line(detail_text: String, tooltip_text: String = ""
 		_skill_forge_detail_label.visible = false
 		_skill_forge_detail_label.tooltip_text = ""
 		return
-	_skill_forge_detail_label.text = "Context: %s" % detail_text
+	_skill_forge_detail_label.text = "Run Context: %s" % detail_text
 	_skill_forge_detail_label.visible = true
 	_skill_forge_detail_label.tooltip_text = tooltip_text
 	_skill_forge_detail_label.add_theme_color_override("font_color", color)
