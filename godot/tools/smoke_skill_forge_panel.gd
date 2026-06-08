@@ -281,7 +281,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Harness Receipt":
 		_fail("Skill Forge run did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
-	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
+	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
 		_fail("Skill Forge run did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
 		return
 	if not _stage_tooltip(game_ui).contains("Stage: Harness Receipt") or not _stage_tooltip(game_ui).contains("run forge_run_"):
@@ -442,7 +442,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Harness Receipt":
 		_fail("Failed Forge receipt did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
-	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
+	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
 		_fail("Failed Forge receipt did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
 		return
 	if not _stage_tooltip(game_ui).contains("selected tile had no brush"):

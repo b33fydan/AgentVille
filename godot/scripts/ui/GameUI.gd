@@ -2050,7 +2050,7 @@ func _set_skill_forge_ref_line(ref_text: String, tooltip_text: String = "", colo
 		_skill_forge_ref_label.visible = false
 		_skill_forge_ref_label.tooltip_text = ""
 		return
-	_skill_forge_ref_label.text = "Ref: %s" % ref_text
+	_skill_forge_ref_label.text = "Run Ref: %s" % ref_text
 	_skill_forge_ref_label.visible = true
 	_skill_forge_ref_label.tooltip_text = tooltip_text
 	_skill_forge_ref_label.add_theme_color_override("font_color", color)

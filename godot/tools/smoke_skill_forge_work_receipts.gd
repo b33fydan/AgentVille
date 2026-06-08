@@ -108,7 +108,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Crew Queued":
 		_fail("Forge queued-work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
-	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
+	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
 		_fail("Forge queued-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
 	if _visible_next_text(game_ui) != "Next Step: Agent Receipt":
@@ -197,7 +197,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Agent Receipt":
 		_fail("Forge completed-work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
-	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
+	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
 		_fail("Forge completed-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
 	if _visible_next_text(game_ui) != "Next Step: Day Summary":
@@ -316,7 +316,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if _visible_route_text(game_ui) != "Route: Spec > Crew Order > Crew Waiting":
 		_fail("Forge waiting work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
-	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
+	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
 		_fail("Forge waiting work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
 	if _visible_next_text(game_ui) != "Next Step: Wait for free crew":

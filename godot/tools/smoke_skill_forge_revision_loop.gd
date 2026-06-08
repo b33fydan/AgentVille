@@ -111,7 +111,7 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Spec Blocked | Clear Patch":
 		_fail("Blocked draft did not expose the spec-blocked current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or _visible_ref_text(game_ui).contains("| order "):
+	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or _visible_ref_text(game_ui).contains("| order "):
 		_fail("Blocked draft did not expose compact run-only refs. text=%s" % _visible_ref_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next Step: Use Fix":
@@ -183,7 +183,7 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
 		_fail("Clean revision did not expose the harness receipt current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
+	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
 		_fail("Clean revision did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
