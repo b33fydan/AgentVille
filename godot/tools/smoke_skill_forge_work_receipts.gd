@@ -111,7 +111,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
 		_fail("Forge queued-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
-	if _visible_next_text(game_ui) != "Next: Agent Receipt":
+	if _visible_next_text(game_ui) != "Next Step: Agent Receipt":
 		_fail("Forge queued-work next step did not point to the agent receipt. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
@@ -200,7 +200,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
 		_fail("Forge completed-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
-	if _visible_next_text(game_ui) != "Next: Day Summary":
+	if _visible_next_text(game_ui) != "Next Step: Day Summary":
 		_fail("Forge completed-work next step did not point to the day summary. text=%s" % _visible_next_text(game_ui))
 		return
 	var completed_agent := str(completed_event.get("agent_name", ""))
@@ -319,7 +319,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not _visible_ref_text(game_ui).begins_with("Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
 		_fail("Forge waiting work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
-	if _visible_next_text(game_ui) != "Next: Wait for free crew":
+	if _visible_next_text(game_ui) != "Next Step: Wait for free crew":
 		_fail("Forge waiting next step did not point to crew availability. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):

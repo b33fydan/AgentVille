@@ -114,7 +114,7 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or _visible_ref_text(game_ui).contains("| order "):
 		_fail("Blocked draft did not expose compact run-only refs. text=%s" % _visible_ref_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Use Fix":
+	if _visible_next_text(game_ui) != "Next Step: Use Fix":
 		_fail("Blocked draft did not expose the Fix next step. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
@@ -186,7 +186,7 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if not _visible_ref_text(game_ui).begins_with("Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
 		_fail("Clean revision did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Send crew order":
+	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Clean revision did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):

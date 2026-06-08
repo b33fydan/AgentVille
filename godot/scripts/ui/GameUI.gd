@@ -2065,7 +2065,7 @@ func _set_skill_forge_next_line(next_step_text: String, tooltip_text: String = "
 		_skill_forge_next_label.visible = false
 		_skill_forge_next_label.tooltip_text = ""
 		return
-	_skill_forge_next_label.text = "Next: %s" % next_step_text
+	_skill_forge_next_label.text = "Next Step: %s" % next_step_text
 	_skill_forge_next_label.visible = true
 	_skill_forge_next_label.tooltip_text = tooltip_text
 	_skill_forge_next_label.add_theme_color_override("font_color", color)

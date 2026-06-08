@@ -98,7 +98,7 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Stage: Work Order Ready"):
 		_fail("Forge work order chip tooltip did not expose the ready stage. tooltip=%s" % str(preference.tooltip_text))
 		return
-	if _visible_next_text(game_ui) != "Next: Send crew order":
+	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Forge drafted order did not expose the send-order next step. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
@@ -170,7 +170,7 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Forge Receipt | Tend Crops":
 		_fail("Tend Crops did not expose the Forge-only current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Field Log receipt":
+	if _visible_next_text(game_ui) != "Next Step: Field Log receipt":
 		_fail("Tend Crops did not expose the Forge-only next step. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
@@ -269,7 +269,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if _visible_stage_text(game_ui) != "Stage: Order Blocked | Clear Patch":
 		_fail("Order-blocked Clear Patch did not expose the blocked current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Pick valid target":
+	if _visible_next_text(game_ui) != "Next Step: Pick valid target":
 		_fail("Order-blocked Clear Patch did not expose the target-repair next step. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):

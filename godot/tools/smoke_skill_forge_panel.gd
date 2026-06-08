@@ -109,7 +109,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":
 		_fail("Skill Forge default preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Run for Forge receipt or Check":
+	if _visible_next_text(game_ui) != "Next Step: Run for Forge receipt or Check":
 		_fail("Skill Forge default preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":
@@ -200,7 +200,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Clear Patch":
 		_fail("Clear Patch preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Run to crew order or Check":
+	if _visible_next_text(game_ui) != "Next Step: Run to crew order or Check":
 		_fail("Clear Patch preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":
@@ -287,7 +287,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not _stage_tooltip(game_ui).contains("Stage: Harness Receipt") or not _stage_tooltip(game_ui).contains("run forge_run_"):
 		_fail("Skill Forge current-stage tooltip did not keep harness trace identity. tooltip=%s" % _stage_tooltip(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Send crew order":
+	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Skill Forge run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
@@ -346,7 +346,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_ref_text(game_ui) != "":
 		_fail("Forge preview switch should hide concrete run refs. text=%s" % _visible_ref_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Run for Forge receipt or Check":
+	if _visible_next_text(game_ui) != "Next Step: Run for Forge receipt or Check":
 		_fail("Forge next-step line did not restore the Tend Crops preview action. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":
@@ -448,7 +448,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if not _stage_tooltip(game_ui).contains("selected tile had no brush"):
 		_fail("Failed Forge current-stage tooltip did not keep receipt detail. tooltip=%s" % _stage_tooltip(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next: Revise and rerun":
+	if _visible_next_text(game_ui) != "Next Step: Revise and rerun":
 		_fail("Failed Forge receipt did not expose the repair next step. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
