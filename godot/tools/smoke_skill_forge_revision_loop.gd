@@ -123,7 +123,7 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("summon_rain"):
 		_fail("Blocked draft did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
-	if not _visible_drift_text(game_ui).contains("hallucinating") or not _visible_drift_text(game_ui).contains("Replace summon_rain with clear_brush"):
+	if not _visible_drift_text(game_ui).begins_with("Forge Drift: ") or not _visible_drift_text(game_ui).contains("hallucinating") or not _visible_drift_text(game_ui).contains("Replace summon_rain with clear_brush"):
 		_fail("Blocked draft did not expose visible Hallucination Drift and fix copy. text=%s" % _visible_drift_text(game_ui))
 		return
 	if not _stage_tooltip(game_ui).contains("Fix: Replace summon_rain with clear_brush"):

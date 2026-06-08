@@ -2104,7 +2104,7 @@ func _set_skill_forge_drift_line(drift_text: String, tooltip_text: String = "", 
 		_skill_forge_drift_label.visible = false
 		_skill_forge_drift_label.tooltip_text = ""
 		return
-	_skill_forge_drift_label.text = "Drift: %s" % drift_text
+	_skill_forge_drift_label.text = "Forge Drift: %s" % drift_text
 	_skill_forge_drift_label.visible = true
 	_skill_forge_drift_label.tooltip_text = tooltip_text
 	_skill_forge_drift_label.add_theme_color_override("font_color", color)
