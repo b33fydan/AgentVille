@@ -114,8 +114,8 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
 		_fail("Forge queued-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
-	if _visible_next_text(game_ui) != "Next Step: Agent Receipt":
-		_fail("Forge queued-work next step did not point to the agent receipt. text=%s" % _visible_next_text(game_ui))
+	if _visible_next_text(game_ui) != "Next Step: Wait for agent receipt":
+		_fail("Forge queued-work next step did not point to waiting for the agent receipt. text=%s" % _visible_next_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Forge queued-work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
@@ -206,8 +206,8 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
 		_fail("Forge completed-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
 		return
-	if _visible_next_text(game_ui) != "Next Step: Day Summary":
-		_fail("Forge completed-work next step did not point to the day summary. text=%s" % _visible_next_text(game_ui))
+	if _visible_next_text(game_ui) != "Next Step: Review day summary":
+		_fail("Forge completed-work next step did not point to reviewing the day summary. text=%s" % _visible_next_text(game_ui))
 		return
 	var completed_agent := str(completed_event.get("agent_name", ""))
 	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]

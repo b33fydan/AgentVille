@@ -253,7 +253,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_set_skill_forge_route_line("Spec > Crew Order > Agent Receipt", trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_ref_line(_skill_forge_ref_line_text(str(event.get("forge_run_id", "")), str(event.get("work_order_id", ""))), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_stage_line("Agent Receipt", skill_name, trace_tooltip, Color("#4f7a3a"))
-	_set_skill_forge_next_line("Day Summary", trace_tooltip, Color("#6f8568"))
+	_set_skill_forge_next_line("Review day summary", trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(receipt_text, trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_drift_line("")
 	_refresh_skill_forge_history_label()
@@ -1936,7 +1936,7 @@ func _skill_forge_result_drift_line_text(result: Dictionary) -> String:
 func _skill_forge_work_stage_next_text(status_text: String) -> String:
 	match status_text.strip_edges():
 		"Crew Queued":
-			return "Agent Receipt"
+			return "Wait for agent receipt"
 		"Crew Waiting":
 			return "Wait for free crew"
 	return ""
