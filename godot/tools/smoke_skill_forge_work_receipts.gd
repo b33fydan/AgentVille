@@ -102,6 +102,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if queued_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued":
 		_fail("Forge queued-work visible Run Trail did not summarize the lifecycle. text=%s" % queued_history_text)
 		return
+	if not _history_tooltip(game_ui).contains("Run Detail: Crew Queued Clear Patch"):
+		_fail("Forge queued-work history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
+		return
 	if _visible_stage_text(game_ui) != "Stage: Crew Queued | Clear Patch":
 		_fail("Forge queued-work current stage did not expose the crew-queued state. text=%s" % _visible_stage_text(game_ui))
 		return
@@ -190,6 +193,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	var completed_history_text := _visible_history_text(game_ui)
 	if completed_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued > Agent Receipt":
 		_fail("Forge completed-work visible Run Trail did not summarize the lifecycle. text=%s" % completed_history_text)
+		return
+	if not _history_tooltip(game_ui).contains("Run Detail: Agent Receipt Clear Patch"):
+		_fail("Forge completed-work history tooltip did not expose the current agent-receipt detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Stage: Agent Receipt | Clear Patch":
 		_fail("Forge completed-work current stage did not expose the agent receipt endpoint. text=%s" % _visible_stage_text(game_ui))
@@ -310,6 +316,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if waiting_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Waiting":
 		_fail("Forge waiting visible Run Trail did not summarize the lifecycle. text=%s" % waiting_history_text)
 		return
+	if not _history_tooltip(game_ui).contains("Run Detail: Crew Waiting Clear Patch"):
+		_fail("Forge waiting history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
+		return
 	if _visible_stage_text(game_ui) != "Stage: Crew Waiting | Clear Patch":
 		_fail("Forge waiting current stage did not expose the crew-waiting state. text=%s" % _visible_stage_text(game_ui))
 		return
@@ -395,6 +404,11 @@ func _visible_history_text(game_ui) -> String:
 	if history_label == null or not history_label.visible:
 		return ""
 	return str(history_label.text)
+
+
+func _history_tooltip(game_ui) -> String:
+	var history_label = game_ui.get("_skill_forge_history_label") as Label
+	return str(history_label.tooltip_text) if history_label != null else ""
 
 
 func _visible_stage_text(game_ui) -> String:

@@ -2148,7 +2148,11 @@ func _skill_forge_visible_history_text() -> String:
 func _skill_forge_full_history_text() -> String:
 	if _skill_forge_history_entries.is_empty():
 		return ""
-	return "Run History: %s" % " ; ".join(_skill_forge_chronological_history_entries())
+	var entries := _skill_forge_chronological_history_entries()
+	var latest_detail := str(entries[entries.size() - 1]).strip_edges()
+	if latest_detail == "":
+		return "Run History: %s" % " ; ".join(entries)
+	return "Run Detail: %s | Run History: %s" % [latest_detail, " ; ".join(entries)]
 
 
 func _skill_forge_compact_history_entry(text: String) -> String:
