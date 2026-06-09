@@ -2660,6 +2660,9 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 		"skill_forge":
 			var tooltip := "Skill Forge: %s" % label if label != "" else "Drafted by Skill Forge"
 			tooltip += _skill_forge_identity_trace_suffix(str(order.get("forge_run_id", "")), str(order.get("id", "")))
+			var route := _skill_forge_work_order_route_tooltip(order)
+			if route != "":
+				tooltip += " | Route: %s" % route
 			var stage := _skill_forge_work_order_stage_label(order)
 			if stage != "":
 				tooltip += " | Stage: %s" % stage
@@ -2683,6 +2686,21 @@ func _skill_forge_work_order_stage_label(order: Dictionary) -> String:
 		"done":
 			return "Agent Receipt"
 	return str(order.get("status_text", "")).strip_edges()
+
+
+func _skill_forge_work_order_route_tooltip(order: Dictionary) -> String:
+	match str(order.get("status", "ready")).strip_edges():
+		"ready":
+			return "Spec > Crew Order"
+		"queued":
+			return "Spec > Crew Order > Crew Queued"
+		"waiting":
+			return "Spec > Crew Order > Crew Waiting"
+		"gathering":
+			return "Spec > Crew Order > Crew Gathering"
+		"done":
+			return "Spec > Crew Order > Agent Receipt"
+	return "Spec > Crew Order"
 
 
 func _skill_forge_work_order_next_tooltip(order: Dictionary) -> String:
