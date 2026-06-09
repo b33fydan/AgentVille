@@ -2663,6 +2663,9 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 			var stage := _skill_forge_work_order_stage_label(order)
 			if stage != "":
 				tooltip += " | Stage: %s" % stage
+			var next_step := _skill_forge_work_order_next_tooltip(order)
+			if next_step != "":
+				tooltip += " | Next: %s" % next_step
 			return tooltip
 	return ""
 
@@ -2680,6 +2683,19 @@ func _skill_forge_work_order_stage_label(order: Dictionary) -> String:
 		"done":
 			return "Agent Receipt"
 	return str(order.get("status_text", "")).strip_edges()
+
+
+func _skill_forge_work_order_next_tooltip(order: Dictionary) -> String:
+	match str(order.get("status", "ready")).strip_edges():
+		"ready":
+			return "Send crew order"
+		"queued", "gathering":
+			return "Wait for agent receipt"
+		"waiting":
+			return "Wait for free crew"
+		"done":
+			return "Review day summary"
+	return ""
 
 
 func _work_order_preference_color(order: Dictionary) -> Color:

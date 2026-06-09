@@ -130,6 +130,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_chip_tooltip.contains("Stage: Crew Queued"):
 		_fail("Forge work order chip did not expose the crew-queued stage. tooltip=%s" % queued_chip_tooltip)
 		return
+	if not queued_chip_tooltip.contains("Next: Wait for agent receipt"):
+		_fail("Forge work order chip did not expose the crew-queued next step. tooltip=%s" % queued_chip_tooltip)
+		return
 
 	if _active_agent_badge_text(scene) != "Forge":
 		_fail("Assigned Forge work did not show a Forge reason badge. saw=%s" % _active_agent_badge_text(scene))
@@ -343,6 +346,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	var waiting_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
 	if not waiting_chip_tooltip.contains("Stage: Crew Waiting"):
 		_fail("Forge work order chip did not expose the crew-waiting stage. tooltip=%s" % waiting_chip_tooltip)
+		return
+	if not waiting_chip_tooltip.contains("Next: Wait for free crew"):
+		_fail("Forge work order chip did not expose the crew-waiting next step. tooltip=%s" % waiting_chip_tooltip)
 		return
 
 	scene.queue_free()
