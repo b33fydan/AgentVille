@@ -1702,10 +1702,10 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	var stage := _skill_forge_result_history_stage(result)
 	if stage != "":
 		text += " | Stage: %s" % stage
-	if action != "":
-		text += " | directive %s" % action
 	if directive_kind != "":
-		text += " (%s)" % directive_kind
+		text += " | Directive: %s" % directive_kind
+	if action != "":
+		text += " | Tool: %s" % action
 	if directive_kind == "skill_directive":
 		text += " | receipt-only until this action has a crew-order path"
 	if order_label != "":

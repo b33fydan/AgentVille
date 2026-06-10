@@ -260,6 +260,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not trace_tooltip.contains("Stage: Order Blocked"):
 		_fail("Order-blocked trace did not expose the order-blocked stage. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
+		_fail("Order-blocked trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
+		return
 
 	var result_label = game_ui.get("_skill_forge_result_label") as Label
 	if result_label == null or not str(result_label.text).contains("Order Blocked"):
