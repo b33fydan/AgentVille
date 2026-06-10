@@ -92,7 +92,7 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Clear Patch"):
 		_fail("Forge work order chip tooltip did not name the skill. tooltip=%s" % str(preference.tooltip_text))
 		return
-	if not str(preference.tooltip_text).contains("run %s" % str(order.get("forge_run_id", ""))) or not str(preference.tooltip_text).contains("work order %s" % order_id):
+	if not str(preference.tooltip_text).contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not str(preference.tooltip_text).contains("work order %s" % order_id):
 		_fail("Forge work order chip tooltip did not preserve run/order identity. tooltip=%s order=%s" % [str(preference.tooltip_text), str(order)])
 		return
 	if not str(preference.tooltip_text).contains("Context: agent Chuck | target ") or not str(preference.tooltip_text).contains("| source Starter Lab"):
@@ -293,7 +293,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not result_tooltip.contains("Run History: Order Blocked Clear Patch"):
 		_fail("Order-blocked result tooltip did not keep the blocked-order history endpoint. tooltip=%s" % result_tooltip)
 		return
-	if not result_tooltip.contains("run forge_run_"):
+	if not result_tooltip.contains("Run Ref: run forge_run_"):
 		_fail("Order-blocked result tooltip did not expose compact run identity. tooltip=%s" % result_tooltip)
 		return
 	if _visible_stage_text(game_ui) != "Stage: Order Blocked | Clear Patch":

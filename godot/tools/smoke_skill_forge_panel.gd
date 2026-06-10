@@ -238,7 +238,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		_fail("Skill Forge run header should stay on the harness result. text=%s" % _result_text(game_ui))
 		return
 	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("run forge_run_") or not result_tooltip.contains("work order order_"):
+	if not result_tooltip.contains("Run Ref: run forge_run_") or not result_tooltip.contains("work order order_"):
 		_fail("Skill Forge result tooltip did not expose compact run/order identity. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("Stage: Harness Receipt"):
@@ -280,7 +280,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("agent Chuck") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Skill Forge run trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("run forge_run_") or not trace_tooltip.contains("work order order_"):
+	if not trace_tooltip.contains("Run Ref: run forge_run_") or not trace_tooltip.contains("work order order_"):
 		_fail("Skill Forge run trace did not expose compact run/order identity. tooltip=%s" % trace_tooltip)
 		return
 	var history_text := _visible_history_text(game_ui)
