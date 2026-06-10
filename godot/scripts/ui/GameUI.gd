@@ -232,7 +232,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 		skill_name = "Skill Run"
 	_record_skill_forge_history_text("Agent Receipt %s" % skill_name)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > Agent Receipt"
-	var trace_tooltip := "Forge trace for %s%s | Stage: Agent Receipt | ended in agent receipt: %s%s" % [
+	var trace_tooltip := "Forge trace for %s%s | Stage: Agent Receipt | Next: Review day summary | ended in agent receipt: %s%s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
 			str(event.get("agent_name", "")),
@@ -272,20 +272,21 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	var trace_detail := "queued work order"
 	if status_text == "Crew Waiting":
 		trace_detail = "waiting for crew: work order"
+	var next_step := _skill_forge_work_stage_next_text(status_text)
 	_record_skill_forge_work_stage_history(order, status_text)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > %s" % status_text
-	var trace_tooltip := "Forge trace for %s%s | Stage: %s | %s: %s%s" % [
+	var trace_tooltip := "Forge trace for %s%s | Stage: %s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
 			str(order.get("agent_name", "")),
 			order.get("target_tile", Vector2i(-1, -1)),
 			order.get("source_context", {})
 		) + _skill_forge_identity_trace_suffix(str(order.get("forge_run_id", "")), str(order.get("id", ""))),
-		status_text,
-		trace_detail,
-		order_label,
-		_skill_forge_history_tooltip_suffix()
+		status_text
 	]
+	if next_step != "":
+		trace_tooltip += " | Next: %s" % next_step
+	trace_tooltip += " | %s: %s%s" % [trace_detail, order_label, _skill_forge_history_tooltip_suffix()]
 	_skill_forge_trace_label.tooltip_text = trace_tooltip
 	var stage_color := Color("#8a503e") if status_text == "Crew Waiting" else Color("#4f6f8f")
 	_skill_forge_trace_label.add_theme_color_override("font_color", stage_color)
@@ -1565,6 +1566,9 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var trace_text := _skill_forge_result_trace_text(result)
 	if trace_text != "":
 		text += " | Trace: %s" % trace_text
+	var next_step := _skill_forge_result_next_line_text(result)
+	if next_step != "":
+		text += " | Next: %s" % next_step
 	if detail != "":
 		text += " | %s" % detail
 	if blocked_detail != "":
@@ -1702,6 +1706,9 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	var stage := _skill_forge_result_history_stage(result)
 	if stage != "":
 		text += " | Stage: %s" % stage
+	var next_step := _skill_forge_result_next_line_text(result)
+	if next_step != "":
+		text += " | Next: %s" % next_step
 	if directive_kind != "":
 		text += " | Directive: %s" % directive_kind
 	if action != "":

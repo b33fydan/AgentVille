@@ -247,6 +247,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Trace: Spec > Directive > Work Order > Harness Receipt"):
 		_fail("Skill Forge result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Next: Send crew order"):
+		_fail("Skill Forge result tooltip did not expose the next lifecycle step. tooltip=%s" % result_tooltip)
+		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
@@ -264,6 +267,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
 		_fail("Skill Forge run trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Next: Send crew order"):
+		_fail("Skill Forge run trace did not expose the next lifecycle step. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("agent Chuck") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
 		_fail("Skill Forge run trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
