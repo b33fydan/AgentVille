@@ -2663,6 +2663,9 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 			var context := _skill_forge_run_detail_text(str(order.get("agent_name", "")), order.get("target_tile", Vector2i(-1, -1)), order.get("source_context", {}))
 			if context != "":
 				tooltip += " | Context: %s" % context
+			var directive := str(order.get("directive_kind", "")).strip_edges()
+			if directive != "":
+				tooltip += " | Directive: %s" % directive
 			var tool := str(order.get("action", order.get("agent_action", ""))).strip_edges()
 			if tool != "":
 				tooltip += " | Tool: %s" % tool

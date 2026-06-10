@@ -98,6 +98,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Context: agent Chuck | target ") or not str(preference.tooltip_text).contains("| source Starter Lab"):
 		_fail("Forge work order chip tooltip did not preserve readable run context. tooltip=%s" % str(preference.tooltip_text))
 		return
+	if not str(preference.tooltip_text).contains("Directive: work_order_directive"):
+		_fail("Forge work order chip tooltip did not expose the structured directive kind. tooltip=%s" % str(preference.tooltip_text))
+		return
 	if not str(preference.tooltip_text).contains("Tool: clear_brush"):
 		_fail("Forge work order chip tooltip did not expose the selected tool call. tooltip=%s" % str(preference.tooltip_text))
 		return
