@@ -92,7 +92,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if queued_trace_tooltip.find("Run History: Passed Clear Patch") == -1 or queued_trace_tooltip.find("Crew Queued Clear Patch") <= queued_trace_tooltip.find("Run History: Passed Clear Patch"):
 		_fail("Forge queued-work trace history was not chronological. tooltip=%s" % queued_trace_tooltip)
 		return
-	if not queued_trace_tooltip.contains("Next: Wait for agent receipt"):
+	if not queued_trace_tooltip.contains("Next Step: Wait for agent receipt"):
 		_fail("Forge queued-work trace did not expose the agent-receipt next step. tooltip=%s" % queued_trace_tooltip)
 		return
 	if not queued_trace_tooltip.contains("Route: Spec > Crew Order > Crew Queued"):
@@ -104,7 +104,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _result_text(game_ui) != "Crew Queued: Clear Patch":
 		_fail("Forge queued-work header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Stage: Crew Queued") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Crew Queued") or not _result_tooltip(game_ui).contains("Next: Wait for agent receipt") or not _result_tooltip(game_ui).contains("queued work order"):
+	if not _result_tooltip(game_ui).contains("Stage: Crew Queued") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Crew Queued") or not _result_tooltip(game_ui).contains("Next Step: Wait for agent receipt") or not _result_tooltip(game_ui).contains("queued work order"):
 		_fail("Forge queued-work header tooltip did not keep queue trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var queued_history_text := _visible_history_text(game_ui)
@@ -151,7 +151,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_chip_tooltip.contains("Route: Spec > Crew Order > Crew Queued"):
 		_fail("Forge work order chip did not expose the crew-queued route. tooltip=%s" % queued_chip_tooltip)
 		return
-	if not queued_chip_tooltip.contains("Next: Wait for agent receipt"):
+	if not queued_chip_tooltip.contains("Next Step: Wait for agent receipt"):
 		_fail("Forge work order chip did not expose the crew-queued next step. tooltip=%s" % queued_chip_tooltip)
 		return
 
@@ -196,7 +196,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not trace_tooltip.contains("work order %s" % order_id):
 		_fail("Forge agent receipt trace did not preserve run/order identity. tooltip=%s order=%s" % [trace_tooltip, str(order)])
 		return
-	if not trace_tooltip.contains("Next: Review day summary"):
+	if not trace_tooltip.contains("Next Step: Review day summary"):
 		_fail("Forge agent receipt trace did not expose the day-summary next step. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Route: Spec > Crew Order > Agent Receipt"):
@@ -214,7 +214,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _result_text(game_ui) != "Agent Receipt: Clear Patch":
 		_fail("Forge completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Stage: Agent Receipt") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Agent Receipt") or not _result_tooltip(game_ui).contains("Next: Review day summary") or not _result_tooltip(game_ui).contains(receipt):
+	if not _result_tooltip(game_ui).contains("Stage: Agent Receipt") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Agent Receipt") or not _result_tooltip(game_ui).contains("Next Step: Review day summary") or not _result_tooltip(game_ui).contains(receipt):
 		_fail("Forge completed-work header tooltip did not keep receipt trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
@@ -339,7 +339,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if trace_tooltip.find("Run History: Passed Clear Patch") == -1 or trace_tooltip.find("Crew Waiting Clear Patch") <= trace_tooltip.find("Run History: Passed Clear Patch"):
 		_fail("Forge waiting trace history was not chronological. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Next: Wait for free crew"):
+	if not trace_tooltip.contains("Next Step: Wait for free crew"):
 		_fail("Forge waiting trace did not expose the crew-availability next step. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Route: Spec > Crew Order > Crew Waiting"):
@@ -351,7 +351,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if _result_text(game_ui) != "Crew Waiting: Clear Patch":
 		_fail("Forge waiting-work header did not follow the waiting lifecycle. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Stage: Crew Waiting") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Crew Waiting") or not _result_tooltip(game_ui).contains("Next: Wait for free crew") or not _result_tooltip(game_ui).contains("waiting for crew"):
+	if not _result_tooltip(game_ui).contains("Stage: Crew Waiting") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Crew Waiting") or not _result_tooltip(game_ui).contains("Next Step: Wait for free crew") or not _result_tooltip(game_ui).contains("waiting for crew"):
 		_fail("Forge waiting-work header tooltip did not keep waiting trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var waiting_history_text := _visible_history_text(game_ui)
@@ -398,7 +398,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not waiting_chip_tooltip.contains("Route: Spec > Crew Order > Crew Waiting"):
 		_fail("Forge work order chip did not expose the crew-waiting route. tooltip=%s" % waiting_chip_tooltip)
 		return
-	if not waiting_chip_tooltip.contains("Next: Wait for free crew"):
+	if not waiting_chip_tooltip.contains("Next Step: Wait for free crew"):
 		_fail("Forge work order chip did not expose the crew-waiting next step. tooltip=%s" % waiting_chip_tooltip)
 		return
 

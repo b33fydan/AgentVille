@@ -110,7 +110,7 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Route: Spec > Crew Order"):
 		_fail("Forge work order chip tooltip did not expose the ready route. tooltip=%s" % str(preference.tooltip_text))
 		return
-	if not str(preference.tooltip_text).contains("Next: Send crew order"):
+	if not str(preference.tooltip_text).contains("Next Step: Send crew order"):
 		_fail("Forge work order chip tooltip did not expose the ready next step. tooltip=%s" % str(preference.tooltip_text))
 		return
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
@@ -269,7 +269,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
 		_fail("Order-blocked trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Next: Pick valid target"):
+	if not trace_tooltip.contains("Next Step: Pick valid target"):
 		_fail("Order-blocked trace did not expose the target-repair next step. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
@@ -293,7 +293,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not result_tooltip.contains("Trace: Spec > Directive > Order Blocked"):
 		_fail("Order-blocked result tooltip did not expose the blocked-order trace path. tooltip=%s" % result_tooltip)
 		return
-	if not result_tooltip.contains("Next: Pick valid target"):
+	if not result_tooltip.contains("Next Step: Pick valid target"):
 		_fail("Order-blocked result tooltip did not expose the target-repair next step. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("Run History: Order Blocked Clear Patch"):
