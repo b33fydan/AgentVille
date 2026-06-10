@@ -2174,7 +2174,7 @@ func _skill_forge_full_history_text() -> String:
 	var latest_detail := str(entries[entries.size() - 1]).strip_edges()
 	if latest_detail == "":
 		return "Run History: %s" % " ; ".join(entries)
-	return "Run Detail: %s | Run History: %s" % [latest_detail, " ; ".join(entries)]
+	return "Current Run Detail: %s | Run History: %s" % [latest_detail, " ; ".join(entries)]
 
 
 func _skill_forge_compact_history_entry(text: String) -> String:

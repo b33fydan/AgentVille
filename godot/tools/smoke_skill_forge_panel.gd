@@ -291,7 +291,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		_fail("Skill Forge visible Run Trail did not summarize the harness receipt. text=%s" % history_text)
 		return
 	var history_tooltip := _history_tooltip(game_ui)
-	if history_tooltip.contains("Run Trail:") or not history_tooltip.contains("Run Detail: Passed Clear Patch (Harness Receipt)") or not history_tooltip.contains("manual harness receipt confirmed clear-patch checks"):
+	if history_tooltip.contains("Run Trail:") or not history_tooltip.contains("Current Run Detail: Passed Clear Patch (Harness Receipt)") or not history_tooltip.contains("manual harness receipt confirmed clear-patch checks"):
 		_fail("Skill Forge history tooltip did not keep current detail and full receipt history. tooltip=%s" % history_tooltip)
 		return
 	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
@@ -453,7 +453,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		_fail("Failed Forge visible Run Trail was not compact. text=%s" % failed_history_text)
 		return
 	var failed_history_tooltip := _history_tooltip(game_ui)
-	if not failed_history_tooltip.contains("Run Detail: Failed Clear Patch (Harness Receipt)") or not failed_history_tooltip.contains("selected tile had no brush") or not failed_history_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
+	if not failed_history_tooltip.contains("Current Run Detail: Failed Clear Patch (Harness Receipt)") or not failed_history_tooltip.contains("selected tile had no brush") or not failed_history_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge history tooltip did not keep current repair detail. tooltip=%s" % failed_history_tooltip)
 		return
 	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
