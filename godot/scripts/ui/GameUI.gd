@@ -1777,7 +1777,7 @@ func _skill_forge_context_trace_suffix(agent_name: String, target_value, source_
 
 	if parts.is_empty():
 		return ""
-	return " | %s" % " | ".join(parts)
+	return " | Run Context: %s" % " | ".join(parts)
 
 
 func _skill_forge_identity_trace_suffix(run_id: String, order_id: String = "") -> String:

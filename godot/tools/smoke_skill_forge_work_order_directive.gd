@@ -179,7 +179,7 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Passed Tend Crops (Forge Receipt)") or not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Tend Crops trace history did not name Forge/harness receipt endpoints. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("agent Marigold") or not trace_tooltip.contains("target ") or not trace_tooltip.contains("source Starter Lab"):
+	if not trace_tooltip.contains("Run Context: agent Marigold | target ") or not trace_tooltip.contains("| source Starter Lab"):
 		_fail("Tend Crops trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
 		return
 	if _visible_stage_text(game_ui) != "Stage: Forge Receipt | Tend Crops":
@@ -268,6 +268,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		return
 	if not trace_tooltip.contains("Next: Pick valid target"):
 		_fail("Order-blocked trace did not expose the target-repair next step. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
+		_fail("Order-blocked trace did not expose labeled run context. tooltip=%s" % trace_tooltip)
 		return
 
 	var result_label = game_ui.get("_skill_forge_result_label") as Label
