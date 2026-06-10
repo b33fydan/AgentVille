@@ -98,6 +98,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Route: Spec > Crew Order > Crew Queued"):
 		_fail("Forge queued-work trace did not expose the queued route. tooltip=%s" % queued_trace_tooltip)
 		return
+	if not queued_trace_tooltip.contains("Run Receipt: queued work order: Clear Patch"):
+		_fail("Forge queued-work trace did not expose labeled receipt detail. tooltip=%s" % queued_trace_tooltip)
+		return
 	if _result_text(game_ui) != "Crew Queued: Clear Patch":
 		_fail("Forge queued-work header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
 		return
@@ -198,6 +201,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not trace_tooltip.contains("Route: Spec > Crew Order > Agent Receipt"):
 		_fail("Forge agent receipt trace did not expose the agent-receipt route. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Receipt: %s" % receipt):
+		_fail("Forge agent receipt trace did not expose labeled receipt detail. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
 		return
 	var passed_history_index := trace_tooltip.find("Run History: Passed Clear Patch")
 	var queued_history_index := trace_tooltip.find("Crew Queued Clear Patch")
@@ -338,6 +344,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not trace_tooltip.contains("Route: Spec > Crew Order > Crew Waiting"):
 		_fail("Forge waiting trace did not expose the waiting route. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Receipt: waiting for crew: Clear Patch"):
+		_fail("Forge waiting trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
 		return
 	if _result_text(game_ui) != "Crew Waiting: Clear Patch":
 		_fail("Forge waiting-work header did not follow the waiting lifecycle. text=%s" % _result_text(game_ui))

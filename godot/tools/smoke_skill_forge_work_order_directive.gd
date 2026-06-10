@@ -176,6 +176,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Stage: Forge Receipt"):
 		_fail("Tend Crops trace did not expose the Forge-only receipt stage. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Run Receipt: manual harness receipt confirmed crop-tending checks"):
+		_fail("Tend Crops trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Passed Tend Crops (Forge Receipt)") or not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Tend Crops trace history did not name Forge/harness receipt endpoints. tooltip=%s" % trace_tooltip)
 		return

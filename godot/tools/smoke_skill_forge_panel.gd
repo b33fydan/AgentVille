@@ -265,6 +265,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Skill Forge run history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Run Receipt: manual harness receipt confirmed clear-patch checks"):
+		_fail("Skill Forge run trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Stage: Harness Receipt"):
 		_fail("Skill Forge run trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
 		return
@@ -431,7 +434,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		_fail("Failed Forge receipt did not keep the harness trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("harness receipt selected tile had no brush"):
+	if not trace_tooltip.contains("Run Receipt: selected tile had no brush"):
 		_fail("Failed Forge trace did not keep the harness receipt detail. tooltip=%s" % trace_tooltip)
 		return
 	var passed_history_index := trace_tooltip.find("Run History: Passed Clear Patch")

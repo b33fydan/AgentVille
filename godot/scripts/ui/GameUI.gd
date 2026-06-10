@@ -233,7 +233,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_record_skill_forge_history_text("Agent Receipt %s" % skill_name)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > Agent Receipt"
 	var receipt_route := "Spec > Crew Order > Agent Receipt"
-	var trace_tooltip := "Forge trace for %s%s | Stage: Agent Receipt | Route: %s | Next: Review day summary | ended in agent receipt: %s%s" % [
+	var trace_tooltip := "Forge trace for %s%s | Stage: Agent Receipt | Route: %s | Next: Review day summary | Run Receipt: %s%s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
 			str(event.get("agent_name", "")),
@@ -276,6 +276,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 		trace_detail = "waiting for crew: work order"
 	var next_step := _skill_forge_work_stage_next_text(status_text)
 	var route_text := _skill_forge_work_stage_route_text(status_text)
+	var receipt_text := _skill_forge_work_stage_receipt_text(status_text, order_label)
 	_record_skill_forge_work_stage_history(order, status_text)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > %s" % status_text
 	var trace_tooltip := "Forge trace for %s%s | Stage: %s | Route: %s" % [
@@ -290,7 +291,11 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	]
 	if next_step != "":
 		trace_tooltip += " | Next: %s" % next_step
-	trace_tooltip += " | %s: %s%s" % [trace_detail, order_label, _skill_forge_history_tooltip_suffix()]
+	if receipt_text != "":
+		trace_tooltip += " | Run Receipt: %s" % receipt_text
+	else:
+		trace_tooltip += " | %s: %s" % [trace_detail, order_label]
+	trace_tooltip += _skill_forge_history_tooltip_suffix()
 	_skill_forge_trace_label.tooltip_text = trace_tooltip
 	var stage_color := Color("#8a503e") if status_text == "Crew Waiting" else Color("#4f6f8f")
 	_skill_forge_trace_label.add_theme_color_override("font_color", stage_color)
@@ -1732,7 +1737,7 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	elif blocked_reason != "":
 		text += " | order blocked: %s" % blocked_reason
 	if detail != "":
-		text += " | harness receipt %s" % detail
+		text += " | Run Receipt: %s" % detail
 	text += _skill_forge_history_tooltip_suffix()
 	return text
 
