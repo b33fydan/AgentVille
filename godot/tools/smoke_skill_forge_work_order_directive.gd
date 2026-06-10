@@ -260,6 +260,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not trace_tooltip.contains("Stage: Order Blocked"):
 		_fail("Order-blocked trace did not expose the order-blocked stage. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Route: Spec > Order Blocked"):
+		_fail("Order-blocked trace did not expose the blocked route. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
 		_fail("Order-blocked trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
 		return
@@ -277,6 +280,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		return
 	if not result_tooltip.contains("Stage: Order Blocked"):
 		_fail("Order-blocked result tooltip did not expose the order-blocked stage. tooltip=%s" % result_tooltip)
+		return
+	if not result_tooltip.contains("Route: Spec > Order Blocked"):
+		_fail("Order-blocked result tooltip did not expose the blocked route. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("Trace: Spec > Directive > Order Blocked"):
 		_fail("Order-blocked result tooltip did not expose the blocked-order trace path. tooltip=%s" % result_tooltip)

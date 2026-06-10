@@ -95,10 +95,13 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Next: Wait for agent receipt"):
 		_fail("Forge queued-work trace did not expose the agent-receipt next step. tooltip=%s" % queued_trace_tooltip)
 		return
+	if not queued_trace_tooltip.contains("Route: Spec > Crew Order > Crew Queued"):
+		_fail("Forge queued-work trace did not expose the queued route. tooltip=%s" % queued_trace_tooltip)
+		return
 	if _result_text(game_ui) != "Crew Queued: Clear Patch":
 		_fail("Forge queued-work header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Stage: Crew Queued") or not _result_tooltip(game_ui).contains("Next: Wait for agent receipt") or not _result_tooltip(game_ui).contains("queued work order"):
+	if not _result_tooltip(game_ui).contains("Stage: Crew Queued") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Crew Queued") or not _result_tooltip(game_ui).contains("Next: Wait for agent receipt") or not _result_tooltip(game_ui).contains("queued work order"):
 		_fail("Forge queued-work header tooltip did not keep queue trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var queued_history_text := _visible_history_text(game_ui)
@@ -193,6 +196,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not trace_tooltip.contains("Next: Review day summary"):
 		_fail("Forge agent receipt trace did not expose the day-summary next step. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Route: Spec > Crew Order > Agent Receipt"):
+		_fail("Forge agent receipt trace did not expose the agent-receipt route. tooltip=%s" % trace_tooltip)
+		return
 	var passed_history_index := trace_tooltip.find("Run History: Passed Clear Patch")
 	var queued_history_index := trace_tooltip.find("Crew Queued Clear Patch")
 	var receipt_history_index := trace_tooltip.find("Agent Receipt Clear Patch")
@@ -202,7 +208,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _result_text(game_ui) != "Agent Receipt: Clear Patch":
 		_fail("Forge completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Stage: Agent Receipt") or not _result_tooltip(game_ui).contains("Next: Review day summary") or not _result_tooltip(game_ui).contains(receipt):
+	if not _result_tooltip(game_ui).contains("Stage: Agent Receipt") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Agent Receipt") or not _result_tooltip(game_ui).contains("Next: Review day summary") or not _result_tooltip(game_ui).contains(receipt):
 		_fail("Forge completed-work header tooltip did not keep receipt trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
@@ -330,10 +336,13 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not trace_tooltip.contains("Next: Wait for free crew"):
 		_fail("Forge waiting trace did not expose the crew-availability next step. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Route: Spec > Crew Order > Crew Waiting"):
+		_fail("Forge waiting trace did not expose the waiting route. tooltip=%s" % trace_tooltip)
+		return
 	if _result_text(game_ui) != "Crew Waiting: Clear Patch":
 		_fail("Forge waiting-work header did not follow the waiting lifecycle. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Stage: Crew Waiting") or not _result_tooltip(game_ui).contains("Next: Wait for free crew") or not _result_tooltip(game_ui).contains("waiting for crew"):
+	if not _result_tooltip(game_ui).contains("Stage: Crew Waiting") or not _result_tooltip(game_ui).contains("Route: Spec > Crew Order > Crew Waiting") or not _result_tooltip(game_ui).contains("Next: Wait for free crew") or not _result_tooltip(game_ui).contains("waiting for crew"):
 		_fail("Forge waiting-work header tooltip did not keep waiting trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var waiting_history_text := _visible_history_text(game_ui)
