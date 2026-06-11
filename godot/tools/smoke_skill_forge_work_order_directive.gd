@@ -95,7 +95,7 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not str(preference.tooltip_text).contains("work order %s" % order_id):
 		_fail("Forge work order chip tooltip did not preserve run/order identity. tooltip=%s order=%s" % [str(preference.tooltip_text), str(order)])
 		return
-	if not str(preference.tooltip_text).contains("Context: agent Chuck | target ") or not str(preference.tooltip_text).contains("| source Starter Lab"):
+	if not str(preference.tooltip_text).contains("Run Context: agent Chuck | target ") or not str(preference.tooltip_text).contains("| source Starter Lab"):
 		_fail("Forge work order chip tooltip did not preserve readable run context. tooltip=%s" % str(preference.tooltip_text))
 		return
 	if not str(preference.tooltip_text).contains("Directive: work_order_directive"):

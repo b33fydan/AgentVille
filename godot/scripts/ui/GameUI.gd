@@ -2684,7 +2684,7 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 			tooltip += _skill_forge_identity_trace_suffix(str(order.get("forge_run_id", "")), str(order.get("id", "")))
 			var context := _skill_forge_run_detail_text(str(order.get("agent_name", "")), order.get("target_tile", Vector2i(-1, -1)), order.get("source_context", {}))
 			if context != "":
-				tooltip += " | Context: %s" % context
+				tooltip += " | Run Context: %s" % context
 			var directive := str(order.get("directive_kind", "")).strip_edges()
 			if directive != "":
 				tooltip += " | Directive: %s" % directive
