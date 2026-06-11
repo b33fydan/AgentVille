@@ -244,7 +244,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Stage: Harness Receipt"):
 		_fail("Skill Forge result tooltip did not expose the harness receipt stage. tooltip=%s" % result_tooltip)
 		return
-	if not result_tooltip.contains("Route: Spec > Crew Order > Harness Receipt"):
+	if not result_tooltip.contains("Run Route: Spec > Crew Order > Harness Receipt"):
 		_fail("Skill Forge result tooltip did not expose the harness route. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("Trace: Spec > Directive > Work Order > Harness Receipt"):
@@ -271,7 +271,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Stage: Harness Receipt"):
 		_fail("Skill Forge run trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Route: Spec > Crew Order > Harness Receipt"):
+	if not trace_tooltip.contains("Run Route: Spec > Crew Order > Harness Receipt"):
 		_fail("Skill Forge run trace did not expose the harness route. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):

@@ -233,7 +233,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_record_skill_forge_history_text("Agent Receipt %s" % skill_name)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > Agent Receipt"
 	var receipt_route := "Spec > Crew Order > Agent Receipt"
-	var trace_tooltip := "Forge trace for %s%s | Stage: Agent Receipt | Route: %s | Next Step: Review day summary | Run Receipt: %s%s" % [
+	var trace_tooltip := "Forge trace for %s%s | Stage: Agent Receipt | Run Route: %s | Next Step: Review day summary | Run Receipt: %s%s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
 			str(event.get("agent_name", "")),
@@ -279,7 +279,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	var receipt_text := _skill_forge_work_stage_receipt_text(status_text, order_label)
 	_record_skill_forge_work_stage_history(order, status_text)
 	_skill_forge_trace_label.text = "Spec > Directive > Work Order > %s" % status_text
-	var trace_tooltip := "Forge trace for %s%s | Stage: %s | Route: %s" % [
+	var trace_tooltip := "Forge trace for %s%s | Stage: %s | Run Route: %s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
 			str(order.get("agent_name", "")),
@@ -1574,7 +1574,7 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 		text += " | Stage: %s" % stage
 	var route_text := _skill_forge_result_route_line_text(result)
 	if route_text != "":
-		text += " | Route: %s" % route_text
+		text += " | Run Route: %s" % route_text
 	var trace_text := _skill_forge_result_trace_text(result)
 	if trace_text != "":
 		text += " | Trace: %s" % trace_text
@@ -1720,7 +1720,7 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 		text += " | Stage: %s" % stage
 	var route_text := _skill_forge_result_route_line_text(result)
 	if route_text != "":
-		text += " | Route: %s" % route_text
+		text += " | Run Route: %s" % route_text
 	var next_step := _skill_forge_result_next_line_text(result)
 	if next_step != "":
 		text += " | Next Step: %s" % next_step
@@ -2693,7 +2693,7 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 				tooltip += " | Tool: %s" % tool
 			var route := _skill_forge_work_order_route_tooltip(order)
 			if route != "":
-				tooltip += " | Route: %s" % route
+				tooltip += " | Run Route: %s" % route
 			var stage := _skill_forge_work_order_stage_label(order)
 			if stage != "":
 				tooltip += " | Stage: %s" % stage
