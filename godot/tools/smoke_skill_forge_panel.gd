@@ -438,9 +438,12 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		_fail("Failed Forge trace did not keep the harness receipt detail. tooltip=%s" % trace_tooltip)
 		return
 	var passed_history_index := trace_tooltip.find("Run History: Passed Clear Patch")
-	var failed_history_index := trace_tooltip.find("Failed Clear Patch")
+	var failed_history_index := trace_tooltip.find("Failed Clear Patch", passed_history_index)
 	if passed_history_index == -1 or failed_history_index <= passed_history_index or not trace_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge trace history did not keep chronological receipts and repair hint. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Current Run Detail: Failed Clear Patch (Harness Receipt)"):
+		_fail("Failed Forge trace did not expose current repair detail before history. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Failed Clear Patch (Harness Receipt)"):
 		_fail("Failed Forge trace history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)

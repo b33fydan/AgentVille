@@ -167,9 +167,12 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
 	var blocked_history_index := trace_tooltip.find("Run History: Blocked Clear Patch")
-	var passed_history_index := trace_tooltip.find("Passed Clear Patch")
+	var passed_history_index := trace_tooltip.find("Passed Clear Patch", blocked_history_index)
 	if blocked_history_index == -1 or passed_history_index <= blocked_history_index:
 		_fail("Clean revision history did not keep chronological block/pass receipts. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Current Run Detail: Passed Clear Patch (Harness Receipt)"):
+		_fail("Clean revision trace did not expose current passed detail before history. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)") or not trace_tooltip.contains("Blocked Clear Patch (Spec Blocked)"):
 		_fail("Clean revision history did not name the harness/spec endpoints. tooltip=%s" % trace_tooltip)

@@ -2232,7 +2232,7 @@ func _skill_forge_parenthetical_history_stage(text: String) -> String:
 func _skill_forge_history_tooltip_suffix() -> String:
 	if _skill_forge_history_entries.is_empty():
 		return ""
-	return " | Run History: %s" % " ; ".join(_skill_forge_chronological_history_entries())
+	return " | %s" % _skill_forge_full_history_text()
 
 
 func _skill_forge_chronological_history_entries() -> Array[String]:
