@@ -1792,7 +1792,7 @@ func _skill_forge_identity_trace_suffix(run_id: String, order_id: String = "") -
 	if run_id != "":
 		parts.append("run %s" % run_id)
 	if order_id != "":
-		parts.append("work order %s" % order_id)
+		parts.append("order %s" % order_id)
 	if parts.is_empty():
 		return ""
 	return " | Run Ref: %s" % " | ".join(parts)

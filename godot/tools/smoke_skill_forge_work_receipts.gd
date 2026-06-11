@@ -77,7 +77,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Stage: Crew Queued"):
 		_fail("Forge queued-work trace did not expose the crew-queued stage. tooltip=%s" % queued_trace_tooltip)
 		return
-	if not queued_trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not queued_trace_tooltip.contains("work order %s" % order_id):
+	if not queued_trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not queued_trace_tooltip.contains("order %s" % order_id):
 		_fail("Forge queued-work trace did not preserve run/order identity. tooltip=%s order=%s" % [queued_trace_tooltip, str(order)])
 		return
 	if not queued_trace_tooltip.contains("Passed Clear Patch"):
@@ -193,7 +193,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not trace_tooltip.contains("Stage: Agent Receipt"):
 		_fail("Forge agent receipt trace did not expose the agent receipt stage. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not trace_tooltip.contains("work order %s" % order_id):
+	if not trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not trace_tooltip.contains("order %s" % order_id):
 		_fail("Forge agent receipt trace did not preserve run/order identity. tooltip=%s order=%s" % [trace_tooltip, str(order)])
 		return
 	if not trace_tooltip.contains("Next Step: Review day summary"):
@@ -324,7 +324,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not trace_tooltip.contains("Stage: Crew Waiting"):
 		_fail("Forge waiting trace did not expose the crew-waiting stage. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not trace_tooltip.contains("work order %s" % order_id):
+	if not trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not trace_tooltip.contains("order %s" % order_id):
 		_fail("Forge waiting trace did not preserve run/order identity. tooltip=%s order=%s" % [trace_tooltip, str(order)])
 		return
 	if not trace_tooltip.contains("Passed Clear Patch"):
