@@ -2698,6 +2698,9 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 			var next_step := _skill_forge_work_order_next_tooltip(order)
 			if next_step != "":
 				tooltip += " | Next Step: %s" % next_step
+			var receipt := _skill_forge_work_order_receipt_tooltip(order)
+			if receipt != "":
+				tooltip += " | Run Receipt: %s" % receipt
 			return tooltip
 	return ""
 
@@ -2742,6 +2745,16 @@ func _skill_forge_work_order_next_tooltip(order: Dictionary) -> String:
 			return "Wait for free crew"
 		"done":
 			return "Review day summary"
+	return ""
+
+
+func _skill_forge_work_order_receipt_tooltip(order: Dictionary) -> String:
+	var order_label := str(order.get("skill_name", order.get("preference_label", order.get("label", "")))).strip_edges()
+	match str(order.get("status", "ready")).strip_edges():
+		"queued":
+			return _skill_forge_work_stage_receipt_text("Crew Queued", order_label)
+		"waiting":
+			return _skill_forge_work_stage_receipt_text("Crew Waiting", order_label)
 	return ""
 
 
