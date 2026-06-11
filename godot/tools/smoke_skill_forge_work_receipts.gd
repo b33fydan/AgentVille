@@ -68,7 +68,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge panel did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var queued_trace_tooltip := str(trace_label.tooltip_text)
-	if not queued_trace_tooltip.contains("queued work order") or not queued_trace_tooltip.contains("Clear Patch") or not queued_trace_tooltip.contains("Run Context: agent Chuck | target ") or not queued_trace_tooltip.contains("| source Starter Lab"):
+	if not queued_trace_tooltip.contains("Forge order queued; awaiting agent receipt") or not queued_trace_tooltip.contains("Clear Patch") or not queued_trace_tooltip.contains("Run Context: agent Chuck | target ") or not queued_trace_tooltip.contains("| source Starter Lab"):
 		_fail("Forge queued-work trace did not preserve readable work context. tooltip=%s" % queued_trace_tooltip)
 		return
 	if not queued_trace_tooltip.contains("agent Chuck"):
@@ -98,13 +98,13 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Run Route: Spec > Crew Order > Crew Queued"):
 		_fail("Forge queued-work trace did not expose the queued route. tooltip=%s" % queued_trace_tooltip)
 		return
-	if not queued_trace_tooltip.contains("Run Receipt: queued work order: Clear Patch"):
+	if not queued_trace_tooltip.contains("Run Receipt: Forge order queued; awaiting agent receipt: Clear Patch"):
 		_fail("Forge queued-work trace did not expose labeled receipt detail. tooltip=%s" % queued_trace_tooltip)
 		return
 	if _result_text(game_ui) != "Crew Queued: Clear Patch":
 		_fail("Forge queued-work header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Stage: Crew Queued") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order > Crew Queued") or not _result_tooltip(game_ui).contains("Next Step: Wait for agent receipt") or not _result_tooltip(game_ui).contains("queued work order"):
+	if not _result_tooltip(game_ui).contains("Stage: Crew Queued") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order > Crew Queued") or not _result_tooltip(game_ui).contains("Next Step: Wait for agent receipt") or not _result_tooltip(game_ui).contains("Forge order queued; awaiting agent receipt"):
 		_fail("Forge queued-work header tooltip did not keep queue trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var queued_history_text := _visible_history_text(game_ui)
@@ -129,7 +129,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Forge queued-work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("queued work order"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("Forge order queued; awaiting agent receipt"):
 		_fail("Forge queued-work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":
@@ -315,7 +315,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		_fail("Forge panel did not trace waiting crew work. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("waiting for crew") or not trace_tooltip.contains("Clear Patch") or not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
+	if not trace_tooltip.contains("Forge order waiting; no free crew yet") or not trace_tooltip.contains("Clear Patch") or not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
 		_fail("Forge waiting trace did not preserve readable work context. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("agent Chuck"):
@@ -345,13 +345,13 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not trace_tooltip.contains("Run Route: Spec > Crew Order > Crew Waiting"):
 		_fail("Forge waiting trace did not expose the waiting route. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Run Receipt: waiting for crew: Clear Patch"):
+	if not trace_tooltip.contains("Run Receipt: Forge order waiting; no free crew yet: Clear Patch"):
 		_fail("Forge waiting trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
 		return
 	if _result_text(game_ui) != "Crew Waiting: Clear Patch":
 		_fail("Forge waiting-work header did not follow the waiting lifecycle. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Stage: Crew Waiting") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order > Crew Waiting") or not _result_tooltip(game_ui).contains("Next Step: Wait for free crew") or not _result_tooltip(game_ui).contains("waiting for crew"):
+	if not _result_tooltip(game_ui).contains("Stage: Crew Waiting") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order > Crew Waiting") or not _result_tooltip(game_ui).contains("Next Step: Wait for free crew") or not _result_tooltip(game_ui).contains("Forge order waiting; no free crew yet"):
 		_fail("Forge waiting-work header tooltip did not keep waiting trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var waiting_history_text := _visible_history_text(game_ui)
@@ -376,7 +376,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Forge waiting work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("waiting for crew"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("Forge order waiting; no free crew yet"):
 		_fail("Forge waiting work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":

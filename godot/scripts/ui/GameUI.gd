@@ -271,9 +271,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	var status_text := trace_status.strip_edges()
 	if status_text == "":
 		status_text = "Crew Queued"
-	var trace_detail := "queued work order"
-	if status_text == "Crew Waiting":
-		trace_detail = "waiting for crew: work order"
+	var trace_detail := "work order stage"
 	var next_step := _skill_forge_work_stage_next_text(status_text)
 	var route_text := _skill_forge_work_stage_route_text(status_text)
 	var receipt_text := _skill_forge_work_stage_receipt_text(status_text, order_label)
@@ -1977,9 +1975,9 @@ func _skill_forge_work_stage_receipt_text(status_text: String, order_label: Stri
 	order_label = order_label.strip_edges()
 	match status_text.strip_edges():
 		"Crew Queued":
-			return "queued work order: %s" % order_label if order_label != "" else "queued work order"
+			return "Forge order queued; awaiting agent receipt: %s" % order_label if order_label != "" else "Forge order queued; awaiting agent receipt"
 		"Crew Waiting":
-			return "waiting for crew: %s" % order_label if order_label != "" else "waiting for crew"
+			return "Forge order waiting; no free crew yet: %s" % order_label if order_label != "" else "Forge order waiting; no free crew yet"
 	return ""
 
 
