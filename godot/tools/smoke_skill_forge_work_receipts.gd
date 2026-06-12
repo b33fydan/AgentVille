@@ -156,7 +156,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_chip_tooltip.contains("Stage: Crew Queued"):
 		_fail("Forge work order chip did not expose the crew-queued stage. tooltip=%s" % queued_chip_tooltip)
 		return
-	if not queued_chip_tooltip.contains("Current Run Detail: Crew Queued Clear Patch"):
+	if not queued_chip_tooltip.contains("Current Run Detail: Crew Queued -> Clear Patch"):
 		_fail("Forge work order chip did not expose the crew-queued current detail. tooltip=%s" % queued_chip_tooltip)
 		return
 	if not queued_chip_tooltip.contains("Run Route: Spec > Crew Order > Crew Queued"):
@@ -423,7 +423,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not waiting_chip_tooltip.contains("Stage: Crew Waiting"):
 		_fail("Forge work order chip did not expose the crew-waiting stage. tooltip=%s" % waiting_chip_tooltip)
 		return
-	if not waiting_chip_tooltip.contains("Current Run Detail: Crew Waiting Clear Patch"):
+	if not waiting_chip_tooltip.contains("Current Run Detail: Crew Waiting -> Clear Patch"):
 		_fail("Forge work order chip did not expose the crew-waiting current detail. tooltip=%s" % waiting_chip_tooltip)
 		return
 	if not waiting_chip_tooltip.contains("Run Route: Spec > Crew Order > Crew Waiting"):

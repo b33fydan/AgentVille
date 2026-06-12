@@ -2775,7 +2775,7 @@ func _skill_forge_work_order_current_detail_tooltip(order: Dictionary) -> String
 	var order_label := str(order.get("skill_name", order.get("preference_label", order.get("label", "")))).strip_edges()
 	if order_label == "":
 		return stage
-	return "%s %s" % [stage, order_label]
+	return "%s -> %s" % [stage, order_label]
 
 
 func _skill_forge_work_order_receipt_tooltip(order: Dictionary) -> String:
