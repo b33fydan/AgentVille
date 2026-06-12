@@ -2695,6 +2695,9 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 			var stage := _skill_forge_work_order_stage_label(order)
 			if stage != "":
 				tooltip += " | Stage: %s" % stage
+			var current_detail := _skill_forge_work_order_current_detail_tooltip(order)
+			if current_detail != "":
+				tooltip += " | Current Run Detail: %s" % current_detail
 			var next_step := _skill_forge_work_order_next_tooltip(order)
 			if next_step != "":
 				tooltip += " | Next Step: %s" % next_step
@@ -2746,6 +2749,16 @@ func _skill_forge_work_order_next_tooltip(order: Dictionary) -> String:
 		"done":
 			return "Review day summary"
 	return ""
+
+
+func _skill_forge_work_order_current_detail_tooltip(order: Dictionary) -> String:
+	var stage := _skill_forge_work_order_stage_label(order)
+	if stage == "":
+		return ""
+	var order_label := str(order.get("skill_name", order.get("preference_label", order.get("label", "")))).strip_edges()
+	if order_label == "":
+		return stage
+	return "%s %s" % [stage, order_label]
 
 
 func _skill_forge_work_order_receipt_tooltip(order: Dictionary) -> String:
