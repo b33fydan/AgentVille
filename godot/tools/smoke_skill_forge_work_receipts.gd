@@ -89,7 +89,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Crew Queued Clear Patch"):
 		_fail("Forge queued-work trace did not remember the crew-queued stage. tooltip=%s" % queued_trace_tooltip)
 		return
-	if not queued_trace_tooltip.contains("Current Run Detail: Crew Queued Clear Patch"):
+	if not queued_trace_tooltip.contains("Current Run Detail: Crew Queued -> Clear Patch"):
 		_fail("Forge queued-work trace did not expose current run detail before history. tooltip=%s" % queued_trace_tooltip)
 		return
 	var queued_history_start := queued_trace_tooltip.find("Run History: Passed Clear Patch")
@@ -119,7 +119,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if queued_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued [current]":
 		_fail("Forge queued-work visible Run Trail did not summarize the lifecycle. text=%s" % queued_history_text)
 		return
-	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Queued Clear Patch"):
+	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Queued -> Clear Patch"):
 		_fail("Forge queued-work history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Stage: Crew Queued | Clear Patch":
@@ -228,7 +228,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if passed_history_index == -1 or queued_history_index <= passed_history_index or receipt_history_index <= queued_history_index:
 		_fail("Forge trace tooltip did not keep chronological Forge receipt history. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Current Run Detail: Agent Receipt Clear Patch"):
+	if not trace_tooltip.contains("Current Run Detail: Agent Receipt -> Clear Patch"):
 		_fail("Forge trace tooltip did not expose current agent-receipt detail before history. tooltip=%s" % trace_tooltip)
 		return
 	if _result_text(game_ui) != "Agent Receipt: Clear Patch":
@@ -247,7 +247,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if completed_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued > Agent Receipt [current]":
 		_fail("Forge completed-work visible Run Trail did not summarize the lifecycle. text=%s" % completed_history_text)
 		return
-	if not _history_tooltip(game_ui).contains("Current Run Detail: Agent Receipt Clear Patch"):
+	if not _history_tooltip(game_ui).contains("Current Run Detail: Agent Receipt -> Clear Patch"):
 		_fail("Forge completed-work history tooltip did not expose the current agent-receipt detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Stage: Agent Receipt | Clear Patch":
@@ -356,7 +356,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if not trace_tooltip.contains("Crew Waiting Clear Patch"):
 		_fail("Forge waiting trace did not remember the crew-waiting stage. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Current Run Detail: Crew Waiting Clear Patch"):
+	if not trace_tooltip.contains("Current Run Detail: Crew Waiting -> Clear Patch"):
 		_fail("Forge waiting trace did not expose current run detail before history. tooltip=%s" % trace_tooltip)
 		return
 	var waiting_history_start := trace_tooltip.find("Run History: Passed Clear Patch")
@@ -386,7 +386,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if waiting_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Waiting [current]":
 		_fail("Forge waiting visible Run Trail did not summarize the lifecycle. text=%s" % waiting_history_text)
 		return
-	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Waiting Clear Patch"):
+	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Waiting -> Clear Patch"):
 		_fail("Forge waiting history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Stage: Crew Waiting | Clear Patch":

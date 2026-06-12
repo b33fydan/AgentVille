@@ -2186,10 +2186,20 @@ func _skill_forge_full_history_text() -> String:
 	if _skill_forge_history_entries.is_empty():
 		return ""
 	var entries := _skill_forge_chronological_history_entries()
-	var latest_detail := str(entries[entries.size() - 1]).strip_edges()
+	var latest_detail := _skill_forge_current_history_detail(str(entries[entries.size() - 1]))
 	if latest_detail == "":
 		return "Run History: %s" % " ; ".join(entries)
 	return "Current Run Detail: %s | Run History: %s" % [latest_detail, " ; ".join(entries)]
+
+
+func _skill_forge_current_history_detail(text: String) -> String:
+	text = text.strip_edges()
+	for prefix in ["Order Blocked ", "Crew Queued ", "Crew Waiting ", "Agent Receipt ", "Passed ", "Failed ", "Blocked "]:
+		var prefix_text := str(prefix)
+		if text.begins_with(prefix_text):
+			var detail := text.substr(prefix_text.length()).strip_edges()
+			return "%s -> %s" % [prefix_text.strip_edges(), detail] if detail != "" else prefix_text.strip_edges()
+	return text
 
 
 func _skill_forge_compact_history_entry(text: String) -> String:
