@@ -2160,6 +2160,8 @@ func _skill_forge_visible_history_text() -> String:
 			compact_entries.append(compact_entry)
 	if compact_entries.is_empty():
 		return ""
+	var current_index := compact_entries.size() - 1
+	compact_entries[current_index] = "%s [current]" % compact_entries[current_index]
 	if not has_mixed_or_unknown_skill and shared_skill != "":
 		return "Run Trail: %s: %s" % [shared_skill, " > ".join(compact_entries)]
 	return "Run Trail: %s" % " > ".join(compact_entries)

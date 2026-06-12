@@ -113,7 +113,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge queued-work header tooltip did not keep queue trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var queued_history_text := _visible_history_text(game_ui)
-	if queued_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued":
+	if queued_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued [current]":
 		_fail("Forge queued-work visible Run Trail did not summarize the lifecycle. text=%s" % queued_history_text)
 		return
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Queued Clear Patch"):
@@ -238,7 +238,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge trace tooltip did not keep the queued crew stage in recent history. tooltip=%s" % trace_tooltip)
 		return
 	var completed_history_text := _visible_history_text(game_ui)
-	if completed_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued > Agent Receipt":
+	if completed_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Queued > Agent Receipt [current]":
 		_fail("Forge completed-work visible Run Trail did not summarize the lifecycle. text=%s" % completed_history_text)
 		return
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Agent Receipt Clear Patch"):
@@ -374,7 +374,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		_fail("Forge waiting-work header tooltip did not keep waiting trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	var waiting_history_text := _visible_history_text(game_ui)
-	if waiting_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Waiting":
+	if waiting_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Crew Waiting [current]":
 		_fail("Forge waiting visible Run Trail did not summarize the lifecycle. text=%s" % waiting_history_text)
 		return
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Waiting Clear Patch"):
