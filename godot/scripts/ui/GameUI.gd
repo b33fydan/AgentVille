@@ -1575,7 +1575,7 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 		text += " | Run Route: %s" % route_text
 	var trace_text := _skill_forge_result_trace_text(result)
 	if trace_text != "":
-		text += " | Trace: %s" % trace_text
+		text += " | Run Trace: %s" % trace_text
 	var next_step := _skill_forge_result_next_line_text(result)
 	if next_step != "":
 		text += " | Next Step: %s" % next_step

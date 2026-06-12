@@ -247,7 +247,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Run Route: Spec > Crew Order > Harness Receipt"):
 		_fail("Skill Forge result tooltip did not expose the harness route. tooltip=%s" % result_tooltip)
 		return
-	if not result_tooltip.contains("Trace: Spec > Directive > Work Order > Harness Receipt"):
+	if not result_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
 		_fail("Skill Forge result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("Next Step: Send crew order"):
@@ -425,7 +425,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if not result_tooltip.contains("Stage: Harness Receipt"):
 		_fail("Failed Forge result tooltip did not expose the harness receipt stage. tooltip=%s" % result_tooltip)
 		return
-	if not result_tooltip.contains("Trace: Spec > Directive > Work Order > Harness Receipt"):
+	if not result_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
 		_fail("Failed Forge result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
 		return
 
