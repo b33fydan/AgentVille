@@ -108,6 +108,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not blocked_tooltip.contains("Stage: Spec Blocked"):
 		_fail("Blocked draft trace did not expose the spec-blocked stage. tooltip=%s" % blocked_tooltip)
 		return
+	if not blocked_tooltip.contains("Run Trace: Spec > Blocked Receipt"):
+		_fail("Blocked draft trace did not expose the labeled run trace path. tooltip=%s" % blocked_tooltip)
+		return
 	if _visible_stage_text(game_ui) != "Stage: Spec Blocked | Clear Patch":
 		_fail("Blocked draft did not expose the spec-blocked current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
@@ -179,6 +182,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 		return
 	if not trace_tooltip.contains("Stage: Harness Receipt"):
 		_fail("Clean revision trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
+		_fail("Clean revision trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("[Drift hallucinating]") or not trace_tooltip.contains("Fix: Replace summon_rain with clear_brush"):
 		_fail("Clean revision history dropped blocked-run repair detail. tooltip=%s" % trace_tooltip)

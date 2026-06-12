@@ -179,6 +179,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Stage: Forge Receipt"):
 		_fail("Tend Crops trace did not expose the Forge-only receipt stage. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Run Trace: Spec > Directive > Forge Receipt"):
+		_fail("Tend Crops trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Run Receipt: manual harness receipt confirmed crop-tending checks"):
 		_fail("Tend Crops trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
 		return
@@ -268,6 +271,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		return
 	if not trace_tooltip.contains("Run Route: Spec > Order Blocked"):
 		_fail("Order-blocked trace did not expose the blocked route. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Trace: Spec > Directive > Order Blocked"):
+		_fail("Order-blocked trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
 		_fail("Order-blocked trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)

@@ -109,6 +109,9 @@ func _test_panel_renders_structured_contract() -> void:
 	if trace_label == null or not trace_tooltip.contains("Stage: Spec Preview"):
 		_fail("Panel preview trace did not expose the spec-preview stage. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Run Trace: Spec > clear_brush > Crew Order"):
+		_fail("Panel preview trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
+		return
 	if str(trace_label.text) != "Run Trace: Spec > clear_brush > Crew Order":
 		_fail("Panel preview trace did not show the crew-order endpoint. text=%s" % (trace_label.text if trace_label else ""))
 		return

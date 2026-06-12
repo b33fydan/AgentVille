@@ -191,6 +191,9 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if not preview_tooltip.contains("Stage: Spec Preview"):
 		_fail("Clear Patch preview did not expose the spec-preview stage. tooltip=%s" % preview_tooltip)
 		return
+	if not preview_tooltip.contains("Run Trace: Spec > clear_brush > Crew Order"):
+		_fail("Clear Patch preview did not expose the labeled run trace path. tooltip=%s" % preview_tooltip)
+		return
 	if not preview_tooltip.contains("route Crew Order"):
 		_fail("Clear Patch preview did not expose its crew-order route. tooltip=%s" % preview_tooltip)
 		return
@@ -273,6 +276,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	if not trace_tooltip.contains("Run Route: Spec > Crew Order > Harness Receipt"):
 		_fail("Skill Forge run trace did not expose the harness route. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
+		_fail("Skill Forge run trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
 		_fail("Skill Forge run trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
@@ -450,6 +456,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		return
 	if not trace_tooltip.contains("Stage: Harness Receipt"):
 		_fail("Failed Forge trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
+		_fail("Failed Forge trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
 		return
 	var failed_history_text := _visible_history_text(game_ui)
 	if failed_history_text != "Run Trail: Clear Patch: Passed (Harness Receipt) > Failed (Harness Receipt) [current]" or failed_history_text.contains("selected tile had no brush"):
