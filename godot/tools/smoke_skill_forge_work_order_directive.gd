@@ -169,7 +169,7 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Spec > Directive > Forge Receipt":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Forge Receipt":
 		_fail("Tend Crops did not show a Forge-only receipt trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
@@ -253,7 +253,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Spec > Directive > Order Blocked":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Order Blocked":
 		_fail("Order-blocked Clear Patch did not show the blocked trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)

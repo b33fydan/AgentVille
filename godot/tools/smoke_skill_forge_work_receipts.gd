@@ -47,7 +47,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Harness Receipt":
 		_fail("Forge panel did not trace the drafted work order. text=%s" % (trace_label.text if trace_label else ""))
 		return
 
@@ -64,7 +64,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Field Log did not include Forge context when the work order was queued. entries=%s" % str(queued_field_log_entries))
 		return
 
-	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Crew Queued":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Queued":
 		_fail("Forge panel did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var queued_trace_tooltip := str(trace_label.tooltip_text)
@@ -194,7 +194,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge work receipt used raw or social-style Forge context. saw=%s" % receipt)
 		return
 
-	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Agent Receipt":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Agent Receipt":
 		_fail("Forge panel did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
@@ -325,7 +325,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Crew Waiting":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Waiting":
 		_fail("Forge panel did not trace waiting crew work. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)

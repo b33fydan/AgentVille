@@ -91,7 +91,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if trace_label == null or not preview_tooltip.contains("Stage: Spec Preview"):
 		_fail("Skill Forge default preview did not expose the spec-preview stage. tooltip=%s" % preview_tooltip)
 		return
-	if trace_label == null or str(trace_label.text) != "Spec > tend_crop > Forge Receipt":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > tend_crop > Forge Receipt":
 		_fail("Skill Forge default preview did not expose the Forge-only preview route. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	if _visible_route_text(game_ui) != "Run Route: Spec > Forge Receipt":
@@ -178,7 +178,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Spec > clear_brush > Crew Order":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > clear_brush > Crew Order":
 		_fail("Clear Patch preview did not expose the compact Forge trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order":
@@ -255,7 +255,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Harness Receipt":
 		_fail("Skill Forge run did not show the spec-to-order trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
@@ -334,7 +334,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	tend_button.pressed.emit()
 
-	if str(trace_label.text) != "Spec > tend_crop > Forge Receipt":
+	if str(trace_label.text) != "Run Trace: Spec > tend_crop > Forge Receipt":
 		_fail("Switching templates did not restore Tend Crops preview trace. text=%s" % str(trace_label.text))
 		return
 	var preview_tooltip := str(trace_label.tooltip_text)
@@ -430,7 +430,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Spec > Directive > Work Order > Harness Receipt":
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Harness Receipt":
 		_fail("Failed Forge receipt did not keep the harness trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)

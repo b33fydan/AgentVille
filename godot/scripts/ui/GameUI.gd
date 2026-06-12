@@ -231,7 +231,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	if skill_name == "":
 		skill_name = "Skill Run"
 	_record_skill_forge_history_text("Agent Receipt %s" % skill_name)
-	_skill_forge_trace_label.text = "Spec > Directive > Work Order > Agent Receipt"
+	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > Agent Receipt")
 	var receipt_route := "Spec > Crew Order > Agent Receipt"
 	var trace_tooltip := "Forge trace for %s%s | Stage: Agent Receipt | Run Route: %s | Next Step: Review day summary | Run Receipt: %s%s" % [
 		skill_name,
@@ -276,7 +276,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	var route_text := _skill_forge_work_stage_route_text(status_text)
 	var receipt_text := _skill_forge_work_stage_receipt_text(status_text, order_label)
 	_record_skill_forge_work_stage_history(order, status_text)
-	_skill_forge_trace_label.text = "Spec > Directive > Work Order > %s" % status_text
+	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > %s" % status_text)
 	var trace_tooltip := "Forge trace for %s%s | Stage: %s | Run Route: %s" % [
 		skill_name,
 		_skill_forge_context_trace_suffix(
@@ -1164,7 +1164,7 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	stack.add_child(_skill_forge_lesson_label)
 
 	_skill_forge_trace_label = Label.new()
-	_skill_forge_trace_label.text = "Spec > Receipt"
+	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Receipt")
 	_skill_forge_trace_label.clip_text = true
 	_skill_forge_trace_label.add_theme_font_size_override("font_size", 9)
 	_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
@@ -1330,7 +1330,7 @@ func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
 		if _skill_forge_lesson_label:
 			_skill_forge_lesson_label.text = ""
 		if _skill_forge_trace_label:
-			_skill_forge_trace_label.text = "Spec > Receipt"
+			_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Receipt")
 			_skill_forge_trace_label.tooltip_text = ""
 		_set_skill_forge_detail_line("")
 		_set_skill_forge_route_line("")
@@ -1362,7 +1362,7 @@ func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
 			str(preview.get("receipt_label", "receipt"))
 		]
 	if _skill_forge_trace_label:
-		_skill_forge_trace_label.text = _skill_forge_preview_trace_text(preview)
+		_skill_forge_trace_label.text = _skill_forge_visible_trace_text(_skill_forge_preview_trace_text(preview))
 		_skill_forge_trace_label.tooltip_text = preview_tooltip
 		_skill_forge_trace_label.add_theme_color_override("font_color", Color("#4f6f8f"))
 	_set_skill_forge_detail_line("")
@@ -1603,6 +1603,13 @@ func _skill_forge_preview_trace_text(preview: Dictionary) -> String:
 	return "Spec > %s > %s" % [final_tool, route_text]
 
 
+func _skill_forge_visible_trace_text(trace_text: String) -> String:
+	trace_text = trace_text.strip_edges()
+	if trace_text == "":
+		return "Run Trace: Spec > Receipt"
+	return "Run Trace: %s" % trace_text
+
+
 func _skill_forge_preview_next_text(preview: Dictionary) -> String:
 	var final_tool := _skill_forge_final_tool_label(str(preview.get("tools_label", "")).strip_edges())
 	match _skill_forge_preview_route_text(final_tool):
@@ -1638,7 +1645,7 @@ func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
 	if _skill_forge_trace_label == null:
 		return
 	var trace_tooltip := _skill_forge_result_trace_tooltip(result)
-	_skill_forge_trace_label.text = _skill_forge_result_trace_text(result)
+	_skill_forge_trace_label.text = _skill_forge_visible_trace_text(_skill_forge_result_trace_text(result))
 	_skill_forge_trace_label.tooltip_text = trace_tooltip
 	var trace_color := _skill_forge_result_trace_color(result)
 	_skill_forge_trace_label.add_theme_color_override("font_color", trace_color)
