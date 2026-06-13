@@ -1573,7 +1573,7 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var blocked_detail := str(result.get("drafted_order_blocked_detail", "")).strip_edges()
 	var stage := _skill_forge_result_history_stage(result)
 	var text := _skill_forge_trace_target_text(str(run.get("skill_name", "Skill Run")))
-	if drift != "":
+	if drift != "" and drift != "steady":
 		text += " | Drift: %s" % drift
 	if stage != "":
 		text += " | Stage: %s" % stage

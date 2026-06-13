@@ -256,6 +256,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Next Step: Send crew order"):
 		_fail("Skill Forge result tooltip did not expose the next lifecycle step. tooltip=%s" % result_tooltip)
 		return
+	if result_tooltip.contains("Drift: steady"):
+		_fail("Skill Forge result tooltip should keep steady Drift hidden. tooltip=%s" % result_tooltip)
+		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Harness Receipt":
@@ -436,6 +439,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		return
 	if not result_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
 		_fail("Failed Forge result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
+		return
+	if result_tooltip.contains("Drift: steady"):
+		_fail("Failed Forge result tooltip should keep steady Drift hidden. tooltip=%s" % result_tooltip)
 		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label

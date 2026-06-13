@@ -65,6 +65,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Run Target: Clear Patch"):
 		_fail("Blocked draft result tooltip did not expose the labeled run target. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Drift: hallucinating"):
+		_fail("Blocked draft result tooltip did not expose non-steady Drift. tooltip=%s" % result_tooltip)
+		return
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label
 	if summary_label == null or not summary_label.text.contains("summon_rain"):
