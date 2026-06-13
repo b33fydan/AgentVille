@@ -176,7 +176,7 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		_fail("Tend Crops did not show a Forge-only receipt trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Route Note: receipt-only until this action has a crew-order path"):
+	if not trace_tooltip.contains("Run Route Note: receipt-only until this action has a crew-order path"):
 		_fail("Tend Crops trace did not explain why no crew order was drafted. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Stage: Forge Receipt"):
