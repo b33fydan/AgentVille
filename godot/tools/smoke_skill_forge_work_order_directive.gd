@@ -173,7 +173,7 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		_fail("Tend Crops did not show a Forge-only receipt trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("receipt-only") or not trace_tooltip.contains("crew-order path"):
+	if not trace_tooltip.contains("Route Note: receipt-only until this action has a crew-order path"):
 		_fail("Tend Crops trace did not explain why no crew order was drafted. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Stage: Forge Receipt"):
@@ -260,7 +260,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		_fail("Order-blocked Clear Patch did not show the blocked trace. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("order blocked: target changed") or not trace_tooltip.contains("clear_brush") or not trace_tooltip.contains("Clear Patch"):
+	if not trace_tooltip.contains("Order Blocked: target changed") or not trace_tooltip.contains("clear_brush") or not trace_tooltip.contains("Clear Patch"):
 		_fail("Order-blocked trace did not explain the blocked directive. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run History: Order Blocked Clear Patch"):
@@ -290,7 +290,7 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		_fail("Order-blocked Clear Patch did not update the result label. text=%s" % (result_label.text if result_label else ""))
 		return
 	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("Order blocked: target changed") or not result_tooltip.contains("Clear Patch"):
+	if not result_tooltip.contains("Order Blocked: target changed") or not result_tooltip.contains("Clear Patch"):
 		_fail("Order-blocked result tooltip did not keep the blocked-order detail. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("Stage: Order Blocked"):

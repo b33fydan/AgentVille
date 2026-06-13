@@ -1589,9 +1589,9 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	if detail != "":
 		text += " | %s" % detail
 	if blocked_detail != "":
-		text += " | Order blocked: %s" % blocked_detail
+		text += " | Order Blocked: %s" % blocked_detail
 	elif blocked_reason != "":
-		text += " | Order blocked: %s" % blocked_reason
+		text += " | Order Blocked: %s" % blocked_reason
 	if status in ["failed", "blocked"] and suggestion != "":
 		text += " | Fix: %s" % suggestion
 	text += _skill_forge_identity_trace_suffix(str(run.get("id", "")), str(result.get("drafted_order_id", "")))
@@ -1751,13 +1751,13 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	if action != "":
 		text += " | Tool: %s" % action
 	if directive_kind == "skill_directive":
-		text += " | receipt-only until this action has a crew-order path"
+		text += " | Route Note: receipt-only until this action has a crew-order path"
 	if order_label != "":
-		text += " | work order %s" % order_label
+		text += " | Work Order: %s" % order_label
 	if blocked_detail != "":
-		text += " | order blocked: %s" % blocked_detail
+		text += " | Order Blocked: %s" % blocked_detail
 	elif blocked_reason != "":
-		text += " | order blocked: %s" % blocked_reason
+		text += " | Order Blocked: %s" % blocked_reason
 	if detail != "":
 		text += " | Run Receipt: %s" % detail
 	text += _skill_forge_history_tooltip_suffix()
