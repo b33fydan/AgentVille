@@ -1587,7 +1587,7 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	if next_step != "":
 		text += " | Next Step: %s" % next_step
 	if detail != "":
-		text += " | %s" % detail
+		text += " | Run Receipt: %s" % detail
 	if blocked_detail != "":
 		text += " | Order Blocked: %s" % blocked_detail
 	elif blocked_reason != "":

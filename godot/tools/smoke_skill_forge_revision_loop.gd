@@ -156,6 +156,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
 		_fail("Clean revision result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Run Receipt: replaced summon_rain with clear_brush"):
+		_fail("Clean revision result tooltip did not expose labeled receipt detail. tooltip=%s" % result_tooltip)
+		return
 	if not fix_button.disabled:
 		_fail("Fix button should disable after the clean revision passes.")
 		return

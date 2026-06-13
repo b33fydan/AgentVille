@@ -256,6 +256,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Next Step: Send crew order"):
 		_fail("Skill Forge result tooltip did not expose the next lifecycle step. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Run Receipt: manual harness receipt confirmed clear-patch checks"):
+		_fail("Skill Forge result tooltip did not expose labeled receipt detail. tooltip=%s" % result_tooltip)
+		return
 	if result_tooltip.contains("Drift: steady"):
 		_fail("Skill Forge result tooltip should keep steady Drift hidden. tooltip=%s" % result_tooltip)
 		return
@@ -428,7 +431,7 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		_fail("Failed Forge receipt header should stay on the harness result. text=%s" % _result_text(game_ui))
 		return
 	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("selected tile had no brush") or not result_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
+	if not result_tooltip.contains("Run Receipt: selected tile had no brush") or not result_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge result tooltip did not keep receipt detail and repair hint. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("run forge_run_") or not result_tooltip.contains("order order_"):
