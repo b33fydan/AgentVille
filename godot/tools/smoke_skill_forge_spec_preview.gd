@@ -65,7 +65,7 @@ func _test_panel_renders_structured_contract() -> void:
 	if not str(clear_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
 		_fail("Clear Patch template tooltip did not expose the starter-to-preview stage. tooltip=%s" % str(clear_button.tooltip_text))
 		return
-	if not str(clear_button.tooltip_text).contains("Preview: Spec > clear_brush > Crew Order"):
+	if not str(clear_button.tooltip_text).contains("Run Preview: Spec > clear_brush > Crew Order"):
 		_fail("Clear Patch template tooltip did not expose the compact preview trace. tooltip=%s" % str(clear_button.tooltip_text))
 		return
 	clear_button.pressed.emit()

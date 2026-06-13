@@ -1397,7 +1397,7 @@ func _skill_forge_template_tooltip(preview: Dictionary) -> String:
 	parts.append("Stage: Starter Spec -> Spec Preview")
 	var trace_text := _skill_forge_preview_trace_text(preview)
 	if trace_text != "":
-		parts.append("Preview: %s" % trace_text)
+		parts.append("Run Preview: %s" % trace_text)
 	return " | ".join(parts)
 
 

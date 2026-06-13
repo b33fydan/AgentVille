@@ -46,7 +46,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if tend_button == null or not str(tend_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
 		_fail("Tend Crops template button did not expose the starter-to-preview stage. tooltip=%s" % (str(tend_button.tooltip_text) if tend_button else ""))
 		return
-	if not str(tend_button.tooltip_text).contains("Preview: Spec > tend_crop > Forge Receipt"):
+	if not str(tend_button.tooltip_text).contains("Run Preview: Spec > tend_crop > Forge Receipt"):
 		_fail("Tend Crops template button did not expose its preview trace. tooltip=%s" % str(tend_button.tooltip_text))
 		return
 
@@ -146,7 +146,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if not str(clear_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
 		_fail("Clear Patch template button did not expose the starter-to-preview stage. tooltip=%s" % str(clear_button.tooltip_text))
 		return
-	if not str(clear_button.tooltip_text).contains("Preview: Spec > clear_brush > Crew Order"):
+	if not str(clear_button.tooltip_text).contains("Run Preview: Spec > clear_brush > Crew Order"):
 		_fail("Clear Patch template button did not expose its preview trace. tooltip=%s" % str(clear_button.tooltip_text))
 		return
 
