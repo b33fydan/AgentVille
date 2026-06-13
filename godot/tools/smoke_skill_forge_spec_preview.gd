@@ -101,13 +101,16 @@ func _test_panel_renders_structured_contract() -> void:
 		_fail("Panel header did not name the active preview. text=%s" % (result_label.text if result_label else ""))
 		return
 	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("Preview trace for Clear Patch") or not result_tooltip.contains("route Crew Order"):
+	if not result_tooltip.contains("Run Target: Clear Patch") or not result_tooltip.contains("route Crew Order"):
 		_fail("Panel header tooltip did not keep preview trace detail. tooltip=%s" % result_tooltip)
 		return
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	var trace_tooltip := str(trace_label.tooltip_text) if trace_label != null else ""
 	if trace_label == null or not trace_tooltip.contains("Stage: Spec Preview"):
 		_fail("Panel preview trace did not expose the spec-preview stage. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Target: Clear Patch"):
+		_fail("Panel preview trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Trace: Spec > clear_brush > Crew Order"):
 		_fail("Panel preview trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)

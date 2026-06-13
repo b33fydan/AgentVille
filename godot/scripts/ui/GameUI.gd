@@ -234,8 +234,8 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > Agent Receipt")
 	var receipt_route := "Spec > Crew Order > Agent Receipt"
 	var receipt_trace := "Spec > Directive > Work Order > Agent Receipt"
-	var trace_tooltip := "Forge trace for %s%s | Stage: Agent Receipt | Run Route: %s | Run Trace: %s | Next Step: Review day summary | Run Receipt: %s%s" % [
-		skill_name,
+	var trace_tooltip := "%s%s | Stage: Agent Receipt | Run Route: %s | Run Trace: %s | Next Step: Review day summary | Run Receipt: %s%s" % [
+		_skill_forge_trace_target_text(skill_name),
 		_skill_forge_context_trace_suffix(
 			str(event.get("agent_name", "")),
 			event.get("grid_pos", Vector2i(-1, -1)),
@@ -280,8 +280,8 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	_record_skill_forge_work_stage_history(order, status_text)
 	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > %s" % status_text)
 	var trace_text := "Spec > Directive > Work Order > %s" % status_text
-	var trace_tooltip := "Forge trace for %s%s | Stage: %s | Run Route: %s | Run Trace: %s" % [
-		skill_name,
+	var trace_tooltip := "%s%s | Stage: %s | Run Route: %s | Run Trace: %s" % [
+		_skill_forge_trace_target_text(skill_name),
 		_skill_forge_context_trace_suffix(
 			str(order.get("agent_name", "")),
 			order.get("target_tile", Vector2i(-1, -1)),
@@ -1403,7 +1403,7 @@ func _skill_forge_template_tooltip(preview: Dictionary) -> String:
 
 func _skill_forge_preview_trace_tooltip(preview: Dictionary) -> String:
 	var parts: Array[String] = [
-		"Preview trace for %s" % str(preview.get("name", "Skill Run")),
+		_skill_forge_trace_target_text(str(preview.get("name", "Skill Run"))),
 		"Stage: Spec Preview",
 		"Run Trace: %s" % _skill_forge_preview_trace_text(preview)
 	]
@@ -1572,7 +1572,9 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var blocked_reason := str(result.get("drafted_order_blocked_reason", "")).strip_edges()
 	var blocked_detail := str(result.get("drafted_order_blocked_detail", "")).strip_edges()
 	var stage := _skill_forge_result_history_stage(result)
-	var text := "Drift: %s" % drift
+	var text := _skill_forge_trace_target_text(str(run.get("skill_name", "Skill Run")))
+	if drift != "":
+		text += " | Drift: %s" % drift
 	if stage != "":
 		text += " | Stage: %s" % stage
 	var route_text := _skill_forge_result_route_line_text(result)
@@ -1613,6 +1615,13 @@ func _skill_forge_visible_trace_text(trace_text: String) -> String:
 	if trace_text == "":
 		return "Run Trace: Spec > Receipt"
 	return "Run Trace: %s" % trace_text
+
+
+func _skill_forge_trace_target_text(skill_name: String) -> String:
+	skill_name = skill_name.strip_edges()
+	if skill_name == "":
+		skill_name = "Skill Run"
+	return "Run Target: %s" % skill_name
 
 
 func _skill_forge_preview_next_text(preview: Dictionary) -> String:
@@ -1718,7 +1727,7 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	var blocked_reason := str(result.get("drafted_order_blocked_reason", "")).strip_edges()
 	var blocked_detail := str(result.get("drafted_order_blocked_detail", "")).strip_edges()
 	var detail := str(run.get("result_detail", "")).strip_edges()
-	var text := "Forge trace for %s" % (skill_name if skill_name != "" else "Skill Run")
+	var text := _skill_forge_trace_target_text(skill_name)
 	text += _skill_forge_context_trace_suffix(
 		str(run.get("agent_name", "")),
 		run.get("target_tile", Vector2i(-1, -1)),

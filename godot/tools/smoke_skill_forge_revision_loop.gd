@@ -62,6 +62,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Run Trace: Spec > Blocked Receipt"):
 		_fail("Blocked draft result tooltip did not expose the spec-blocked trace path. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Run Target: Clear Patch"):
+		_fail("Blocked draft result tooltip did not expose the labeled run target. tooltip=%s" % result_tooltip)
+		return
 
 	var summary_label = game_ui.get("_skill_forge_summary_label") as Label
 	if summary_label == null or not summary_label.text.contains("summon_rain"):
@@ -176,6 +179,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 		return
 	if not trace_tooltip.contains("Current Run Detail: Passed -> Clear Patch (Harness Receipt)"):
 		_fail("Clean revision trace did not expose current passed detail before history. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Target: Clear Patch"):
+		_fail("Clean revision trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)") or not trace_tooltip.contains("Blocked Clear Patch (Spec Blocked)"):
 		_fail("Clean revision history did not name the harness/spec endpoints. tooltip=%s" % trace_tooltip)

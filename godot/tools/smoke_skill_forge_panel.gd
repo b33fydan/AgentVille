@@ -73,7 +73,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _result_text(game_ui) != "Spec Preview: Tend Crops":
 		_fail("Skill Forge default preview header did not name the active starter. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Preview trace for Tend Crops") or not _result_tooltip(game_ui).contains("route Forge Receipt"):
+	if not _result_tooltip(game_ui).contains("Run Target: Tend Crops") or not _result_tooltip(game_ui).contains("route Forge Receipt"):
 		_fail("Skill Forge default preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 
@@ -121,7 +121,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _visible_drift_text(game_ui) != "":
 		_fail("Skill Forge default preview should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
 		return
-	if not _stage_tooltip(game_ui).contains("Preview trace for Tend Crops"):
+	if not _stage_tooltip(game_ui).contains("Run Target: Tend Crops"):
 		_fail("Skill Forge default preview stage tooltip did not keep preview detail. tooltip=%s" % _stage_tooltip(game_ui))
 		return
 	if _visible_history_text(game_ui) != "":
@@ -158,7 +158,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if _result_text(game_ui) != "Spec Preview: Clear Patch":
 		_fail("Clear Patch preview header did not name the selected starter. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Preview trace for Clear Patch") or not _result_tooltip(game_ui).contains("route Crew Order"):
+	if not _result_tooltip(game_ui).contains("Run Target: Clear Patch") or not _result_tooltip(game_ui).contains("route Crew Order"):
 		_fail("Clear Patch preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 
@@ -265,6 +265,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Run History: Passed Clear Patch"):
 		_fail("Skill Forge run history did not remember the passed harness receipt. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Run Target: Clear Patch"):
+		_fail("Skill Forge run trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Skill Forge run history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
 		return
@@ -344,7 +347,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		_fail("Switching templates did not restore Tend Crops preview trace. text=%s" % str(trace_label.text))
 		return
 	var preview_tooltip := str(trace_label.tooltip_text)
-	if not preview_tooltip.contains("Preview trace for Tend Crops") or not preview_tooltip.contains("Run History: Passed Clear Patch"):
+	if not preview_tooltip.contains("Run Target: Tend Crops") or not preview_tooltip.contains("Run History: Passed Clear Patch"):
 		_fail("Forge preview tooltip did not keep recent run history after template switch. tooltip=%s" % preview_tooltip)
 		return
 	if not preview_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
@@ -442,6 +445,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	var trace_tooltip := str(trace_label.tooltip_text)
 	if not trace_tooltip.contains("Run Receipt: selected tile had no brush"):
 		_fail("Failed Forge trace did not keep the harness receipt detail. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Target: Clear Patch"):
+		_fail("Failed Forge trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
 		return
 	var passed_history_index := trace_tooltip.find("Run History: Passed Clear Patch")
 	var failed_history_index := trace_tooltip.find("Failed Clear Patch", passed_history_index)

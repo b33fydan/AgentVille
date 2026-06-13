@@ -68,7 +68,7 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge panel did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var queued_trace_tooltip := str(trace_label.tooltip_text)
-	if not queued_trace_tooltip.contains("Forge order queued; awaiting agent receipt") or not queued_trace_tooltip.contains("Clear Patch") or not queued_trace_tooltip.contains("Run Context: agent Chuck | target ") or not queued_trace_tooltip.contains("| source Starter Lab"):
+	if not queued_trace_tooltip.contains("Forge order queued; awaiting agent receipt") or not queued_trace_tooltip.contains("Run Target: Clear Patch") or not queued_trace_tooltip.contains("Run Context: agent Chuck | target ") or not queued_trace_tooltip.contains("| source Starter Lab"):
 		_fail("Forge queued-work trace did not preserve readable work context. tooltip=%s" % queued_trace_tooltip)
 		return
 	if not queued_trace_tooltip.contains("agent Chuck"):
@@ -204,6 +204,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not trace_tooltip.contains(receipt):
 		_fail("Forge trace tooltip did not preserve the readable agent receipt. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
 		return
+	if not trace_tooltip.contains("Run Target: Clear Patch"):
+		_fail("Forge agent receipt trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Stage: Agent Receipt"):
 		_fail("Forge agent receipt trace did not expose the agent receipt stage. tooltip=%s" % trace_tooltip)
 		return
@@ -335,7 +338,7 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		_fail("Forge panel did not trace waiting crew work. text=%s" % (trace_label.text if trace_label else ""))
 		return
 	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Forge order waiting; no free crew yet") or not trace_tooltip.contains("Clear Patch") or not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
+	if not trace_tooltip.contains("Forge order waiting; no free crew yet") or not trace_tooltip.contains("Run Target: Clear Patch") or not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
 		_fail("Forge waiting trace did not preserve readable work context. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("agent Chuck"):
