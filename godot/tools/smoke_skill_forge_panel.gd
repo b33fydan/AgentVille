@@ -73,7 +73,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _result_text(game_ui) != "Spec Preview: Tend Crops":
 		_fail("Skill Forge default preview header did not name the active starter. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Run Target: Tend Crops") or not _result_tooltip(game_ui).contains("route Forge Receipt"):
+	if not _result_tooltip(game_ui).contains("Run Target: Tend Crops") or not _result_tooltip(game_ui).contains("Run Route: Spec > Forge Receipt"):
 		_fail("Skill Forge default preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 
@@ -100,10 +100,10 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _visible_ref_text(game_ui) != "":
 		_fail("Skill Forge default preview should keep run refs hidden. text=%s" % _visible_ref_text(game_ui))
 		return
-	if not preview_tooltip.contains("route Forge Receipt"):
+	if not preview_tooltip.contains("Run Route: Spec > Forge Receipt"):
 		_fail("Skill Forge default preview did not expose its Forge-only route. tooltip=%s" % preview_tooltip)
 		return
-	if not preview_tooltip.contains("check crop_state on selected_tile") or not preview_tooltip.contains("receipt Tend Crops run"):
+	if not preview_tooltip.contains("Spec Tools: inspect_tile -> tend_crop") or not preview_tooltip.contains("Success Check: crop_state on selected_tile") or not preview_tooltip.contains("Run Receipt: Tend Crops run"):
 		_fail("Skill Forge default preview did not expose check/receipt contract details. tooltip=%s" % preview_tooltip)
 		return
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":
@@ -158,7 +158,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if _result_text(game_ui) != "Spec Preview: Clear Patch":
 		_fail("Clear Patch preview header did not name the selected starter. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Run Target: Clear Patch") or not _result_tooltip(game_ui).contains("route Crew Order"):
+	if not _result_tooltip(game_ui).contains("Run Target: Clear Patch") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order"):
 		_fail("Clear Patch preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 
@@ -194,10 +194,10 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if not preview_tooltip.contains("Run Trace: Spec > clear_brush > Crew Order"):
 		_fail("Clear Patch preview did not expose the labeled run trace path. tooltip=%s" % preview_tooltip)
 		return
-	if not preview_tooltip.contains("route Crew Order"):
+	if not preview_tooltip.contains("Run Route: Spec > Crew Order"):
 		_fail("Clear Patch preview did not expose its crew-order route. tooltip=%s" % preview_tooltip)
 		return
-	if not preview_tooltip.contains("check tile_state on selected_tile") or not preview_tooltip.contains("receipt Clear Patch run"):
+	if not preview_tooltip.contains("Spec Tools: inspect_tile -> clear_brush") or not preview_tooltip.contains("Success Check: tile_state on selected_tile") or not preview_tooltip.contains("Run Receipt: Clear Patch run"):
 		_fail("Clear Patch preview did not expose check/receipt contract details. tooltip=%s" % preview_tooltip)
 		return
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Clear Patch":
@@ -362,7 +362,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _result_text(game_ui) != "Spec Preview: Tend Crops":
 		_fail("Forge preview switch should restore the active starter header. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("route Forge Receipt") or not _result_tooltip(game_ui).contains("Run History: Passed Clear Patch"):
+	if not _result_tooltip(game_ui).contains("Run Route: Spec > Forge Receipt") or not _result_tooltip(game_ui).contains("Run History: Passed Clear Patch"):
 		_fail("Forge preview switch header tooltip did not keep preview and history detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":

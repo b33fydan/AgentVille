@@ -101,7 +101,7 @@ func _test_panel_renders_structured_contract() -> void:
 		_fail("Panel header did not name the active preview. text=%s" % (result_label.text if result_label else ""))
 		return
 	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("Run Target: Clear Patch") or not result_tooltip.contains("route Crew Order"):
+	if not result_tooltip.contains("Run Target: Clear Patch") or not result_tooltip.contains("Run Route: Spec > Crew Order"):
 		_fail("Panel header tooltip did not keep preview trace detail. tooltip=%s" % result_tooltip)
 		return
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
@@ -118,13 +118,16 @@ func _test_panel_renders_structured_contract() -> void:
 	if str(trace_label.text) != "Run Trace: Spec > clear_brush > Crew Order":
 		_fail("Panel preview trace did not show the crew-order endpoint. text=%s" % (trace_label.text if trace_label else ""))
 		return
-	if not trace_tooltip.contains("route Crew Order"):
+	if not trace_tooltip.contains("Run Route: Spec > Crew Order"):
 		_fail("Panel preview trace did not expose the crew-order route. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("check tile_state on selected_tile"):
+	if not trace_tooltip.contains("Spec Tools: inspect_tile -> clear_brush"):
+		_fail("Panel preview trace did not expose the tool contract. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Success Check: tile_state on selected_tile"):
 		_fail("Panel preview trace did not expose the success check contract. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("receipt Clear Patch run"):
+	if not trace_tooltip.contains("Run Receipt: Clear Patch run"):
 		_fail("Panel preview trace did not expose the receipt contract. tooltip=%s" % trace_tooltip)
 		return
 

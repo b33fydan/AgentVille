@@ -1409,16 +1409,16 @@ func _skill_forge_preview_trace_tooltip(preview: Dictionary) -> String:
 	]
 	var tools_label := str(preview.get("tools_label", "")).strip_edges()
 	if tools_label != "":
-		parts.append("spec tools %s" % tools_label)
-	var route_text := _skill_forge_preview_route_text(_skill_forge_final_tool_label(tools_label))
+		parts.append("Spec Tools: %s" % tools_label)
+	var route_text := _skill_forge_preview_route_line_text(preview)
 	if route_text != "":
-		parts.append("route %s" % route_text)
+		parts.append("Run Route: %s" % route_text)
 	var check_label := str(preview.get("check_label", preview.get("success_check", ""))).strip_edges()
 	if check_label != "":
-		parts.append("check %s" % check_label)
+		parts.append("Success Check: %s" % check_label)
 	var receipt_label := str(preview.get("receipt_label", "")).strip_edges()
 	if receipt_label != "":
-		parts.append("receipt %s" % receipt_label)
+		parts.append("Run Receipt: %s" % receipt_label)
 	return " | ".join(parts) + _skill_forge_history_tooltip_suffix()
 
 
