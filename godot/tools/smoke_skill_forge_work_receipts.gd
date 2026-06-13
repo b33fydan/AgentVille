@@ -144,6 +144,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		_fail("Forge queued-work should clear visible Drift. text=%s" % _visible_drift_text(game_ui))
 		return
 	var queued_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
+	if not queued_chip_tooltip.begins_with("Forge Work Order: Clear Patch"):
+		_fail("Forge queued-work chip did not open with the work-order role. tooltip=%s" % queued_chip_tooltip)
+		return
 	if not queued_chip_tooltip.contains("Run Context: agent Chuck | target ") or not queued_chip_tooltip.contains("| source Starter Lab"):
 		_fail("Forge work order chip did not expose queued run context. tooltip=%s" % queued_chip_tooltip)
 		return
@@ -414,6 +417,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		_fail("Forge waiting work should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
 		return
 	var waiting_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
+	if not waiting_chip_tooltip.begins_with("Forge Work Order: Clear Patch"):
+		_fail("Forge waiting-work chip did not open with the work-order role. tooltip=%s" % waiting_chip_tooltip)
+		return
 	if not waiting_chip_tooltip.contains("Run Context: agent Chuck | target ") or not waiting_chip_tooltip.contains("| source Starter Lab"):
 		_fail("Forge work order chip did not expose waiting run context. tooltip=%s" % waiting_chip_tooltip)
 		return

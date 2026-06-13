@@ -2714,7 +2714,7 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 		"held_truce":
 			return _with_origin_suffix("Held truce: %s" % label if label != "" else "Influenced by a held truce", origin_suffix)
 		"skill_forge":
-			var tooltip := "Skill Forge: %s" % label if label != "" else "Drafted by Skill Forge"
+			var tooltip := "Forge Work Order: %s" % label if label != "" else "Drafted by Forge Work Order"
 			tooltip += _skill_forge_identity_trace_suffix(str(order.get("forge_run_id", "")), str(order.get("id", "")))
 			var context := _skill_forge_run_detail_text(str(order.get("agent_name", "")), order.get("target_tile", Vector2i(-1, -1)), order.get("source_context", {}))
 			if context != "":

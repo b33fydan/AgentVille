@@ -89,6 +89,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 			preference.visible if preference != null else false
 		])
 		return
+	if not str(preference.tooltip_text).begins_with("Forge Work Order: Clear Patch"):
+		_fail("Forge work order chip tooltip did not open with the work-order role. tooltip=%s" % str(preference.tooltip_text))
+		return
 	if not str(preference.tooltip_text).contains("Clear Patch"):
 		_fail("Forge work order chip tooltip did not name the skill. tooltip=%s" % str(preference.tooltip_text))
 		return
