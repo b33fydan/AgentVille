@@ -1753,7 +1753,7 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	if directive_kind == "skill_directive":
 		text += " | Run Route Note: receipt-only until this action has a crew-order path"
 	if order_label != "":
-		text += " | Work Order: %s" % order_label
+		text += " | Crew Work Order: %s" % order_label
 	if blocked_detail != "":
 		text += " | Order Blocked: %s" % blocked_detail
 	elif blocked_reason != "":

@@ -292,6 +292,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
 		_fail("Skill Forge run trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Crew Work Order: Clear Patch: Clear"):
+		_fail("Skill Forge run trace did not label the drafted crew work order. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Next Step: Send crew order"):
 		_fail("Skill Forge run trace did not expose the next lifecycle step. tooltip=%s" % trace_tooltip)
 		return
