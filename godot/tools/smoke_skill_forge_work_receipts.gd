@@ -134,6 +134,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if _visible_next_text(game_ui) != "Next Step: Wait for agent receipt":
 		_fail("Forge queued-work next step did not point to waiting for the agent receipt. text=%s" % _visible_next_text(game_ui))
 		return
+	if _lesson_text(game_ui) != "Lesson Crew queued the work order; wait for agent receipt.":
+		_fail("Forge queued-work did not teach the queued lifecycle state. text=%s" % _lesson_text(game_ui))
+		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Forge queued-work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
@@ -267,6 +270,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if _visible_next_text(game_ui) != "Next Step: Review day summary":
 		_fail("Forge completed-work next step did not point to reviewing the day summary. text=%s" % _visible_next_text(game_ui))
+		return
+	if _lesson_text(game_ui) != "Lesson Agent receipt closed the crew work order.":
+		_fail("Forge completed-work did not teach the agent-receipt lifecycle state. text=%s" % _lesson_text(game_ui))
 		return
 	var completed_agent := str(completed_event.get("agent_name", ""))
 	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]
@@ -407,6 +413,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if _visible_next_text(game_ui) != "Next Step: Wait for free crew":
 		_fail("Forge waiting next step did not point to crew availability. text=%s" % _visible_next_text(game_ui))
 		return
+	if _lesson_text(game_ui) != "Lesson Crew is busy; wait for a free agent.":
+		_fail("Forge waiting work did not teach the waiting lifecycle state. text=%s" % _lesson_text(game_ui))
+		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Forge waiting work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
@@ -497,6 +506,11 @@ func _result_text(game_ui) -> String:
 func _result_tooltip(game_ui) -> String:
 	var result_label = game_ui.get("_skill_forge_result_label") as Label
 	return str(result_label.tooltip_text) if result_label != null else ""
+
+
+func _lesson_text(game_ui) -> String:
+	var lesson_label = game_ui.get("_skill_forge_lesson_label") as Label
+	return str(lesson_label.text) if lesson_label != null else ""
 
 
 func _visible_history_text(game_ui) -> String:

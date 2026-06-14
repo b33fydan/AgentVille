@@ -260,6 +260,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_set_skill_forge_next_line("Review day summary", trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(receipt_text, trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_drift_line("")
+	_set_skill_forge_lesson_text("Lesson Agent receipt closed the crew work order.")
 	_refresh_skill_forge_history_label()
 
 
@@ -313,6 +314,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	_set_skill_forge_next_line(_skill_forge_work_stage_next_text(status_text), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(_skill_forge_work_stage_receipt_text(status_text, order_label), trace_tooltip, stage_color)
 	_set_skill_forge_drift_line("")
+	_set_skill_forge_lesson_text(_skill_forge_work_stage_lesson_text(status_text))
 	_refresh_skill_forge_history_label()
 
 
@@ -1680,8 +1682,7 @@ func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
 	_set_skill_forge_next_line(_skill_forge_result_next_line_text(result), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(_skill_forge_result_receipt_line_text(result), trace_tooltip, trace_color)
 	_set_skill_forge_drift_line(_skill_forge_result_drift_line_text(result), trace_tooltip, Color("#8a503e"))
-	if _skill_forge_lesson_label:
-		_skill_forge_lesson_label.text = _skill_forge_result_lesson_text(result)
+	_set_skill_forge_lesson_text(_skill_forge_result_lesson_text(result))
 	_refresh_skill_forge_history_label()
 
 
@@ -1976,6 +1977,12 @@ func _skill_forge_result_lesson_text(result: Dictionary) -> String:
 	return ""
 
 
+func _set_skill_forge_lesson_text(lesson_text: String) -> void:
+	if _skill_forge_lesson_label == null:
+		return
+	_skill_forge_lesson_label.text = lesson_text.strip_edges()
+
+
 func _skill_forge_result_receipt_line_text(result: Dictionary) -> String:
 	if _skill_forge_result_has_blocked_order(result):
 		return str(result.get("drafted_order_blocked_detail", result.get("drafted_order_blocked_reason", ""))).strip_edges()
@@ -2009,6 +2016,15 @@ func _skill_forge_work_stage_next_text(status_text: String) -> String:
 			return "Wait for agent receipt"
 		"Crew Waiting":
 			return "Wait for free crew"
+	return ""
+
+
+func _skill_forge_work_stage_lesson_text(status_text: String) -> String:
+	match status_text.strip_edges():
+		"Crew Queued":
+			return "Lesson Crew queued the work order; wait for agent receipt."
+		"Crew Waiting":
+			return "Lesson Crew is busy; wait for a free agent."
 	return ""
 
 
