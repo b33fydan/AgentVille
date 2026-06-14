@@ -1680,6 +1680,8 @@ func _set_skill_forge_trace_from_result(result: Dictionary) -> void:
 	_set_skill_forge_next_line(_skill_forge_result_next_line_text(result), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(_skill_forge_result_receipt_line_text(result), trace_tooltip, trace_color)
 	_set_skill_forge_drift_line(_skill_forge_result_drift_line_text(result), trace_tooltip, Color("#8a503e"))
+	if _skill_forge_lesson_label:
+		_skill_forge_lesson_label.text = _skill_forge_result_lesson_text(result)
 	_refresh_skill_forge_history_label()
 
 
@@ -1947,6 +1949,30 @@ func _skill_forge_result_next_line_text(result: Dictionary) -> String:
 		return "Send crew order"
 	if status == "passed" and directive_kind == "skill_directive":
 		return "Field Log receipt"
+	return ""
+
+
+func _skill_forge_result_lesson_text(result: Dictionary) -> String:
+	if _skill_forge_result_has_blocked_order(result):
+		return "Lesson Spec -> order blocked; pick a valid target."
+
+	var status := str(result.get("status", "")).strip_edges()
+	if status == "blocked":
+		return "Lesson Spec -> blocked receipt; use Fix before rerun."
+	if status == "failed":
+		return "Lesson Spec -> failed receipt; revise and rerun."
+
+	var directive: Dictionary = result.get("directive", {})
+	var directive_kind := str(directive.get("kind", "")).strip_edges()
+	var has_order := str(result.get("drafted_order_id", "")).strip_edges() != ""
+	if directive_kind == "work_order_directive" and has_order:
+		if status == "started":
+			return "Lesson Spec -> crew work order; wait for harness receipt."
+		return "Lesson Spec -> crew work order; send for agent receipt."
+	if directive_kind == "skill_directive":
+		return "Lesson Spec -> Forge-only receipt; field log keeps receipt."
+	if status == "started":
+		return "Lesson Spec -> harness check; wait for receipt."
 	return ""
 
 

@@ -126,6 +126,9 @@ func _test_blocked_draft_shows_revision_copy(scene: Node, game_ui) -> void:
 	if _visible_next_text(game_ui) != "Next Step: Use Fix":
 		_fail("Blocked draft did not expose the Fix next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if _lesson_text(game_ui) != "Lesson Spec -> blocked receipt; use Fix before rerun.":
+		_fail("Blocked draft did not teach the validator-blocked outcome. text=%s" % _lesson_text(game_ui))
+		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Blocked draft did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
@@ -210,6 +213,9 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Clean revision did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if _lesson_text(game_ui) != "Lesson Spec -> crew work order; send for agent receipt.":
+		_fail("Clean revision did not teach the crew-order outcome. text=%s" % _lesson_text(game_ui))
+		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Clean revision did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
@@ -258,6 +264,11 @@ func _visible_ref_text(game_ui) -> String:
 	if ref_label == null or not ref_label.visible:
 		return ""
 	return str(ref_label.text)
+
+
+func _lesson_text(game_ui) -> String:
+	var lesson_label = game_ui.get("_skill_forge_lesson_label") as Label
+	return str(lesson_label.text) if lesson_label != null else ""
 
 
 func _stage_tooltip(game_ui) -> String:

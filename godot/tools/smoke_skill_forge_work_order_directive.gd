@@ -122,6 +122,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Forge drafted order did not expose the send-order next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if _lesson_text(game_ui) != "Lesson Spec -> crew work order; send for agent receipt.":
+		_fail("Forge drafted order did not teach the crew-order outcome. text=%s" % _lesson_text(game_ui))
+		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Forge drafted order did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
@@ -202,6 +205,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		return
 	if _visible_next_text(game_ui) != "Next Step: Field Log receipt":
 		_fail("Tend Crops did not expose the Forge-only next step. text=%s" % _visible_next_text(game_ui))
+		return
+	if _lesson_text(game_ui) != "Lesson Spec -> Forge-only receipt; field log keeps receipt.":
+		_fail("Tend Crops did not teach the Forge-only receipt outcome. text=%s" % _lesson_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Tend Crops did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
@@ -323,6 +329,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if _visible_next_text(game_ui) != "Next Step: Pick valid target":
 		_fail("Order-blocked Clear Patch did not expose the target-repair next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if _lesson_text(game_ui) != "Lesson Spec -> order blocked; pick a valid target.":
+		_fail("Order-blocked Clear Patch did not teach the blocked-order outcome. text=%s" % _lesson_text(game_ui))
+		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Order-blocked Clear Patch did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
@@ -389,6 +398,11 @@ func _visible_stage_text(game_ui) -> String:
 	if stage_label == null or not stage_label.visible:
 		return ""
 	return str(stage_label.text)
+
+
+func _lesson_text(game_ui) -> String:
+	var lesson_label = game_ui.get("_skill_forge_lesson_label") as Label
+	return str(lesson_label.text) if lesson_label != null else ""
 
 
 func _visible_next_text(game_ui) -> String:

@@ -327,6 +327,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Skill Forge run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if _lesson_text(game_ui) != "Lesson Spec -> crew work order; send for agent receipt.":
+		_fail("Skill Forge run did not teach the crew-order outcome. text=%s" % _lesson_text(game_ui))
+		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Skill Forge run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
@@ -501,6 +504,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if _visible_next_text(game_ui) != "Next Step: Revise and rerun":
 		_fail("Failed Forge receipt did not expose the repair next step. text=%s" % _visible_next_text(game_ui))
 		return
+	if _lesson_text(game_ui) != "Lesson Spec -> failed receipt; revise and rerun.":
+		_fail("Failed Forge receipt did not teach the repair outcome. text=%s" % _lesson_text(game_ui))
+		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Failed Forge receipt did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
@@ -548,6 +554,11 @@ func _visible_stage_text(game_ui) -> String:
 	if stage_label == null or not stage_label.visible:
 		return ""
 	return str(stage_label.text)
+
+
+func _lesson_text(game_ui) -> String:
+	var lesson_label = game_ui.get("_skill_forge_lesson_label") as Label
+	return str(lesson_label.text) if lesson_label != null else ""
 
 
 func _visible_route_text(game_ui) -> String:
