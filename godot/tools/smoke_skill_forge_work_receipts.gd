@@ -125,6 +125,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Queued -> Clear Patch"):
 		_fail("Forge queued-work history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
+	if not _history_tooltip(game_ui).contains("Lesson: Crew queued the work order; wait for agent receipt."):
+		_fail("Forge queued-work history tooltip did not expose the current lifecycle lesson. tooltip=%s" % _history_tooltip(game_ui))
+		return
 	if _visible_stage_text(game_ui) != "Stage: Crew Queued | Clear Patch":
 		_fail("Forge queued-work current stage did not expose the crew-queued state. text=%s" % _visible_stage_text(game_ui))
 		return
@@ -267,6 +270,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Agent Receipt -> Clear Patch"):
 		_fail("Forge completed-work history tooltip did not expose the current agent-receipt detail. tooltip=%s" % _history_tooltip(game_ui))
+		return
+	if not _history_tooltip(game_ui).contains("Lesson: Agent receipt closed the crew work order."):
+		_fail("Forge completed-work history tooltip did not expose the current agent-receipt lesson. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Stage: Agent Receipt | Clear Patch":
 		_fail("Forge completed-work current stage did not expose the agent receipt endpoint. text=%s" % _visible_stage_text(game_ui))
@@ -412,6 +418,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Waiting -> Clear Patch"):
 		_fail("Forge waiting history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
+		return
+	if not _history_tooltip(game_ui).contains("Lesson: Crew is busy; wait for a free agent."):
+		_fail("Forge waiting history tooltip did not expose the current waiting lesson. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Stage: Crew Waiting | Clear Patch":
 		_fail("Forge waiting current stage did not expose the crew-waiting state. text=%s" % _visible_stage_text(game_ui))

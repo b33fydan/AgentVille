@@ -2253,9 +2253,19 @@ func _skill_forge_full_history_text() -> String:
 		return ""
 	var entries := _skill_forge_chronological_history_entries()
 	var latest_detail := _skill_forge_current_history_detail(str(entries[entries.size() - 1]))
+	var lesson_suffix := _skill_forge_current_lesson_tooltip_suffix()
 	if latest_detail == "":
-		return "Run History: %s" % " ; ".join(entries)
-	return "Current Run Detail: %s | Run History: %s" % [latest_detail, " ; ".join(entries)]
+		return "Run History: %s%s" % [" ; ".join(entries), lesson_suffix]
+	return "Current Run Detail: %s%s | Run History: %s" % [latest_detail, lesson_suffix, " ; ".join(entries)]
+
+
+func _skill_forge_current_lesson_tooltip_suffix() -> String:
+	if _skill_forge_lesson_label == null:
+		return ""
+	var lesson_text := str(_skill_forge_lesson_label.text).strip_edges()
+	if not lesson_text.begins_with("Lesson "):
+		return ""
+	return _skill_forge_lesson_tooltip_suffix(lesson_text)
 
 
 func _skill_forge_current_history_detail(text: String) -> String:
