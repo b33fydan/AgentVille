@@ -171,6 +171,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_chip_tooltip.contains("Next Step: Wait for agent receipt"):
 		_fail("Forge work order chip did not expose the crew-queued next step. tooltip=%s" % queued_chip_tooltip)
 		return
+	if not queued_chip_tooltip.contains("Lesson: Crew queued the work order; wait for agent receipt."):
+		_fail("Forge work order chip did not expose the crew-queued lesson cue. tooltip=%s" % queued_chip_tooltip)
+		return
 	if not queued_chip_tooltip.contains("Run Receipt: Forge order queued; awaiting agent receipt: Clear Patch"):
 		_fail("Forge work order chip did not expose the crew-queued receipt cue. tooltip=%s" % queued_chip_tooltip)
 		return
@@ -449,6 +452,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not waiting_chip_tooltip.contains("Next Step: Wait for free crew"):
 		_fail("Forge work order chip did not expose the crew-waiting next step. tooltip=%s" % waiting_chip_tooltip)
+		return
+	if not waiting_chip_tooltip.contains("Lesson: Crew is busy; wait for a free agent."):
+		_fail("Forge work order chip did not expose the crew-waiting lesson cue. tooltip=%s" % waiting_chip_tooltip)
 		return
 	if not waiting_chip_tooltip.contains("Run Receipt: Forge order waiting; no free crew yet: Clear Patch"):
 		_fail("Forge work order chip did not expose the crew-waiting receipt cue. tooltip=%s" % waiting_chip_tooltip)

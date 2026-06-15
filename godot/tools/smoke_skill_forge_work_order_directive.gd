@@ -119,6 +119,9 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Next Step: Send crew order"):
 		_fail("Forge work order chip tooltip did not expose the ready next step. tooltip=%s" % str(preference.tooltip_text))
 		return
+	if not str(preference.tooltip_text).contains("Lesson: Spec became a crew work order; send for agent receipt."):
+		_fail("Forge work order chip tooltip did not expose the ready lesson cue. tooltip=%s" % str(preference.tooltip_text))
+		return
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Forge drafted order did not expose the send-order next step. text=%s" % _visible_next_text(game_ui))
 		return
