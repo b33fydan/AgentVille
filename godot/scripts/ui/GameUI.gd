@@ -234,7 +234,8 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > Agent Receipt")
 	var receipt_route := "Spec > Crew Order > Agent Receipt"
 	var receipt_trace := "Spec > Directive > Work Order > Agent Receipt"
-	var trace_tooltip := "%s%s | Stage: Agent Receipt | Run Route: %s | Run Trace: %s | Next Step: Review day summary | Run Receipt: %s%s" % [
+	var receipt_lesson := "Lesson Agent receipt closed the crew work order."
+	var trace_tooltip := "%s%s | Stage: Agent Receipt | Run Route: %s | Run Trace: %s | Next Step: Review day summary%s | Run Receipt: %s%s" % [
 		_skill_forge_trace_target_text(skill_name),
 		_skill_forge_context_trace_suffix(
 			str(event.get("agent_name", "")),
@@ -243,6 +244,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 		) + _skill_forge_identity_trace_suffix(str(event.get("forge_run_id", "")), str(event.get("work_order_id", ""))),
 		receipt_route,
 		receipt_trace,
+		_skill_forge_lesson_tooltip_suffix(receipt_lesson),
 		receipt_text,
 		_skill_forge_history_tooltip_suffix()
 	]
@@ -260,7 +262,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_set_skill_forge_next_line("Review day summary", trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(receipt_text, trace_tooltip, Color("#4f7a3a"))
 	_set_skill_forge_drift_line("")
-	_set_skill_forge_lesson_text("Lesson Agent receipt closed the crew work order.")
+	_set_skill_forge_lesson_text(receipt_lesson)
 	_refresh_skill_forge_history_label()
 
 
@@ -278,6 +280,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	var next_step := _skill_forge_work_stage_next_text(status_text)
 	var route_text := _skill_forge_work_stage_route_text(status_text)
 	var receipt_text := _skill_forge_work_stage_receipt_text(status_text, order_label)
+	var lesson_text := _skill_forge_work_stage_lesson_text(status_text)
 	_record_skill_forge_work_stage_history(order, status_text)
 	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > %s" % status_text)
 	var trace_text := "Spec > Directive > Work Order > %s" % status_text
@@ -294,6 +297,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	]
 	if next_step != "":
 		trace_tooltip += " | Next Step: %s" % next_step
+	trace_tooltip += _skill_forge_lesson_tooltip_suffix(lesson_text)
 	if receipt_text != "":
 		trace_tooltip += " | Run Receipt: %s" % receipt_text
 	else:
@@ -314,7 +318,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	_set_skill_forge_next_line(_skill_forge_work_stage_next_text(status_text), trace_tooltip, Color("#6f8568"))
 	_set_skill_forge_receipt_line(_skill_forge_work_stage_receipt_text(status_text, order_label), trace_tooltip, stage_color)
 	_set_skill_forge_drift_line("")
-	_set_skill_forge_lesson_text(_skill_forge_work_stage_lesson_text(status_text))
+	_set_skill_forge_lesson_text(lesson_text)
 	_refresh_skill_forge_history_label()
 
 
@@ -1588,6 +1592,7 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var next_step := _skill_forge_result_next_line_text(result)
 	if next_step != "":
 		text += " | Next Step: %s" % next_step
+	text += _skill_forge_lesson_tooltip_suffix(_skill_forge_result_lesson_text(result))
 	if detail != "":
 		text += " | Run Receipt: %s" % detail
 	if blocked_detail != "":
@@ -1763,6 +1768,7 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 		text += " | Order Blocked: %s" % blocked_reason
 	if detail != "":
 		text += " | Run Receipt: %s" % detail
+	text += _skill_forge_lesson_tooltip_suffix(_skill_forge_result_lesson_text(result))
 	text += _skill_forge_history_tooltip_suffix()
 	return text
 
@@ -1981,6 +1987,15 @@ func _set_skill_forge_lesson_text(lesson_text: String) -> void:
 	if _skill_forge_lesson_label == null:
 		return
 	_skill_forge_lesson_label.text = lesson_text.strip_edges()
+
+
+func _skill_forge_lesson_tooltip_suffix(lesson_text: String) -> String:
+	lesson_text = lesson_text.strip_edges()
+	if lesson_text.begins_with("Lesson "):
+		lesson_text = lesson_text.substr("Lesson ".length()).strip_edges()
+	if lesson_text == "":
+		return ""
+	return " | Lesson: %s" % lesson_text
 
 
 func _skill_forge_result_receipt_line_text(result: Dictionary) -> String:

@@ -100,6 +100,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Next Step: Wait for agent receipt"):
 		_fail("Forge queued-work trace did not expose the agent-receipt next step. tooltip=%s" % queued_trace_tooltip)
 		return
+	if not queued_trace_tooltip.contains("Lesson: Crew queued the work order; wait for agent receipt."):
+		_fail("Forge queued-work trace did not expose the queued lesson cue. tooltip=%s" % queued_trace_tooltip)
+		return
 	if not queued_trace_tooltip.contains("Run Route: Spec > Crew Order > Crew Queued"):
 		_fail("Forge queued-work trace did not expose the queued route. tooltip=%s" % queued_trace_tooltip)
 		return
@@ -224,6 +227,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not trace_tooltip.contains("Next Step: Review day summary"):
 		_fail("Forge agent receipt trace did not expose the day-summary next step. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Lesson: Agent receipt closed the crew work order."):
+		_fail("Forge agent receipt trace did not expose the agent-receipt lesson cue. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Route: Spec > Crew Order > Agent Receipt"):
 		_fail("Forge agent receipt trace did not expose the agent-receipt route. tooltip=%s" % trace_tooltip)
@@ -381,6 +387,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not trace_tooltip.contains("Next Step: Wait for free crew"):
 		_fail("Forge waiting trace did not expose the crew-availability next step. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Lesson: Crew is busy; wait for a free agent."):
+		_fail("Forge waiting trace did not expose the waiting lesson cue. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Route: Spec > Crew Order > Crew Waiting"):
 		_fail("Forge waiting trace did not expose the waiting route. tooltip=%s" % trace_tooltip)

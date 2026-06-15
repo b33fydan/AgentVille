@@ -256,6 +256,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Next Step: Send crew order"):
 		_fail("Skill Forge result tooltip did not expose the next lifecycle step. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Lesson: Spec -> crew work order; send for agent receipt."):
+		_fail("Skill Forge result tooltip did not expose the crew-order lesson cue. tooltip=%s" % result_tooltip)
+		return
 	if not result_tooltip.contains("Run Receipt: manual harness receipt confirmed clear-patch checks"):
 		_fail("Skill Forge result tooltip did not expose labeled receipt detail. tooltip=%s" % result_tooltip)
 		return
@@ -297,6 +300,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	if not trace_tooltip.contains("Next Step: Send crew order"):
 		_fail("Skill Forge run trace did not expose the next lifecycle step. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Lesson: Spec -> crew work order; send for agent receipt."):
+		_fail("Skill Forge run trace did not expose the crew-order lesson cue. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
 		_fail("Skill Forge run trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
@@ -449,6 +455,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	if not result_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
 		_fail("Failed Forge result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Lesson: Spec -> failed receipt; revise and rerun."):
+		_fail("Failed Forge result tooltip did not expose the failed-receipt lesson cue. tooltip=%s" % result_tooltip)
+		return
 	if result_tooltip.contains("Drift: steady"):
 		_fail("Failed Forge result tooltip should keep steady Drift hidden. tooltip=%s" % result_tooltip)
 		return
@@ -480,6 +489,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 		return
 	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
 		_fail("Failed Forge trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Lesson: Spec -> failed receipt; revise and rerun."):
+		_fail("Failed Forge trace did not expose the failed-receipt lesson cue. tooltip=%s" % trace_tooltip)
 		return
 	var failed_history_text := _visible_history_text(game_ui)
 	if failed_history_text != "Run Trail: Clear Patch | Passed (Harness Receipt) > Failed (Harness Receipt) [current]" or failed_history_text.contains("selected tile had no brush"):

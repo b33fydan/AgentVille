@@ -179,6 +179,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Run Receipt: manual harness receipt confirmed crop-tending checks"):
 		_fail("Tend Crops result tooltip did not expose labeled receipt detail. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Lesson: Spec -> Forge-only receipt; field log keeps receipt."):
+		_fail("Tend Crops result tooltip did not expose the Forge-only lesson cue. tooltip=%s" % result_tooltip)
+		return
 
 	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
 	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Forge Receipt":
@@ -196,6 +199,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		return
 	if not trace_tooltip.contains("Run Receipt: manual harness receipt confirmed crop-tending checks"):
 		_fail("Tend Crops trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Lesson: Spec -> Forge-only receipt; field log keeps receipt."):
+		_fail("Tend Crops trace did not expose the Forge-only lesson cue. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Passed Tend Crops (Forge Receipt)") or not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
 		_fail("Tend Crops trace history did not name Forge/harness receipt endpoints. tooltip=%s" % trace_tooltip)
@@ -296,6 +302,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not trace_tooltip.contains("Next Step: Pick valid target"):
 		_fail("Order-blocked trace did not expose the target-repair next step. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Lesson: Spec -> order blocked; pick a valid target."):
+		_fail("Order-blocked trace did not expose the blocked-order lesson cue. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
 		_fail("Order-blocked trace did not expose labeled run context. tooltip=%s" % trace_tooltip)
 		return
@@ -319,6 +328,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		return
 	if not result_tooltip.contains("Next Step: Pick valid target"):
 		_fail("Order-blocked result tooltip did not expose the target-repair next step. tooltip=%s" % result_tooltip)
+		return
+	if not result_tooltip.contains("Lesson: Spec -> order blocked; pick a valid target."):
+		_fail("Order-blocked result tooltip did not expose the blocked-order lesson cue. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("Run History: Order Blocked Clear Patch"):
 		_fail("Order-blocked result tooltip did not keep the blocked-order history endpoint. tooltip=%s" % result_tooltip)
