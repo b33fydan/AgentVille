@@ -109,6 +109,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Crew Queued"):
 		_fail("Forge queued-work trace did not expose the labeled run trace path. tooltip=%s" % queued_trace_tooltip)
 		return
+	if not queued_trace_tooltip.contains("Trace Scan: Crew order queued | Next agent receipt"):
+		_fail("Forge queued-work trace did not expose the queued trace scan. tooltip=%s" % queued_trace_tooltip)
+		return
 	if not queued_trace_tooltip.contains("Run Receipt: Forge order queued; awaiting agent receipt: Clear Patch"):
 		_fail("Forge queued-work trace did not expose labeled receipt detail. tooltip=%s" % queued_trace_tooltip)
 		return
@@ -239,6 +242,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Agent Receipt"):
 		_fail("Forge agent receipt trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Trace Scan: Agent receipt logged | Next day summary"):
+		_fail("Forge agent receipt trace did not expose the agent-receipt trace scan. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Receipt: %s" % receipt):
 		_fail("Forge agent receipt trace did not expose labeled receipt detail. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
@@ -402,6 +408,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Crew Waiting"):
 		_fail("Forge waiting trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Trace Scan: Crew busy | Next free crew"):
+		_fail("Forge waiting trace did not expose the waiting trace scan. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Receipt: Forge order waiting; no free crew yet: Clear Patch"):
 		_fail("Forge waiting trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)

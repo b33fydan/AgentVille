@@ -176,6 +176,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not result_tooltip.contains("Run Trace: Spec > Directive > Forge Receipt"):
 		_fail("Tend Crops result tooltip did not expose the Forge-only trace path. tooltip=%s" % result_tooltip)
 		return
+	if not result_tooltip.contains("Trace Scan: Spec checked | Forge receipt only | Next field log"):
+		_fail("Tend Crops result tooltip did not expose the Forge-only trace scan. tooltip=%s" % result_tooltip)
+		return
 	if not result_tooltip.contains("Run Receipt: manual harness receipt confirmed crop-tending checks"):
 		_fail("Tend Crops result tooltip did not expose labeled receipt detail. tooltip=%s" % result_tooltip)
 		return
@@ -196,6 +199,9 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 		return
 	if not trace_tooltip.contains("Run Trace: Spec > Directive > Forge Receipt"):
 		_fail("Tend Crops trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Trace Scan: Spec checked | Forge receipt only | Next field log"):
+		_fail("Tend Crops trace did not expose the Forge-only trace scan. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Receipt: manual harness receipt confirmed crop-tending checks"):
 		_fail("Tend Crops trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
@@ -296,6 +302,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 	if not trace_tooltip.contains("Run Trace: Spec > Directive > Order Blocked"):
 		_fail("Order-blocked trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
 		return
+	if not trace_tooltip.contains("Trace Scan: Spec checked | Directive blocked | Next pick valid target"):
+		_fail("Order-blocked trace did not expose the blocked-order trace scan. tooltip=%s" % trace_tooltip)
+		return
 	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
 		_fail("Order-blocked trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
 		return
@@ -325,6 +334,9 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		return
 	if not result_tooltip.contains("Run Trace: Spec > Directive > Order Blocked"):
 		_fail("Order-blocked result tooltip did not expose the blocked-order trace path. tooltip=%s" % result_tooltip)
+		return
+	if not result_tooltip.contains("Trace Scan: Spec checked | Directive blocked | Next pick valid target"):
+		_fail("Order-blocked result tooltip did not expose the blocked-order trace scan. tooltip=%s" % result_tooltip)
 		return
 	if not result_tooltip.contains("Next Step: Pick valid target"):
 		_fail("Order-blocked result tooltip did not expose the target-repair next step. tooltip=%s" % result_tooltip)

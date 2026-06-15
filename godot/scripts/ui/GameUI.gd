@@ -234,8 +234,9 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > Agent Receipt")
 	var receipt_route := "Spec > Crew Order > Agent Receipt"
 	var receipt_trace := "Spec > Directive > Work Order > Agent Receipt"
+	var receipt_scan := "Agent receipt logged | Next day summary"
 	var receipt_lesson := "Lesson Agent receipt closed the crew work order."
-	var trace_tooltip := "%s%s | Stage: Agent Receipt | Run Route: %s | Run Trace: %s | Next Step: Review day summary%s | Run Receipt: %s%s" % [
+	var trace_tooltip := "%s%s | Stage: Agent Receipt | Run Route: %s | Run Trace: %s%s | Next Step: Review day summary%s | Run Receipt: %s%s" % [
 		_skill_forge_trace_target_text(skill_name),
 		_skill_forge_context_trace_suffix(
 			str(event.get("agent_name", "")),
@@ -244,6 +245,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 		) + _skill_forge_identity_trace_suffix(str(event.get("forge_run_id", "")), str(event.get("work_order_id", ""))),
 		receipt_route,
 		receipt_trace,
+		_skill_forge_trace_scan_tooltip_suffix(receipt_scan),
 		_skill_forge_lesson_tooltip_suffix(receipt_lesson),
 		receipt_text,
 		_skill_forge_history_tooltip_suffix()
@@ -295,6 +297,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 		route_text,
 		trace_text
 	]
+	trace_tooltip += _skill_forge_trace_scan_tooltip_suffix(_skill_forge_work_stage_trace_scan_text(status_text))
 	if next_step != "":
 		trace_tooltip += " | Next Step: %s" % next_step
 	trace_tooltip += _skill_forge_lesson_tooltip_suffix(lesson_text)
@@ -1589,6 +1592,7 @@ func _skill_forge_result_tooltip(result: Dictionary) -> String:
 	var trace_text := _skill_forge_result_trace_text(result)
 	if trace_text != "":
 		text += " | Run Trace: %s" % trace_text
+	text += _skill_forge_trace_scan_tooltip_suffix(_skill_forge_result_trace_scan_text(result))
 	var next_step := _skill_forge_result_next_line_text(result)
 	if next_step != "":
 		text += " | Next Step: %s" % next_step
@@ -1751,6 +1755,7 @@ func _skill_forge_result_trace_tooltip(result: Dictionary) -> String:
 	var trace_text := _skill_forge_result_trace_text(result)
 	if trace_text != "":
 		text += " | Run Trace: %s" % trace_text
+	text += _skill_forge_trace_scan_tooltip_suffix(_skill_forge_result_trace_scan_text(result))
 	var next_step := _skill_forge_result_next_line_text(result)
 	if next_step != "":
 		text += " | Next Step: %s" % next_step
@@ -1998,6 +2003,37 @@ func _skill_forge_lesson_tooltip_suffix(lesson_text: String) -> String:
 	return " | Lesson: %s" % lesson_text
 
 
+func _skill_forge_trace_scan_tooltip_suffix(scan_text: String) -> String:
+	scan_text = scan_text.strip_edges()
+	if scan_text == "":
+		return ""
+	return " | Trace Scan: %s" % scan_text
+
+
+func _skill_forge_result_trace_scan_text(result: Dictionary) -> String:
+	if _skill_forge_result_has_blocked_order(result):
+		return "Spec checked | Directive blocked | Next pick valid target"
+
+	var status := str(result.get("status", "")).strip_edges()
+	if status == "blocked":
+		return "Spec blocked | Next use Fix"
+	if status == "failed":
+		return "Spec checked | Harness failed | Next revise"
+
+	var directive: Dictionary = result.get("directive", {})
+	var directive_kind := str(directive.get("kind", "")).strip_edges()
+	var has_order := str(result.get("drafted_order_id", "")).strip_edges() != ""
+	if directive_kind == "work_order_directive" and has_order:
+		if status == "started":
+			return "Spec checked | Crew order drafted | Next harness receipt"
+		return "Spec checked | Crew order drafted | Next send order"
+	if directive_kind == "skill_directive":
+		return "Spec checked | Forge receipt only | Next field log"
+	if status == "started":
+		return "Spec checked | Harness running | Next receipt"
+	return ""
+
+
 func _skill_forge_result_receipt_line_text(result: Dictionary) -> String:
 	if _skill_forge_result_has_blocked_order(result):
 		return str(result.get("drafted_order_blocked_detail", result.get("drafted_order_blocked_reason", ""))).strip_edges()
@@ -2040,6 +2076,15 @@ func _skill_forge_work_stage_lesson_text(status_text: String) -> String:
 			return "Lesson Crew queued the work order; wait for agent receipt."
 		"Crew Waiting":
 			return "Lesson Crew is busy; wait for a free agent."
+	return ""
+
+
+func _skill_forge_work_stage_trace_scan_text(status_text: String) -> String:
+	match status_text.strip_edges():
+		"Crew Queued":
+			return "Crew order queued | Next agent receipt"
+		"Crew Waiting":
+			return "Crew busy | Next free crew"
 	return ""
 
 
