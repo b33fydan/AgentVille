@@ -2308,11 +2308,12 @@ func _skill_forge_full_history_text() -> String:
 	var latest_entry := str(entries[entries.size() - 1])
 	var latest_detail := _skill_forge_current_history_detail(latest_entry)
 	var trace_scan_suffix := _skill_forge_trace_scan_tooltip_suffix(_skill_forge_current_history_trace_scan_text(latest_entry))
+	var next_step_suffix := _skill_forge_current_history_next_step_tooltip_suffix(latest_entry)
 	var receipt_suffix := _skill_forge_current_history_receipt_tooltip_suffix(latest_entry)
 	var lesson_suffix := _skill_forge_current_lesson_tooltip_suffix()
 	if latest_detail == "":
-		return "Run History: %s%s%s%s" % [" ; ".join(entries), trace_scan_suffix, receipt_suffix, lesson_suffix]
-	return "Current Run Detail: %s%s%s%s | Run History: %s" % [latest_detail, trace_scan_suffix, receipt_suffix, lesson_suffix, " ; ".join(entries)]
+		return "Run History: %s%s%s%s%s" % [" ; ".join(entries), trace_scan_suffix, next_step_suffix, receipt_suffix, lesson_suffix]
+	return "Current Run Detail: %s%s%s%s%s | Run History: %s" % [latest_detail, trace_scan_suffix, next_step_suffix, receipt_suffix, lesson_suffix, " ; ".join(entries)]
 
 
 func _skill_forge_current_lesson_tooltip_suffix() -> String:
@@ -2358,6 +2359,36 @@ func _skill_forge_current_history_receipt_text(text: String) -> String:
 	if detail_index == -1:
 		return ""
 	return text.substr(detail_index + 1).strip_edges()
+
+
+func _skill_forge_current_history_next_step_tooltip_suffix(text: String) -> String:
+	var next_step := _skill_forge_current_history_next_step_text(text)
+	if next_step == "":
+		return ""
+	return " | Next Step: %s" % next_step
+
+
+func _skill_forge_current_history_next_step_text(text: String) -> String:
+	text = text.strip_edges()
+	if text.begins_with("Order Blocked "):
+		return "Pick valid target"
+	if text.begins_with("Crew Queued "):
+		return _skill_forge_work_stage_next_text("Crew Queued")
+	if text.begins_with("Crew Waiting "):
+		return _skill_forge_work_stage_next_text("Crew Waiting")
+	if text.begins_with("Agent Receipt "):
+		return "Review day summary"
+	if text.begins_with("Failed "):
+		return "Revise and rerun"
+	if text.begins_with("Blocked "):
+		return "Use Fix"
+	if text.begins_with("Passed "):
+		match _skill_forge_parenthetical_history_stage(text):
+			"Harness Receipt":
+				return "Send crew order"
+			"Forge Receipt":
+				return "Field Log receipt"
+	return ""
 
 
 func _skill_forge_current_history_trace_scan_text(text: String) -> String:

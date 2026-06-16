@@ -131,6 +131,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _history_tooltip(game_ui).contains("Trace Scan: Crew order queued | Next agent receipt"):
 		_fail("Forge queued-work history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
 		return
+	if not _history_tooltip(game_ui).contains("Next Step: Wait for agent receipt"):
+		_fail("Forge queued-work history tooltip did not expose the current next step. tooltip=%s" % _history_tooltip(game_ui))
+		return
 	if not _history_tooltip(game_ui).contains("Run Receipt: Forge order queued; awaiting agent receipt: Clear Patch"):
 		_fail("Forge queued-work history tooltip did not label the current receipt. tooltip=%s" % _history_tooltip(game_ui))
 		return
@@ -285,6 +288,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not _history_tooltip(game_ui).contains("Trace Scan: Agent receipt logged | Next day summary"):
 		_fail("Forge completed-work history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
+		return
+	if not _history_tooltip(game_ui).contains("Next Step: Review day summary"):
+		_fail("Forge completed-work history tooltip did not expose the current next step. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if not _history_tooltip(game_ui).contains("Run Receipt: %s" % receipt):
 		_fail("Forge completed-work history tooltip did not label the current receipt. tooltip=%s receipt=%s" % [_history_tooltip(game_ui), receipt])
@@ -442,6 +448,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not _history_tooltip(game_ui).contains("Trace Scan: Crew busy | Next free crew"):
 		_fail("Forge waiting history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
+		return
+	if not _history_tooltip(game_ui).contains("Next Step: Wait for free crew"):
+		_fail("Forge waiting history tooltip did not expose the current next step. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if not _history_tooltip(game_ui).contains("Run Receipt: Forge order waiting; no free crew yet: Clear Patch"):
 		_fail("Forge waiting history tooltip did not label the current receipt. tooltip=%s" % _history_tooltip(game_ui))
