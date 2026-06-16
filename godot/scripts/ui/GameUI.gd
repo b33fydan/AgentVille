@@ -2937,6 +2937,9 @@ func _work_order_preference_tooltip(order: Dictionary) -> String:
 			var current_detail := _skill_forge_work_order_current_detail_tooltip(order)
 			if current_detail != "":
 				tooltip += " | Current Run Detail: %s" % current_detail
+			var trace_scan := _skill_forge_work_order_trace_scan_tooltip(order)
+			if trace_scan != "":
+				tooltip += " | Trace Scan: %s" % trace_scan
 			var next_step := _skill_forge_work_order_next_tooltip(order)
 			if next_step != "":
 				tooltip += " | Next Step: %s" % next_step
@@ -3012,6 +3015,21 @@ func _skill_forge_work_order_current_detail_tooltip(order: Dictionary) -> String
 	if order_label == "":
 		return stage
 	return "%s -> %s" % [stage, order_label]
+
+
+func _skill_forge_work_order_trace_scan_tooltip(order: Dictionary) -> String:
+	match str(order.get("status", "ready")).strip_edges():
+		"ready":
+			return "Spec checked | Crew order drafted | Next send order"
+		"queued":
+			return _skill_forge_work_stage_trace_scan_text("Crew Queued")
+		"waiting":
+			return _skill_forge_work_stage_trace_scan_text("Crew Waiting")
+		"gathering":
+			return "Crew gathering | Next agent receipt"
+		"done":
+			return "Agent receipt logged | Next day summary"
+	return ""
 
 
 func _skill_forge_work_order_receipt_tooltip(order: Dictionary) -> String:
