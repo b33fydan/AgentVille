@@ -189,6 +189,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not queued_chip_tooltip.contains("Run Route: Spec > Crew Order > Crew Queued"):
 		_fail("Forge work order chip did not expose the crew-queued route. tooltip=%s" % queued_chip_tooltip)
 		return
+	if not queued_chip_tooltip.contains("Run Trace: Spec > Directive > Work Order > Crew Queued"):
+		_fail("Forge work order chip did not expose the crew-queued run trace. tooltip=%s" % queued_chip_tooltip)
+		return
 	if not queued_chip_tooltip.contains("Next Step: Wait for agent receipt"):
 		_fail("Forge work order chip did not expose the crew-queued next step. tooltip=%s" % queued_chip_tooltip)
 		return
@@ -509,6 +512,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not waiting_chip_tooltip.contains("Run Route: Spec > Crew Order > Crew Waiting"):
 		_fail("Forge work order chip did not expose the crew-waiting route. tooltip=%s" % waiting_chip_tooltip)
+		return
+	if not waiting_chip_tooltip.contains("Run Trace: Spec > Directive > Work Order > Crew Waiting"):
+		_fail("Forge work order chip did not expose the crew-waiting run trace. tooltip=%s" % waiting_chip_tooltip)
 		return
 	if not waiting_chip_tooltip.contains("Next Step: Wait for free crew"):
 		_fail("Forge work order chip did not expose the crew-waiting next step. tooltip=%s" % waiting_chip_tooltip)
