@@ -230,7 +230,7 @@ func set_skill_forge_work_receipt_trace(event: Dictionary, receipt_text: String)
 	var skill_name := str(event.get("skill_name", "Skill Run")).strip_edges()
 	if skill_name == "":
 		skill_name = "Skill Run"
-	_record_skill_forge_history_text("Agent Receipt %s" % skill_name)
+	_record_skill_forge_history_text(_skill_forge_history_entry_with_receipt("Agent Receipt %s" % skill_name, receipt_text))
 	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > Agent Receipt")
 	var receipt_route := "Spec > Crew Order > Agent Receipt"
 	var receipt_trace := "Spec > Directive > Work Order > Agent Receipt"
@@ -283,7 +283,7 @@ func set_skill_forge_work_order_trace(order: Dictionary, trace_status: String) -
 	var route_text := _skill_forge_work_stage_route_text(status_text)
 	var receipt_text := _skill_forge_work_stage_receipt_text(status_text, order_label)
 	var lesson_text := _skill_forge_work_stage_lesson_text(status_text)
-	_record_skill_forge_work_stage_history(order, status_text)
+	_record_skill_forge_work_stage_history(order, status_text, receipt_text)
 	_skill_forge_trace_label.text = _skill_forge_visible_trace_text("Spec > Directive > Work Order > %s" % status_text)
 	var trace_text := "Spec > Directive > Work Order > %s" % status_text
 	var trace_tooltip := "%s%s | Stage: %s | Run Route: %s | Run Trace: %s" % [
@@ -2107,14 +2107,22 @@ func _skill_forge_work_stage_receipt_text(status_text: String, order_label: Stri
 	return ""
 
 
-func _record_skill_forge_work_stage_history(order: Dictionary, status_text: String) -> void:
+func _record_skill_forge_work_stage_history(order: Dictionary, status_text: String, receipt_text: String = "") -> void:
 	status_text = status_text.strip_edges()
 	if status_text not in ["Crew Queued", "Crew Waiting"]:
 		return
 	var skill_name := str(order.get("skill_name", order.get("preference_label", "Skill Run"))).strip_edges()
 	if skill_name == "":
 		skill_name = "Skill Run"
-	_record_skill_forge_history_text("%s %s" % [status_text, skill_name])
+	_record_skill_forge_history_text(_skill_forge_history_entry_with_receipt("%s %s" % [status_text, skill_name], receipt_text))
+
+
+func _skill_forge_history_entry_with_receipt(entry_text: String, receipt_text: String) -> String:
+	entry_text = entry_text.strip_edges()
+	receipt_text = receipt_text.strip_edges()
+	if receipt_text == "":
+		return entry_text
+	return "%s: %s" % [entry_text, receipt_text]
 
 
 func _record_skill_forge_history_text(text: String) -> void:
@@ -2300,10 +2308,11 @@ func _skill_forge_full_history_text() -> String:
 	var latest_entry := str(entries[entries.size() - 1])
 	var latest_detail := _skill_forge_current_history_detail(latest_entry)
 	var trace_scan_suffix := _skill_forge_trace_scan_tooltip_suffix(_skill_forge_current_history_trace_scan_text(latest_entry))
+	var receipt_suffix := _skill_forge_current_history_receipt_tooltip_suffix(latest_entry)
 	var lesson_suffix := _skill_forge_current_lesson_tooltip_suffix()
 	if latest_detail == "":
-		return "Run History: %s%s%s" % [" ; ".join(entries), trace_scan_suffix, lesson_suffix]
-	return "Current Run Detail: %s%s%s | Run History: %s" % [latest_detail, trace_scan_suffix, lesson_suffix, " ; ".join(entries)]
+		return "Run History: %s%s%s%s" % [" ; ".join(entries), trace_scan_suffix, receipt_suffix, lesson_suffix]
+	return "Current Run Detail: %s%s%s%s | Run History: %s" % [latest_detail, trace_scan_suffix, receipt_suffix, lesson_suffix, " ; ".join(entries)]
 
 
 func _skill_forge_current_lesson_tooltip_suffix() -> String:
@@ -2321,8 +2330,34 @@ func _skill_forge_current_history_detail(text: String) -> String:
 		var prefix_text := str(prefix)
 		if text.begins_with(prefix_text):
 			var detail := text.substr(prefix_text.length()).strip_edges()
+			detail = _skill_forge_history_subject_text(detail)
 			return "%s -> %s" % [prefix_text.strip_edges(), detail] if detail != "" else prefix_text.strip_edges()
 	return text
+
+
+func _skill_forge_history_subject_text(text: String) -> String:
+	text = text.strip_edges()
+	var end_index := text.length()
+	for marker in [" [", ":"]:
+		var marker_index := text.find(marker)
+		if marker_index != -1 and marker_index < end_index:
+			end_index = marker_index
+	return text.substr(0, end_index).strip_edges()
+
+
+func _skill_forge_current_history_receipt_tooltip_suffix(text: String) -> String:
+	var receipt_text := _skill_forge_current_history_receipt_text(text)
+	if receipt_text == "":
+		return ""
+	return " | Run Receipt: %s" % receipt_text
+
+
+func _skill_forge_current_history_receipt_text(text: String) -> String:
+	text = text.strip_edges()
+	var detail_index := text.find(":")
+	if detail_index == -1:
+		return ""
+	return text.substr(detail_index + 1).strip_edges()
 
 
 func _skill_forge_current_history_trace_scan_text(text: String) -> String:

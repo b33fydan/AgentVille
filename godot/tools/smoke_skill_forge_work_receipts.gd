@@ -131,6 +131,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _history_tooltip(game_ui).contains("Trace Scan: Crew order queued | Next agent receipt"):
 		_fail("Forge queued-work history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
 		return
+	if not _history_tooltip(game_ui).contains("Run Receipt: Forge order queued; awaiting agent receipt: Clear Patch"):
+		_fail("Forge queued-work history tooltip did not label the current receipt. tooltip=%s" % _history_tooltip(game_ui))
+		return
 	if not _history_tooltip(game_ui).contains("Lesson: Crew queued the work order; wait for agent receipt."):
 		_fail("Forge queued-work history tooltip did not expose the current lifecycle lesson. tooltip=%s" % _history_tooltip(game_ui))
 		return
@@ -282,6 +285,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not _history_tooltip(game_ui).contains("Trace Scan: Agent receipt logged | Next day summary"):
 		_fail("Forge completed-work history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
+		return
+	if not _history_tooltip(game_ui).contains("Run Receipt: %s" % receipt):
+		_fail("Forge completed-work history tooltip did not label the current receipt. tooltip=%s receipt=%s" % [_history_tooltip(game_ui), receipt])
 		return
 	if not _history_tooltip(game_ui).contains("Lesson: Agent receipt closed the crew work order."):
 		_fail("Forge completed-work history tooltip did not expose the current agent-receipt lesson. tooltip=%s" % _history_tooltip(game_ui))
@@ -436,6 +442,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not _history_tooltip(game_ui).contains("Trace Scan: Crew busy | Next free crew"):
 		_fail("Forge waiting history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
+		return
+	if not _history_tooltip(game_ui).contains("Run Receipt: Forge order waiting; no free crew yet: Clear Patch"):
+		_fail("Forge waiting history tooltip did not label the current receipt. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if not _history_tooltip(game_ui).contains("Lesson: Crew is busy; wait for a free agent."):
 		_fail("Forge waiting history tooltip did not expose the current waiting lesson. tooltip=%s" % _history_tooltip(game_ui))
