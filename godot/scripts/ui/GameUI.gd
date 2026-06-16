@@ -2297,11 +2297,13 @@ func _skill_forge_full_history_text() -> String:
 	if _skill_forge_history_entries.is_empty():
 		return ""
 	var entries := _skill_forge_chronological_history_entries()
-	var latest_detail := _skill_forge_current_history_detail(str(entries[entries.size() - 1]))
+	var latest_entry := str(entries[entries.size() - 1])
+	var latest_detail := _skill_forge_current_history_detail(latest_entry)
+	var trace_scan_suffix := _skill_forge_trace_scan_tooltip_suffix(_skill_forge_current_history_trace_scan_text(latest_entry))
 	var lesson_suffix := _skill_forge_current_lesson_tooltip_suffix()
 	if latest_detail == "":
-		return "Run History: %s%s" % [" ; ".join(entries), lesson_suffix]
-	return "Current Run Detail: %s%s | Run History: %s" % [latest_detail, lesson_suffix, " ; ".join(entries)]
+		return "Run History: %s%s%s" % [" ; ".join(entries), trace_scan_suffix, lesson_suffix]
+	return "Current Run Detail: %s%s%s | Run History: %s" % [latest_detail, trace_scan_suffix, lesson_suffix, " ; ".join(entries)]
 
 
 func _skill_forge_current_lesson_tooltip_suffix() -> String:
@@ -2321,6 +2323,29 @@ func _skill_forge_current_history_detail(text: String) -> String:
 			var detail := text.substr(prefix_text.length()).strip_edges()
 			return "%s -> %s" % [prefix_text.strip_edges(), detail] if detail != "" else prefix_text.strip_edges()
 	return text
+
+
+func _skill_forge_current_history_trace_scan_text(text: String) -> String:
+	text = text.strip_edges()
+	if text.begins_with("Order Blocked "):
+		return "Spec checked | Directive blocked | Next pick valid target"
+	if text.begins_with("Crew Queued "):
+		return _skill_forge_work_stage_trace_scan_text("Crew Queued")
+	if text.begins_with("Crew Waiting "):
+		return _skill_forge_work_stage_trace_scan_text("Crew Waiting")
+	if text.begins_with("Agent Receipt "):
+		return "Agent receipt logged | Next day summary"
+	if text.begins_with("Failed "):
+		return "Spec checked | Harness failed | Next revise"
+	if text.begins_with("Blocked "):
+		return "Spec blocked | Next use Fix"
+	if text.begins_with("Passed "):
+		match _skill_forge_parenthetical_history_stage(text):
+			"Harness Receipt":
+				return "Spec checked | Crew order drafted | Next send order"
+			"Forge Receipt":
+				return "Spec checked | Forge receipt only | Next field log"
+	return ""
 
 
 func _skill_forge_compact_history_entry(text: String) -> String:

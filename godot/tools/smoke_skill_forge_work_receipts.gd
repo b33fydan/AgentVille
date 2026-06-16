@@ -128,6 +128,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Queued -> Clear Patch"):
 		_fail("Forge queued-work history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
 		return
+	if not _history_tooltip(game_ui).contains("Trace Scan: Crew order queued | Next agent receipt"):
+		_fail("Forge queued-work history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
+		return
 	if not _history_tooltip(game_ui).contains("Lesson: Crew queued the work order; wait for agent receipt."):
 		_fail("Forge queued-work history tooltip did not expose the current lifecycle lesson. tooltip=%s" % _history_tooltip(game_ui))
 		return
@@ -276,6 +279,9 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 		return
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Agent Receipt -> Clear Patch"):
 		_fail("Forge completed-work history tooltip did not expose the current agent-receipt detail. tooltip=%s" % _history_tooltip(game_ui))
+		return
+	if not _history_tooltip(game_ui).contains("Trace Scan: Agent receipt logged | Next day summary"):
+		_fail("Forge completed-work history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if not _history_tooltip(game_ui).contains("Lesson: Agent receipt closed the crew work order."):
 		_fail("Forge completed-work history tooltip did not expose the current agent-receipt lesson. tooltip=%s" % _history_tooltip(game_ui))
@@ -427,6 +433,9 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 		return
 	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Waiting -> Clear Patch"):
 		_fail("Forge waiting history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
+		return
+	if not _history_tooltip(game_ui).contains("Trace Scan: Crew busy | Next free crew"):
+		_fail("Forge waiting history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
 		return
 	if not _history_tooltip(game_ui).contains("Lesson: Crew is busy; wait for a free agent."):
 		_fail("Forge waiting history tooltip did not expose the current waiting lesson. tooltip=%s" % _history_tooltip(game_ui))

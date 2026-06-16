@@ -324,6 +324,9 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if history_tooltip.contains("Run Trail:") or not history_tooltip.contains("Current Run Detail: Passed -> Clear Patch (Harness Receipt)") or not history_tooltip.contains("manual harness receipt confirmed clear-patch checks"):
 		_fail("Skill Forge history tooltip did not keep current detail and full receipt history. tooltip=%s" % history_tooltip)
 		return
+	if not history_tooltip.contains("Trace Scan: Spec checked | Crew order drafted | Next send order"):
+		_fail("Skill Forge history tooltip did not keep the current crew-order trace scan. tooltip=%s" % history_tooltip)
+		return
 	if not history_tooltip.contains("Lesson: Spec -> crew work order; send for agent receipt."):
 		_fail("Skill Forge history tooltip did not keep the current crew-order lesson. tooltip=%s" % history_tooltip)
 		return
@@ -515,6 +518,9 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	var failed_history_tooltip := _history_tooltip(game_ui)
 	if not failed_history_tooltip.contains("Current Run Detail: Failed -> Clear Patch (Harness Receipt)") or not failed_history_tooltip.contains("selected tile had no brush") or not failed_history_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
 		_fail("Failed Forge history tooltip did not keep current repair detail. tooltip=%s" % failed_history_tooltip)
+		return
+	if not failed_history_tooltip.contains("Trace Scan: Spec checked | Harness failed | Next revise"):
+		_fail("Failed Forge history tooltip did not keep the current repair trace scan. tooltip=%s" % failed_history_tooltip)
 		return
 	if not failed_history_tooltip.contains("Lesson: Spec -> failed receipt; revise and rerun."):
 		_fail("Failed Forge history tooltip did not keep the current repair lesson. tooltip=%s" % failed_history_tooltip)
