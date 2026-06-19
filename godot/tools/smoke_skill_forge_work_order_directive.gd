@@ -30,6 +30,9 @@ func _run() -> void:
 	await _test_clear_patch_order_blocked_trace()
 	if _failed:
 		return
+	await _test_harvest_crops_order_blocked_trace()
+	if _failed:
+		return
 
 	if not _failed:
 		quit()
@@ -449,6 +452,93 @@ func _test_clear_patch_order_blocked_trace() -> void:
 		return
 	if _visible_drift_text(game_ui) != "":
 		_fail("Order-blocked Clear Patch should not show spec Drift for a target change. text=%s" % _visible_drift_text(game_ui))
+		return
+
+	scene.queue_free()
+	await process_frame
+
+
+func _test_harvest_crops_order_blocked_trace() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	root.size = Vector2i(1600, 900)
+	await process_frame
+	await process_frame
+
+	var game_ui = scene.get_node("GameUI")
+	_select_template(game_ui, "harvest_crops_starter")
+	if _failed:
+		return
+
+	var request: Dictionary = scene.call("_skill_forge_request_for_template", "harvest_crops_starter")
+	var target_tile: Vector2i = request.get("target_tile", Vector2i(-1, -1))
+	if target_tile == Vector2i(-1, -1) or not scene.call("_can_target_crew_order", "harvest_crop", target_tile):
+		_fail("Harvest Crops smoke could not find an initial ready crop target. request=%s" % str(request))
+		return
+
+	var tile = scene.get_node("FarmWorld/GridManager").get_tile(target_tile)
+	if tile == null:
+		_fail("Harvest Crops order-blocked smoke target tile was missing.")
+		return
+	tile.harvest()
+	if scene.call("_can_target_crew_order", "harvest_crop", target_tile):
+		_fail("Harvest Crops target stayed valid after being harvested. target=%s tile=%s" % [str(target_tile), str(tile)])
+		return
+
+	var templates = scene.get("_skill_forge_templates")
+	var harness = scene.get("_skill_forge_run_harness")
+	if templates == null or harness == null:
+		_fail("Skill Forge internals were missing for Harvest Crops order-blocked smoke.")
+		return
+
+	var spec: Dictionary = templates.get_template_spec("harvest_crops_starter")
+	var start_result: Dictionary = harness.start_manual_run(spec, request)
+	scene.call("_apply_skill_forge_result", start_result)
+	await process_frame
+
+	if _forge_order_count(scene) != 0:
+		_fail("Order-blocked Harvest Crops should not draft a Forge work order. count=%s" % _forge_order_count(scene))
+		return
+
+	var field_log_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(field_log_entries, "Forge order blocked: target changed for Harvest Crops."):
+		_fail("Order-blocked Harvest Crops did not leave a Field Log reason. entries=%s" % str(field_log_entries))
+		return
+
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Order Blocked":
+		_fail("Order-blocked Harvest Crops did not show the blocked trace. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	var trace_tooltip := str(trace_label.tooltip_text)
+	if not trace_tooltip.contains("Order Blocked: target changed") or not trace_tooltip.contains("harvest_crop") or not trace_tooltip.contains("Harvest Crops"):
+		_fail("Order-blocked Harvest Crops trace did not explain the blocked directive. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run History: Order Blocked Harvest Crops"):
+		_fail("Order-blocked Harvest Crops trace history did not name the blocked-order endpoint. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: harvest_crop"):
+		_fail("Order-blocked Harvest Crops trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Trace Scan: Spec checked | Directive blocked | Next pick valid target"):
+		_fail("Order-blocked Harvest Crops trace did not expose the blocked-order trace scan. tooltip=%s" % trace_tooltip)
+		return
+	if _visible_stage_text(game_ui) != "Stage: Order Blocked | Harvest Crops":
+		_fail("Order-blocked Harvest Crops did not expose the blocked current stage line. text=%s" % _visible_stage_text(game_ui))
+		return
+	if _visible_next_text(game_ui) != "Next Step: Pick valid target":
+		_fail("Order-blocked Harvest Crops did not expose the target-repair next step. text=%s" % _visible_next_text(game_ui))
+		return
+	if _lesson_text(game_ui) != "Lesson Spec -> order blocked; pick a valid target.":
+		_fail("Order-blocked Harvest Crops did not teach the blocked-order outcome. text=%s" % _lesson_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Bert | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Order-blocked Harvest Crops did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
+		return
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("target changed"):
+		_fail("Order-blocked Harvest Crops did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
+	if _visible_drift_text(game_ui) != "":
+		_fail("Order-blocked Harvest Crops should not show spec Drift for a target change. text=%s" % _visible_drift_text(game_ui))
 		return
 
 	scene.queue_free()
