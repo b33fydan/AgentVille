@@ -39,8 +39,8 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 		_fail("Skill Forge panel did not expose template buttons.")
 		return
 	var buttons: Dictionary = buttons_value
-	if not buttons.has("tend_crops_starter") or not buttons.has("clear_patch_starter"):
-		_fail("Skill Forge panel did not expose both starter templates. buttons=%s" % str(buttons.keys()))
+	if not buttons.has("tend_crops_starter") or not buttons.has("clear_patch_starter") or not buttons.has("harvest_crops_starter"):
+		_fail("Skill Forge panel did not expose all starter templates. buttons=%s" % str(buttons.keys()))
 		return
 	var tend_button = buttons.get("tend_crops_starter", null) as Button
 	if tend_button == null or not str(tend_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
@@ -48,6 +48,13 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 		return
 	if not str(tend_button.tooltip_text).contains("Run Preview: Spec > tend_crop > Forge Receipt"):
 		_fail("Tend Crops template button did not expose its preview trace. tooltip=%s" % str(tend_button.tooltip_text))
+		return
+	var harvest_button = buttons.get("harvest_crops_starter", null) as Button
+	if harvest_button == null or str(harvest_button.text) != "HRV\nCrops":
+		_fail("Harvest Crops template button did not expose its compact label. text=%s" % (str(harvest_button.text) if harvest_button else ""))
+		return
+	if not str(harvest_button.tooltip_text).contains("Run Preview: Spec > harvest_crop > Crew Order"):
+		_fail("Harvest Crops template button did not expose its preview trace. tooltip=%s" % str(harvest_button.tooltip_text))
 		return
 
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
@@ -215,6 +222,56 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if _visible_drift_text(game_ui) != "":
 		_fail("Clear Patch preview should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
 		return
+
+	var harvest_button = buttons.get("harvest_crops_starter", null) as Button
+	if harvest_button == null:
+		_fail("Harvest Crops template button missing.")
+		return
+	if not str(harvest_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
+		_fail("Harvest Crops template button did not expose the starter-to-preview stage. tooltip=%s" % str(harvest_button.tooltip_text))
+		return
+	if not str(harvest_button.tooltip_text).contains("Run Preview: Spec > harvest_crop > Crew Order"):
+		_fail("Harvest Crops template button did not expose its preview trace. tooltip=%s" % str(harvest_button.tooltip_text))
+		return
+
+	harvest_button.pressed.emit()
+	active_id = str(game_ui.get("_active_skill_forge_template_id"))
+	if active_id != "harvest_crops_starter":
+		_fail("Selecting Harvest Crops did not update the active template. active=%s" % active_id)
+		return
+	if _result_text(game_ui) != "Spec Preview: Harvest Crops":
+		_fail("Harvest Crops preview header did not name the selected starter. text=%s" % _result_text(game_ui))
+		return
+	if not _result_tooltip(game_ui).contains("Run Target: Harvest Crops") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order"):
+		_fail("Harvest Crops preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
+		return
+	if summary_label == null or not summary_label.text.contains("Context selected_tile"):
+		_fail("Harvest Crops preview did not expose selected-tile context. text=%s" % (summary_label.text if summary_label else ""))
+		return
+	if lesson_label == null or not lesson_label.text.contains("harvest_crop"):
+		_fail("Harvest Crops preview did not expose harvest_crop tooling. text=%s" % (lesson_label.text if lesson_label else ""))
+		return
+	if meta_label == null or not meta_label.text.contains("inventory_delta"):
+		_fail("Harvest Crops preview did not expose the inventory success check. text=%s" % (meta_label.text if meta_label else ""))
+		return
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > harvest_crop > Crew Order":
+		_fail("Harvest Crops preview did not expose the compact Forge trace. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order":
+		_fail("Harvest Crops preview did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
+		return
+	var harvest_tooltip := str(trace_label.tooltip_text)
+	if not harvest_tooltip.contains("Spec Tools: inspect_tile -> harvest_crop") or not harvest_tooltip.contains("Success Check: inventory_delta on selected_tile") or not harvest_tooltip.contains("Run Receipt: Harvest Crops run"):
+		_fail("Harvest Crops preview did not expose check/receipt contract details. tooltip=%s" % harvest_tooltip)
+		return
+	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Harvest Crops":
+		_fail("Harvest Crops preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
+		return
+	if _visible_next_text(game_ui) != "Next Step: Run to crew order or Check":
+		_fail("Harvest Crops preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
+		return
+
+	clear_button.pressed.emit()
 
 
 func _test_run_button_records_receipts(scene: Node, game_ui) -> void:

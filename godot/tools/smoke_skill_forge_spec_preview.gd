@@ -24,6 +24,7 @@ func _run() -> void:
 func _test_template_preview_exposes_structured_contract() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var preview: Dictionary = library.get_template_preview("clear_patch_starter")
+	var harvest_preview: Dictionary = library.get_template_preview("harvest_crops_starter")
 
 	if str(preview.get("trigger_type", "")) != "manual":
 		_fail("Clear Patch preview did not expose manual trigger. preview=%s" % str(preview))
@@ -42,6 +43,15 @@ func _test_template_preview_exposes_structured_contract() -> void:
 		return
 	if str(preview.get("receipt_label", "")) != "Clear Patch run":
 		_fail("Clear Patch preview did not expose receipt label. preview=%s" % str(preview))
+		return
+	if str(harvest_preview.get("tools_label", "")) != "inspect_tile -> harvest_crop":
+		_fail("Harvest Crops preview did not expose ordered tool calls. preview=%s" % str(harvest_preview))
+		return
+	if str(harvest_preview.get("check_label", "")) != "inventory_delta on selected_tile":
+		_fail("Harvest Crops preview did not expose readable success check. preview=%s" % str(harvest_preview))
+		return
+	if str(harvest_preview.get("receipt_label", "")) != "Harvest Crops run":
+		_fail("Harvest Crops preview did not expose receipt label. preview=%s" % str(harvest_preview))
 		return
 
 
@@ -67,6 +77,13 @@ func _test_panel_renders_structured_contract() -> void:
 		return
 	if not str(clear_button.tooltip_text).contains("Run Preview: Spec > clear_brush > Crew Order"):
 		_fail("Clear Patch template tooltip did not expose the compact preview trace. tooltip=%s" % str(clear_button.tooltip_text))
+		return
+	var harvest_button = buttons.get("harvest_crops_starter", null) as Button
+	if harvest_button == null:
+		_fail("Harvest Crops template button missing.")
+		return
+	if not str(harvest_button.tooltip_text).contains("Run Preview: Spec > harvest_crop > Crew Order"):
+		_fail("Harvest Crops template tooltip did not expose the compact preview trace. tooltip=%s" % str(harvest_button.tooltip_text))
 		return
 	clear_button.pressed.emit()
 

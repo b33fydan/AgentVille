@@ -18,6 +18,9 @@ func _run() -> void:
 	await _test_clear_patch_drafts_ready_work_order(scene, game_ui)
 	if _failed:
 		return
+	await _test_harvest_crops_drafts_ready_work_order(scene, game_ui)
+	if _failed:
+		return
 	await _test_tend_crops_stays_receipt_only(scene, game_ui)
 	if _failed:
 		return
@@ -152,6 +155,79 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 10)
 	if not _work_order_event_exists(events, order_id, "forge_drafted"):
 		_fail("Forge work order draft did not record a work_order event. events=%s" % str(events))
+		return
+
+
+func _test_harvest_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
+	_select_template(game_ui, "harvest_crops_starter")
+	if _failed:
+		return
+
+	var before_count := _forge_order_count(scene)
+	var run_button = game_ui.get("_skill_forge_run_button") as Button
+	if run_button == null:
+		_fail("Skill Forge run button missing before Harvest Crops run.")
+		return
+	run_button.pressed.emit()
+	await process_frame
+
+	if _forge_order_count(scene) != before_count + 1:
+		_fail("Harvest Crops did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
+		return
+
+	var order_id := _latest_forge_order_id(scene, "harvest_crops_starter")
+	if order_id == "":
+		_fail("Harvest Crops did not create a Forge-tagged work order.")
+		return
+	var order: Dictionary = scene.work_orders.get(order_id, {})
+	if str(order.get("action", "")) != "harvest_crop" or str(order.get("agent_action", "")) != "harvest_crop":
+		_fail("Harvest Crops work order did not keep the harvest_crop directive. order=%s" % str(order))
+		return
+	if str(order.get("skill_name", "")) != "Harvest Crops":
+		_fail("Harvest Crops work order did not keep a readable skill name. order=%s" % str(order))
+		return
+	if not str(order.get("label", "")).begins_with("Harvest Crops: Harvest"):
+		_fail("Harvest Crops work order did not keep a readable crew work label. order=%s" % str(order))
+		return
+	if str(order.get("agent_name", "")) != "Bert":
+		_fail("Harvest Crops work order did not keep the readable harness agent. order=%s" % str(order))
+		return
+	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
+	if not scene.call("_can_target_crew_order", "harvest_crop", target_tile):
+		_fail("Harvest Crops work order target was not a ready crop. order=%s" % str(order))
+		return
+
+	var rows: Dictionary = game_ui.get("_work_order_rows")
+	if not rows.has(order_id):
+		_fail("Harvest Crops work order did not appear in the crew order rows. rows=%s" % str(rows.keys()))
+		return
+	var row: Dictionary = rows.get(order_id, {})
+	var preference := row.get("preference", null) as Label
+	if preference == null or not preference.visible or str(preference.text) != "Forge":
+		_fail("Harvest Crops work order row did not show the Forge context chip.")
+		return
+	if not str(preference.tooltip_text).begins_with("Forge Work Order: Harvest Crops"):
+		_fail("Harvest Crops chip tooltip did not open with the work-order role. tooltip=%s" % str(preference.tooltip_text))
+		return
+	if not str(preference.tooltip_text).contains("Tool: harvest_crop"):
+		_fail("Harvest Crops chip tooltip did not expose the harvest tool call. tooltip=%s" % str(preference.tooltip_text))
+		return
+	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Harvest Crops":
+		_fail("Harvest Crops run did not expose the harness receipt stage. text=%s" % _visible_stage_text(game_ui))
+		return
+	if _visible_next_text(game_ui) != "Next Step: Send crew order":
+		_fail("Harvest Crops run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Bert | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Harvest Crops run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
+		return
+	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed harvest-crop checks"):
+		_fail("Harvest Crops run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
+
+	var field_log_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(field_log_entries, "Forge order drafted: Harvest Crops"):
+		_fail("Harvest Crops draft did not leave a Field Log receipt. entries=%s" % str(field_log_entries))
 		return
 
 

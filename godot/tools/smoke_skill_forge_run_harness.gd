@@ -13,6 +13,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_clear_patch_builds_work_order_directive()
+	_test_harvest_crops_builds_work_order_directive()
 	_test_tend_crops_builds_forge_only_directive()
 	_test_invalid_spec_blocks_with_drift_receipt()
 	_test_pass_and_fail_completion_receipts()
@@ -57,6 +58,44 @@ func _test_clear_patch_builds_work_order_directive() -> void:
 		return
 	if not _event_exists(result, "skill_forge_run", "started"):
 		_fail("Clear Patch run did not create a start event. result=%s" % str(result))
+		return
+
+
+func _test_harvest_crops_builds_work_order_directive() -> void:
+	var library = SkillForgeTemplateLibraryScript.new()
+	var harness = SkillForgeRunHarnessScript.new()
+	var result: Dictionary = harness.start_manual_run(library.get_template_spec("harvest_crops_starter"), {
+		"agent_id": "bert",
+		"agent_name": "Bert",
+		"target_tile": Vector2i(1, 6),
+		"day": 6,
+		"source_context": {
+			"source": "completed_order",
+			"label": "Ready Crop"
+		}
+	})
+
+	if str(result.get("status", "")) != "started":
+		_fail("Harvest Crops run did not start. result=%s" % str(result))
+		return
+	var directive: Dictionary = result.get("directive", {})
+	if str(directive.get("kind", "")) != "work_order_directive":
+		_fail("Harvest Crops did not build a work-order-shaped directive. result=%s" % str(result))
+		return
+	if str(directive.get("action", "")) != "harvest_crop" or str(directive.get("agent_action", "")) != "harvest_crop":
+		_fail("Harvest Crops directive did not map to harvest_crop. directive=%s" % str(directive))
+		return
+	if directive.get("target_tile", Vector2i.ZERO) != Vector2i(1, 6):
+		_fail("Harvest Crops directive did not preserve selected tile. directive=%s" % str(directive))
+		return
+	if str(result.get("run", {}).get("success_check_type", "")) != "inventory_delta":
+		_fail("Harvest Crops did not preserve the inventory success check. result=%s" % str(result))
+		return
+	if not _field_log_contains(result, "Skill Forge started Harvest Crops for Bert at 1,6"):
+		_fail("Harvest Crops start line was not field-log ready. result=%s" % str(result))
+		return
+	if not _event_exists(result, "skill_forge_run", "started"):
+		_fail("Harvest Crops run did not create a start event. result=%s" % str(result))
 		return
 
 

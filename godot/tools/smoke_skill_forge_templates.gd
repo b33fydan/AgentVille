@@ -22,12 +22,15 @@ func _run() -> void:
 func _test_starter_template_ids_are_deterministic() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var ids: Array = library.get_template_ids()
-	if ids != ["tend_crops_starter", "clear_patch_starter"]:
+	if ids != ["tend_crops_starter", "clear_patch_starter", "harvest_crops_starter"]:
 		_fail("Starter template ids were not deterministic. ids=%s" % str(ids))
 		return
 
 	if not library.has_template("tend_crops_starter"):
 		_fail("Tend Crops starter template was not registered.")
+		return
+	if not library.has_template("harvest_crops_starter"):
+		_fail("Harvest Crops starter template was not registered.")
 		return
 	if library.has_template("summon_rain_starter"):
 		_fail("Unknown starter template was reported as registered.")
@@ -61,7 +64,7 @@ func _test_templates_validate_cleanly() -> void:
 func _test_template_previews_are_compact() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var previews: Array = library.list_template_previews()
-	if previews.size() != 2:
+	if previews.size() != 3:
 		_fail("Template preview count was wrong. previews=%s" % str(previews))
 		return
 
@@ -71,6 +74,16 @@ func _test_template_previews_are_compact() -> void:
 		return
 	if not str(tend_preview.get("lesson", "")).contains("success check"):
 		_fail("Tend Crops preview did not name the lesson. preview=%s" % str(tend_preview))
+		return
+	var harvest_preview: Dictionary = library.get_template_preview("harvest_crops_starter")
+	if str(harvest_preview.get("tools_label", "")) != "inspect_tile -> harvest_crop":
+		_fail("Harvest Crops preview did not expose ordered harvest tools. preview=%s" % str(harvest_preview))
+		return
+	if str(harvest_preview.get("check_label", "")) != "inventory_delta on selected_tile":
+		_fail("Harvest Crops preview did not expose the inventory success check. preview=%s" % str(harvest_preview))
+		return
+	if str(harvest_preview.get("receipt_label", "")) != "Harvest Crops run":
+		_fail("Harvest Crops preview did not expose its receipt label. preview=%s" % str(harvest_preview))
 		return
 
 	for preview in previews:

@@ -1,7 +1,7 @@
 class_name SkillForgeTemplateLibrary
 extends RefCounted
 
-const TEMPLATE_IDS := ["tend_crops_starter", "clear_patch_starter"]
+const TEMPLATE_IDS := ["tend_crops_starter", "clear_patch_starter", "harvest_crops_starter"]
 
 
 func get_template_ids() -> Array:
@@ -18,6 +18,8 @@ func get_template_spec(template_id: String) -> Dictionary:
 			return _tend_crops_spec()
 		"clear_patch_starter":
 			return _clear_patch_spec()
+		"harvest_crops_starter":
+			return _harvest_crops_spec()
 		_:
 			return {}
 
@@ -179,6 +181,52 @@ func _clear_patch_spec() -> Dictionary:
 		"receipt": {
 			"label": "Clear Patch run",
 			"template": "{agent} cleared {target} after checking {source_context}.",
+			"include_source_context": true
+		}
+	}
+
+
+func _harvest_crops_spec() -> Dictionary:
+	return {
+		"id": "harvest_crops_starter",
+		"name": "Harvest Crops",
+		"summary": "Teach an NPC to inspect one selected ready crop tile, harvest it, and report the yield.",
+		"lesson": "Ready-crop guard, harvest work-order route, inventory delta check, and source-aware receipt.",
+		"trigger": {
+			"type": "manual"
+		},
+		"context": {
+			"target": "selected_tile",
+			"include_recent_source": true,
+			"allowed_sources": ["completed_mission", "completed_order", "remembered_help"]
+		},
+		"tools": ["inspect_tile", "harvest_crop"],
+		"steps": [
+			{
+				"id": "inspect",
+				"tool": "inspect_tile",
+				"target": "context.target"
+			},
+			{
+				"id": "harvest",
+				"tool": "harvest_crop",
+				"target": "context.target",
+				"when": "crop.ready"
+			}
+		],
+		"success_check": {
+			"type": "inventory_delta",
+			"target": "context.target",
+			"item": "grain",
+			"min_delta": 1
+		},
+		"failure_handling": {
+			"on_blocked": "record_receipt",
+			"suggestion": "Pick a ready crop tile or let crops grow first."
+		},
+		"receipt": {
+			"label": "Harvest Crops run",
+			"template": "{agent} harvested {target} after checking {source_context}.",
 			"include_source_context": true
 		}
 	}
