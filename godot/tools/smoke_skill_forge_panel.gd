@@ -210,7 +210,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Clear Patch":
 		_fail("Clear Patch preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next Step: Run to crew order or Check":
+	if _visible_next_text(game_ui) != "Next Step: Run to Clear Patch order or Check":
 		_fail("Clear Patch preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":
@@ -267,7 +267,7 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Harvest Crops":
 		_fail("Harvest Crops preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next Step: Run to crew order or Check":
+	if _visible_next_text(game_ui) != "Next Step: Run to Harvest Crops order or Check":
 		_fail("Harvest Crops preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
 

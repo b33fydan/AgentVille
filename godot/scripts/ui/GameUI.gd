@@ -1641,6 +1641,13 @@ func _skill_forge_preview_next_text(preview: Dictionary) -> String:
 	var final_tool := _skill_forge_final_tool_label(str(preview.get("tools_label", "")).strip_edges())
 	match _skill_forge_preview_route_text(final_tool):
 		"Crew Order":
+			match final_tool:
+				"build_fence":
+					return "Run to Build Fence order or Check"
+				"clear_brush":
+					return "Run to Clear Patch order or Check"
+				"harvest_crop":
+					return "Run to Harvest Crops order or Check"
 			return "Run to crew order or Check"
 		"Forge Receipt":
 			return "Run for Forge receipt or Check"
