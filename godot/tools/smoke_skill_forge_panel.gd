@@ -39,7 +39,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 		_fail("Skill Forge panel did not expose template buttons.")
 		return
 	var buttons: Dictionary = buttons_value
-	if not buttons.has("tend_crops_starter") or not buttons.has("clear_patch_starter") or not buttons.has("harvest_crops_starter"):
+	if not buttons.has("tend_crops_starter") or not buttons.has("clear_patch_starter") or not buttons.has("harvest_crops_starter") or not buttons.has("build_fence_starter"):
 		_fail("Skill Forge panel did not expose all starter templates. buttons=%s" % str(buttons.keys()))
 		return
 	var tend_button = buttons.get("tend_crops_starter", null) as Button
@@ -55,6 +55,13 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 		return
 	if not str(harvest_button.tooltip_text).contains("Run Preview: Spec > harvest_crop > Crew Order"):
 		_fail("Harvest Crops template button did not expose its preview trace. tooltip=%s" % str(harvest_button.tooltip_text))
+		return
+	var build_button = buttons.get("build_fence_starter", null) as Button
+	if build_button == null or str(build_button.text) != "FNC\nFence":
+		_fail("Build Fence template button did not expose its compact label. text=%s" % (str(build_button.text) if build_button else ""))
+		return
+	if not str(build_button.tooltip_text).contains("Run Preview: Spec > build_fence > Crew Order"):
+		_fail("Build Fence template button did not expose its preview trace. tooltip=%s" % str(build_button.tooltip_text))
 		return
 
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
@@ -269,6 +276,51 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 		return
 	if _visible_next_text(game_ui) != "Next Step: Run to Harvest Crops order or Check":
 		_fail("Harvest Crops preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
+		return
+
+	var build_button = buttons.get("build_fence_starter", null) as Button
+	if build_button == null:
+		_fail("Build Fence template button missing.")
+		return
+	if not str(build_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
+		_fail("Build Fence template button did not expose the starter-to-preview stage. tooltip=%s" % str(build_button.tooltip_text))
+		return
+	if not str(build_button.tooltip_text).contains("Run Preview: Spec > build_fence > Crew Order"):
+		_fail("Build Fence template button did not expose its preview trace. tooltip=%s" % str(build_button.tooltip_text))
+		return
+
+	build_button.pressed.emit()
+	active_id = str(game_ui.get("_active_skill_forge_template_id"))
+	if active_id != "build_fence_starter":
+		_fail("Selecting Build Fence did not update the active template. active=%s" % active_id)
+		return
+	if _result_text(game_ui) != "Spec Preview: Build Fence":
+		_fail("Build Fence preview header did not name the selected starter. text=%s" % _result_text(game_ui))
+		return
+	if not _result_tooltip(game_ui).contains("Run Target: Build Fence") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order"):
+		_fail("Build Fence preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
+		return
+	if lesson_label == null or not lesson_label.text.contains("build_fence"):
+		_fail("Build Fence preview did not expose build_fence tooling. text=%s" % (lesson_label.text if lesson_label else ""))
+		return
+	if meta_label == null or not meta_label.text.contains("tile_state"):
+		_fail("Build Fence preview did not expose the tile-state success check. text=%s" % (meta_label.text if meta_label else ""))
+		return
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > build_fence > Crew Order":
+		_fail("Build Fence preview did not expose the compact Forge trace. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order":
+		_fail("Build Fence preview did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
+		return
+	var build_tooltip := str(trace_label.tooltip_text)
+	if not build_tooltip.contains("Spec Tools: inspect_tile -> build_fence") or not build_tooltip.contains("Success Check: tile_state on selected_tile") or not build_tooltip.contains("Run Receipt: Build Fence run"):
+		_fail("Build Fence preview did not expose check/receipt contract details. tooltip=%s" % build_tooltip)
+		return
+	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Build Fence":
+		_fail("Build Fence preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
+		return
+	if _visible_next_text(game_ui) != "Next Step: Run to Build Fence order or Check":
+		_fail("Build Fence preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
 
 	clear_button.pressed.emit()

@@ -6,7 +6,8 @@ const ALLOWED_TOOLS := [
 	"tend_crop",
 	"harvest_crop",
 	"plant_seed",
-	"clear_brush"
+	"clear_brush",
+	"build_fence"
 ]
 const SUPPORTED_CONTEXT_TARGETS := ["selected_tile"]
 const SUPPORTED_STEP_TARGETS := ["context.target", "selected_tile"]

@@ -14,6 +14,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_clear_patch_builds_work_order_directive()
 	_test_harvest_crops_builds_work_order_directive()
+	_test_build_fence_builds_work_order_directive()
 	_test_tend_crops_builds_forge_only_directive()
 	_test_invalid_spec_blocks_with_drift_receipt()
 	_test_pass_and_fail_completion_receipts()
@@ -96,6 +97,47 @@ func _test_harvest_crops_builds_work_order_directive() -> void:
 		return
 	if not _event_exists(result, "skill_forge_run", "started"):
 		_fail("Harvest Crops run did not create a start event. result=%s" % str(result))
+		return
+
+
+func _test_build_fence_builds_work_order_directive() -> void:
+	var library = SkillForgeTemplateLibraryScript.new()
+	var harness = SkillForgeRunHarnessScript.new()
+	var result: Dictionary = harness.start_manual_run(library.get_template_spec("build_fence_starter"), {
+		"agent_id": "bert",
+		"agent_name": "Bert",
+		"target_tile": Vector2i(4, 5),
+		"day": 6,
+		"source_context": {
+			"source": "truce",
+			"label": "Fence Request"
+		}
+	})
+
+	if str(result.get("status", "")) != "started":
+		_fail("Build Fence run did not start. result=%s" % str(result))
+		return
+	var directive: Dictionary = result.get("directive", {})
+	if str(directive.get("kind", "")) != "work_order_directive":
+		_fail("Build Fence did not build a work-order-shaped directive. result=%s" % str(result))
+		return
+	if str(directive.get("action", "")) != "build_fence" or str(directive.get("agent_action", "")) != "build_fence_order":
+		_fail("Build Fence directive did not map to build_fence_order. directive=%s" % str(directive))
+		return
+	if str(directive.get("required_item", "")) != "fence_kit":
+		_fail("Build Fence directive did not keep its Fence Kit requirement. directive=%s" % str(directive))
+		return
+	if directive.get("target_tile", Vector2i.ZERO) != Vector2i(4, 5):
+		_fail("Build Fence directive did not preserve selected tile. directive=%s" % str(directive))
+		return
+	if str(result.get("run", {}).get("success_check_type", "")) != "tile_state":
+		_fail("Build Fence did not preserve the tile-state success check. result=%s" % str(result))
+		return
+	if not _field_log_contains(result, "Skill Forge started Build Fence for Bert at 4,5"):
+		_fail("Build Fence start line was not field-log ready. result=%s" % str(result))
+		return
+	if not _event_exists(result, "skill_forge_run", "started"):
+		_fail("Build Fence run did not create a start event. result=%s" % str(result))
 		return
 
 

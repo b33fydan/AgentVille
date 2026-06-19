@@ -22,7 +22,7 @@ func _run() -> void:
 func _test_starter_template_ids_are_deterministic() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var ids: Array = library.get_template_ids()
-	if ids != ["tend_crops_starter", "clear_patch_starter", "harvest_crops_starter"]:
+	if ids != ["tend_crops_starter", "clear_patch_starter", "harvest_crops_starter", "build_fence_starter"]:
 		_fail("Starter template ids were not deterministic. ids=%s" % str(ids))
 		return
 
@@ -31,6 +31,9 @@ func _test_starter_template_ids_are_deterministic() -> void:
 		return
 	if not library.has_template("harvest_crops_starter"):
 		_fail("Harvest Crops starter template was not registered.")
+		return
+	if not library.has_template("build_fence_starter"):
+		_fail("Build Fence starter template was not registered.")
 		return
 	if library.has_template("summon_rain_starter"):
 		_fail("Unknown starter template was reported as registered.")
@@ -64,7 +67,7 @@ func _test_templates_validate_cleanly() -> void:
 func _test_template_previews_are_compact() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var previews: Array = library.list_template_previews()
-	if previews.size() != 3:
+	if previews.size() != 4:
 		_fail("Template preview count was wrong. previews=%s" % str(previews))
 		return
 
@@ -84,6 +87,16 @@ func _test_template_previews_are_compact() -> void:
 		return
 	if str(harvest_preview.get("receipt_label", "")) != "Harvest Crops run":
 		_fail("Harvest Crops preview did not expose its receipt label. preview=%s" % str(harvest_preview))
+		return
+	var build_preview: Dictionary = library.get_template_preview("build_fence_starter")
+	if str(build_preview.get("tools_label", "")) != "inspect_tile -> build_fence":
+		_fail("Build Fence preview did not expose ordered fence tools. preview=%s" % str(build_preview))
+		return
+	if str(build_preview.get("check_label", "")) != "tile_state on selected_tile":
+		_fail("Build Fence preview did not expose the tile-state success check. preview=%s" % str(build_preview))
+		return
+	if str(build_preview.get("receipt_label", "")) != "Build Fence run":
+		_fail("Build Fence preview did not expose its receipt label. preview=%s" % str(build_preview))
 		return
 
 	for preview in previews:

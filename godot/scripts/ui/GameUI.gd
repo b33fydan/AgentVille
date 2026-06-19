@@ -1397,6 +1397,8 @@ func _skill_forge_button_text(preview: Dictionary) -> String:
 			return "CLR\nPatch"
 		"Harvest Crops":
 			return "HRV\nCrops"
+		"Build Fence":
+			return "FNC\nFence"
 	return name
 
 

@@ -21,6 +21,9 @@ func _run() -> void:
 	await _test_harvest_crops_drafts_ready_work_order(scene, game_ui)
 	if _failed:
 		return
+	await _test_build_fence_drafts_ready_work_order(scene, game_ui)
+	if _failed:
+		return
 	await _test_tend_crops_stays_receipt_only(scene, game_ui)
 	if _failed:
 		return
@@ -234,6 +237,82 @@ func _test_harvest_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
 		return
 
 
+func _test_build_fence_drafts_ready_work_order(scene: Node, game_ui) -> void:
+	_select_template(game_ui, "build_fence_starter")
+	if _failed:
+		return
+
+	var before_count := _forge_order_count(scene)
+	var run_button = game_ui.get("_skill_forge_run_button") as Button
+	if run_button == null:
+		_fail("Skill Forge run button missing before Build Fence run.")
+		return
+	run_button.pressed.emit()
+	await process_frame
+
+	if _forge_order_count(scene) != before_count + 1:
+		_fail("Build Fence did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
+		return
+
+	var order_id := _latest_forge_order_id(scene, "build_fence_starter")
+	if order_id == "":
+		_fail("Build Fence did not create a Forge-tagged work order.")
+		return
+	var order: Dictionary = scene.work_orders.get(order_id, {})
+	if str(order.get("action", "")) != "build_fence" or str(order.get("agent_action", "")) != "build_fence_order":
+		_fail("Build Fence work order did not keep the build_fence directive. order=%s" % str(order))
+		return
+	if str(order.get("required_item", "")) != "fence_kit":
+		_fail("Build Fence work order did not keep the Fence Kit requirement. order=%s" % str(order))
+		return
+	if str(order.get("skill_name", "")) != "Build Fence":
+		_fail("Build Fence work order did not keep a readable skill name. order=%s" % str(order))
+		return
+	if not str(order.get("label", "")).begins_with("Build Fence: Fence"):
+		_fail("Build Fence work order did not keep a readable crew work label. order=%s" % str(order))
+		return
+	if str(order.get("agent_name", "")) != "Bert":
+		_fail("Build Fence work order did not keep the readable harness agent. order=%s" % str(order))
+		return
+	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
+	if not scene.call("_can_target_crew_order", "build_fence", target_tile):
+		_fail("Build Fence work order target was not an open fence tile. order=%s" % str(order))
+		return
+
+	var rows: Dictionary = game_ui.get("_work_order_rows")
+	if not rows.has(order_id):
+		_fail("Build Fence work order did not appear in the crew order rows. rows=%s" % str(rows.keys()))
+		return
+	var row: Dictionary = rows.get(order_id, {})
+	var preference := row.get("preference", null) as Label
+	if preference == null or not preference.visible or str(preference.text) != "Forge":
+		_fail("Build Fence work order row did not show the Forge context chip.")
+		return
+	if not str(preference.tooltip_text).begins_with("Forge Work Order: Build Fence"):
+		_fail("Build Fence chip tooltip did not open with the work-order role. tooltip=%s" % str(preference.tooltip_text))
+		return
+	if not str(preference.tooltip_text).contains("Tool: build_fence"):
+		_fail("Build Fence chip tooltip did not expose the fence tool call. tooltip=%s" % str(preference.tooltip_text))
+		return
+	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Build Fence":
+		_fail("Build Fence run did not expose the harness receipt stage. text=%s" % _visible_stage_text(game_ui))
+		return
+	if _visible_next_text(game_ui) != "Next Step: Send crew order":
+		_fail("Build Fence run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Bert | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Build Fence run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
+		return
+	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed fence-building checks"):
+		_fail("Build Fence run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
+
+	var field_log_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(field_log_entries, "Forge order drafted: Build Fence"):
+		_fail("Build Fence draft did not leave a Field Log receipt. entries=%s" % str(field_log_entries))
+		return
+
+
 func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	_select_template(game_ui, "tend_crops_starter")
 	if _failed:
@@ -294,7 +373,7 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	if not trace_tooltip.contains("Lesson: Spec -> Forge-only receipt; field log keeps receipt."):
 		_fail("Tend Crops trace did not expose the Forge-only lesson cue. tooltip=%s" % trace_tooltip)
 		return
-	if not trace_tooltip.contains("Passed Tend Crops (Forge Receipt)") or not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
+	if not trace_tooltip.contains("Passed Tend Crops (Forge Receipt)") or not trace_tooltip.contains("Passed Build Fence (Harness Receipt)"):
 		_fail("Tend Crops trace history did not name Forge/harness receipt endpoints. tooltip=%s" % trace_tooltip)
 		return
 	if not trace_tooltip.contains("Run Context: agent Marigold | target ") or not trace_tooltip.contains("| source Starter Lab"):

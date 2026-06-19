@@ -405,6 +405,11 @@ func _skill_forge_request_for_template(template_id: String) -> Dictionary:
 
 func _skill_forge_agent_for_template(template_id: String) -> Dictionary:
 	match template_id:
+		"build_fence_starter":
+			return {
+				"id": "bert",
+				"name": "Bert"
+			}
 		"clear_patch_starter":
 			return {
 				"id": "chuck",
@@ -428,6 +433,11 @@ func _skill_forge_agent_for_template(template_id: String) -> Dictionary:
 
 func _skill_forge_target_for_template(template_id: String) -> Vector2i:
 	match template_id:
+		"build_fence_starter":
+			var fence_target := _find_demand_target_tile({"kind": "build_fence"})
+			if fence_target != Vector2i(-1, -1):
+				return fence_target
+			return Vector2i(4, 5)
 		"clear_patch_starter":
 			var clear_target := _find_demand_target_tile({"kind": "clear_brush"})
 			if clear_target != Vector2i(-1, -1):
@@ -458,6 +468,8 @@ func _first_crop_tile() -> Vector2i:
 
 func _skill_forge_completion_detail(template_id: String) -> String:
 	match template_id:
+		"build_fence_starter":
+			return "manual harness receipt confirmed fence-building checks"
 		"clear_patch_starter":
 			return "manual harness receipt confirmed clear-patch checks"
 		"harvest_crops_starter":
@@ -469,6 +481,8 @@ func _skill_forge_completion_detail(template_id: String) -> String:
 
 func _skill_forge_revision_completion_detail(template_id: String) -> String:
 	match template_id:
+		"build_fence_starter":
+			return "replaced summon_rain with build_fence"
 		"clear_patch_starter":
 			return "replaced summon_rain with clear_brush"
 		"harvest_crops_starter":
@@ -480,6 +494,8 @@ func _skill_forge_revision_completion_detail(template_id: String) -> String:
 
 func _skill_forge_expected_revision_tool(template_id: String, spec: Dictionary) -> String:
 	match template_id:
+		"build_fence_starter":
+			return "build_fence"
 		"clear_patch_starter":
 			return "clear_brush"
 		"harvest_crops_starter":

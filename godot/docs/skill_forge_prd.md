@@ -344,22 +344,22 @@ Mitigation: start with one or two farm skills and one manual trigger.
 ### Slice 2: Forge Template Data
 
 - Implemented in `scripts/systems/SkillForgeTemplateLibrary.gd`.
-- Adds static starter specs for Tend Crops and Clear Patch.
+- Adds static starter specs for Tend Crops, Clear Patch, Harvest Crops, and Build Fence.
 - Provides compact template preview data for future UI without exposing full step data in preview rows.
 - Covered by `tools/smoke_skill_forge_templates.gd`, which validates every starter spec through `SkillSpecValidator.gd`.
 
 ### Slice 3: Manual Run Harness
 
 - Implemented in `scripts/systems/SkillForgeRunHarness.gd`.
-- Converts a valid Tend Crops or Clear Patch spec into a deterministic local directive.
-- Maps Clear Patch to a current work-order-shaped `clear_brush` directive, while Tend Crops remains a Forge-only directive until farm execution exists.
+- Converts a valid Tend Crops, Clear Patch, Harvest Crops, or Build Fence spec into a deterministic local directive.
+- Maps Clear Patch, Harvest Crops, and Build Fence to current work-order-shaped `clear_brush`, `harvest_crop`, and `build_fence` directives, while Tend Crops remains a Forge-only directive until farm execution exists.
 - Returns Field Log copy and event-log payloads for start, pass, fail, and blocked states.
 - Covered by `tools/smoke_skill_forge_run_harness.gd`, including blocked-run Hallucination Drift copy.
 
 ### Slice 4: Minimal Forge Panel
 
 - Implemented in `scripts/ui/GameUI.gd` and wired from `scripts/core/Game.gd`.
-- Connects the template library and run harness to a compact panel with Tend Crops and Clear Patch preview selectors plus a Run button.
+- Connects the template library and run harness to a compact panel with Tend Crops, Clear Patch, Harvest Crops, and Build Fence preview selectors plus a Run button.
 - Records returned Field Log lines and event-log payloads through existing game surfaces.
 - Covered by `tools/smoke_skill_forge_panel.gd`, including template preview selection and started/passed receipt visibility.
 
@@ -387,7 +387,7 @@ Mitigation: start with one or two farm skills and one manual trigger.
 ### Slice 8: Work-Order Directive Drafts
 
 - Implemented in `scripts/core/Game.gd` and `scripts/ui/GameUI.gd`.
-- Turns valid Clear Patch and Harvest Crops `work_order_directive` specs into ready crew-order rows with Forge metadata, run id, skill name, Field Log receipt, work-order event, and `Forge` context chip.
+- Turns valid Clear Patch, Harvest Crops, and Build Fence `work_order_directive` specs into ready crew-order rows with Forge metadata, run id, skill name, Field Log receipt, work-order event, and `Forge` context chip.
 - Keeps Tend Crops as a Forge-only directive until crop-tending has a real crew-order path.
 - Covered by `tools/smoke_skill_forge_work_order_directive.gd`.
 

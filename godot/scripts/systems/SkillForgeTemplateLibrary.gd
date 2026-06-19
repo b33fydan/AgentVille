@@ -1,7 +1,7 @@
 class_name SkillForgeTemplateLibrary
 extends RefCounted
 
-const TEMPLATE_IDS := ["tend_crops_starter", "clear_patch_starter", "harvest_crops_starter"]
+const TEMPLATE_IDS := ["tend_crops_starter", "clear_patch_starter", "harvest_crops_starter", "build_fence_starter"]
 
 
 func get_template_ids() -> Array:
@@ -20,6 +20,8 @@ func get_template_spec(template_id: String) -> Dictionary:
 			return _clear_patch_spec()
 		"harvest_crops_starter":
 			return _harvest_crops_spec()
+		"build_fence_starter":
+			return _build_fence_spec()
 		_:
 			return {}
 
@@ -227,6 +229,51 @@ func _harvest_crops_spec() -> Dictionary:
 		"receipt": {
 			"label": "Harvest Crops run",
 			"template": "{agent} harvested {target} after checking {source_context}.",
+			"include_source_context": true
+		}
+	}
+
+
+func _build_fence_spec() -> Dictionary:
+	return {
+		"id": "build_fence_starter",
+		"name": "Build Fence",
+		"summary": "Teach an NPC to inspect one selected open tile, build a fence order, and report the placed fence.",
+		"lesson": "Crafted-item requirement, open-tile guard, fence work-order route, and tile-state success check.",
+		"trigger": {
+			"type": "manual"
+		},
+		"context": {
+			"target": "selected_tile",
+			"include_recent_source": true,
+			"allowed_sources": ["completed_mission", "completed_order", "truce", "remembered_help"]
+		},
+		"tools": ["inspect_tile", "build_fence"],
+		"steps": [
+			{
+				"id": "inspect",
+				"tool": "inspect_tile",
+				"target": "context.target"
+			},
+			{
+				"id": "build",
+				"tool": "build_fence",
+				"target": "context.target",
+				"when": "tile.empty"
+			}
+		],
+		"success_check": {
+			"type": "tile_state",
+			"target": "context.target",
+			"decor_id": "fence"
+		},
+		"failure_handling": {
+			"on_blocked": "record_receipt",
+			"suggestion": "Pick an open tile or gather materials for a Fence Kit."
+		},
+		"receipt": {
+			"label": "Build Fence run",
+			"template": "{agent} built a fence at {target} after checking {source_context}.",
 			"include_source_context": true
 		}
 	}

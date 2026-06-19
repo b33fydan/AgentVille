@@ -25,6 +25,7 @@ func _test_template_preview_exposes_structured_contract() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var preview: Dictionary = library.get_template_preview("clear_patch_starter")
 	var harvest_preview: Dictionary = library.get_template_preview("harvest_crops_starter")
+	var build_preview: Dictionary = library.get_template_preview("build_fence_starter")
 
 	if str(preview.get("trigger_type", "")) != "manual":
 		_fail("Clear Patch preview did not expose manual trigger. preview=%s" % str(preview))
@@ -52,6 +53,15 @@ func _test_template_preview_exposes_structured_contract() -> void:
 		return
 	if str(harvest_preview.get("receipt_label", "")) != "Harvest Crops run":
 		_fail("Harvest Crops preview did not expose receipt label. preview=%s" % str(harvest_preview))
+		return
+	if str(build_preview.get("tools_label", "")) != "inspect_tile -> build_fence":
+		_fail("Build Fence preview did not expose ordered tool calls. preview=%s" % str(build_preview))
+		return
+	if str(build_preview.get("check_label", "")) != "tile_state on selected_tile":
+		_fail("Build Fence preview did not expose readable success check. preview=%s" % str(build_preview))
+		return
+	if str(build_preview.get("receipt_label", "")) != "Build Fence run":
+		_fail("Build Fence preview did not expose receipt label. preview=%s" % str(build_preview))
 		return
 
 
@@ -84,6 +94,13 @@ func _test_panel_renders_structured_contract() -> void:
 		return
 	if not str(harvest_button.tooltip_text).contains("Run Preview: Spec > harvest_crop > Crew Order"):
 		_fail("Harvest Crops template tooltip did not expose the compact preview trace. tooltip=%s" % str(harvest_button.tooltip_text))
+		return
+	var build_button = buttons.get("build_fence_starter", null) as Button
+	if build_button == null:
+		_fail("Build Fence template button missing.")
+		return
+	if not str(build_button.tooltip_text).contains("Run Preview: Spec > build_fence > Crew Order"):
+		_fail("Build Fence template tooltip did not expose the compact preview trace. tooltip=%s" % str(build_button.tooltip_text))
 		return
 	clear_button.pressed.emit()
 
