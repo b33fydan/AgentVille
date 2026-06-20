@@ -185,6 +185,19 @@ func start_work_order(order: Dictionary) -> void:
 		if origin_source != "" and origin_label != "" and not (origin_source == source and origin_label == label):
 			extra["social_preference_origin_source"] = origin_source
 			extra["social_preference_origin_label"] = origin_label
+	var forge_run_id := str(order.get("forge_run_id", "")).strip_edges()
+	var skill_name := str(order.get("skill_name", "")).strip_edges()
+	if skill_name == "":
+		skill_name = str(order.get("preference_label", "")).strip_edges()
+	if forge_run_id != "" or skill_name != "":
+		extra["forge_run_id"] = forge_run_id
+		extra["skill_id"] = str(order.get("skill_id", ""))
+		extra["skill_name"] = skill_name
+		extra["directive_id"] = str(order.get("directive_id", ""))
+		extra["directive_kind"] = str(order.get("directive_kind", ""))
+		var source_context = order.get("source_context", {})
+		if typeof(source_context) == TYPE_DICTIONARY and not source_context.is_empty():
+			extra["forge_source_context"] = source_context.duplicate(true)
 	var mission_id := str(order.get("mission_id", "")).strip_edges()
 	if mission_id != "":
 		extra["mission_id"] = mission_id
