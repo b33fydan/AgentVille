@@ -1,0 +1,59 @@
+extends SceneTree
+
+const LocalMegavoxAssets := preload("res://scripts/world/LocalMegavoxAssets.gd")
+
+var _has_failed := false
+
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	await process_frame
+	await process_frame
+
+	var grid_manager = scene.get_node("FarmWorld/GridManager")
+	var fence_tile = grid_manager.get_tile(Vector2i(8, 1))
+	if fence_tile == null:
+		_fail("Could not inspect starter fence tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("fence"):
+		_expect_child(fence_tile, "Decor/MegavoxFence", "starter fence should use local MEGAVOX art")
+	else:
+		_expect_child(fence_tile, "Decor/PostA", "starter fence should keep procedural fallback")
+	if _failed():
+		return
+
+	var rock_tile = grid_manager.get_tile(Vector2i(0, 0))
+	rock_tile.erase()
+	if not rock_tile.place_item("rock"):
+		_fail("Could not place rock for optional MEGAVOX art check.")
+		return
+
+	if LocalMegavoxAssets.has_prop("rock"):
+		_expect_child(rock_tile, "Decor/MegavoxRock", "placed rock should use local MEGAVOX art")
+	else:
+		_expect_child(rock_tile, "Decor/RockBase", "placed rock should keep procedural fallback")
+	if _failed():
+		return
+
+	quit()
+
+
+func _expect_child(root: Node, node_path: String, context: String) -> void:
+	if root.get_node_or_null(node_path) == null:
+		_fail("Missing %s: %s." % [node_path, context])
+
+
+func _failed() -> bool:
+	return _has_failed
+
+
+func _fail(message: String) -> void:
+	_has_failed = true
+	push_error(message)
+	quit(1)

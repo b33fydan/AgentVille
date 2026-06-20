@@ -5,6 +5,7 @@ signal changed(tile)
 
 const CropScene := preload("res://scenes/world/Crop.tscn")
 const VoxelFactory := preload("res://scripts/core/Voxel.gd")
+const LocalMegavoxAssets := preload("res://scripts/world/LocalMegavoxAssets.gd")
 
 var grid_pos: Vector2i
 var terrain: String = "grass"
@@ -406,6 +407,9 @@ func _build_dirt_road_details(root: Node3D) -> void:
 
 
 func _build_fence(root: Node3D) -> void:
+	if LocalMegavoxAssets.add_prop(root, "fence", "MegavoxFence", Vector3(0.0, 0.13, 0.0)):
+		return
+
 	var post := Color("#9c6a3e")
 	var rail := Color("#bd8147")
 	root.add_child(VoxelFactory.cube("PostA", Vector3(0.12, 0.58, 0.12), post, Vector3(-0.32, 0.40, 0.0)))
@@ -452,6 +456,9 @@ func _build_wooden_sign(root: Node3D) -> void:
 
 
 func _build_rock(root: Node3D) -> void:
+	if LocalMegavoxAssets.add_prop(root, "rock", "MegavoxRock", Vector3(0.0, 0.14, 0.0)):
+		return
+
 	var stone := Color("#8b8c82")
 	var light := Color("#aeb09f")
 	var dark := Color("#66685f")
