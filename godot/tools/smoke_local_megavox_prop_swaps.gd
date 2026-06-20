@@ -28,6 +28,18 @@ func _run() -> void:
 	if _failed():
 		return
 
+	var flower_tile = grid_manager.get_tile(Vector2i(7, 2))
+	if flower_tile == null:
+		_fail("Could not inspect starter flower-patch tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("flower_patch"):
+		_expect_child(flower_tile, "Decor/MegavoxFlowerPatch", "starter flower patch should use local MEGAVOX art")
+	else:
+		_expect_child(flower_tile, "Decor/FlowerSoil", "starter flower patch should keep procedural fallback")
+	if _failed():
+		return
+
 	var rock_tile = grid_manager.get_tile(Vector2i(0, 0))
 	rock_tile.erase()
 	if not rock_tile.place_item("rock"):

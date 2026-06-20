@@ -419,6 +419,9 @@ func _build_fence(root: Node3D) -> void:
 
 
 func _build_flower_patch(root: Node3D) -> void:
+	if LocalMegavoxAssets.add_prop(root, "flower_patch", "MegavoxFlowerPatch", Vector3(0.0, 0.14, 0.0)):
+		return
+
 	root.add_child(VoxelFactory.cube("FlowerSoil", Vector3(0.65, 0.08, 0.65), Color("#7d4e34"), Vector3(0.0, 0.16, 0.0)))
 	var colors := [Color("#ef6f8f"), Color("#f6cf57"), Color("#8ab9ff"), Color("#ffffff")]
 	var offsets := [Vector3(-0.22, 0.0, -0.12), Vector3(0.18, 0.0, -0.18), Vector3(-0.06, 0.0, 0.20), Vector3(0.22, 0.0, 0.16)]
