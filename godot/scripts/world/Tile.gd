@@ -432,6 +432,9 @@ func _build_flower_patch(root: Node3D) -> void:
 
 
 func _build_tall_grass(root: Node3D) -> void:
+	if LocalMegavoxAssets.add_prop(root, "tall_grass", "MegavoxTallGrass", Vector3(0.0, 0.14, 0.0)):
+		return
+
 	var colors := [Color("#6fa649"), Color("#80b957"), Color("#9bc765"), Color("#c6ba5a")]
 	var offsets := [
 		Vector3(-0.30, 0.0, -0.24), Vector3(-0.12, 0.0, -0.28), Vector3(0.10, 0.0, -0.24), Vector3(0.28, 0.0, -0.14),

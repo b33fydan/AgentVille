@@ -17,6 +17,11 @@ const PROP_ASSETS := {
 		"path": "%s/Plant_095.glb" % ASSET_ROOT,
 		"target_height": 0.36,
 		"yaw_degrees": 36.0
+	},
+	"tall_grass": {
+		"path": "%s/Plant_070.glb" % ASSET_ROOT,
+		"target_height": 0.46,
+		"yaw_degrees": -18.0
 	}
 }
 

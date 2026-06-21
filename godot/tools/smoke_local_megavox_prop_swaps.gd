@@ -40,6 +40,22 @@ func _run() -> void:
 	if _failed():
 		return
 
+	var grass_tile = grid_manager.get_tile(Vector2i(0, 1))
+	if grass_tile == null:
+		_fail("Could not inspect tall-grass test tile.")
+		return
+	grass_tile.erase()
+	if not grass_tile.place_item("tall_grass"):
+		_fail("Could not place tall grass for optional MEGAVOX art check.")
+		return
+
+	if LocalMegavoxAssets.has_prop("tall_grass"):
+		_expect_child(grass_tile, "Decor/MegavoxTallGrass", "placed tall grass should use local MEGAVOX art")
+	else:
+		_expect_child(grass_tile, "Decor/TallGrass0", "placed tall grass should keep procedural fallback")
+	if _failed():
+		return
+
 	var rock_tile = grid_manager.get_tile(Vector2i(0, 0))
 	rock_tile.erase()
 	if not rock_tile.place_item("rock"):
