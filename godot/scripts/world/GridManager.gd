@@ -88,6 +88,7 @@ func _build_initial_farm() -> void:
 	get_tile(Vector2i(8, 1)).place_item("fence")
 	get_tile(Vector2i(6, 1)).place_item("fence")
 	get_tile(Vector2i(7, 2)).place_item("flower_patch")
+	get_tile(Vector2i(4, 1)).place_item("tree")
 
 	var corn_tiles := [
 		Vector2i(1, 5), Vector2i(2, 5), Vector2i(3, 5),

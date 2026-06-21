@@ -40,6 +40,18 @@ func _run() -> void:
 	if _failed():
 		return
 
+	var starter_tree_tile = grid_manager.get_tile(Vector2i(4, 1))
+	if starter_tree_tile == null:
+		_fail("Could not inspect starter tree tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("tree"):
+		_expect_child(starter_tree_tile, "Decor/MegavoxTree", "starter tree should use local MEGAVOX art")
+	else:
+		_expect_child(starter_tree_tile, "Decor/TreeTrunk", "starter tree should keep procedural fallback")
+	if _failed():
+		return
+
 	var grass_tile = grid_manager.get_tile(Vector2i(0, 1))
 	if grass_tile == null:
 		_fail("Could not inspect tall-grass test tile.")
