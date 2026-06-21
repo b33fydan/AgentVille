@@ -7,12 +7,12 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Open `project.godot` in Godot 4.
 - Run `scenes/Main.tscn`.
 - Use the left toolbar to till, plant, harvest, erase, place, or pan.
-- Use the bottom tray to pick terrain, crops, dirt roads, fences, signs, flowers, the well, silo, or barn.
+- Use the bottom tray to pick terrain, crops, dirt roads, fences, signs, flowers, trees, the well, silo, or barn.
 - Palette selections attach a small item ghost to the cursor.
 - Hovering a selected palette item over the farm shows a hologram footprint before placement.
 - The Tools tab includes Pickaxe for breaking rocks/structures/roads and Sickle for cutting brush or harvesting ready crops.
-- Use the Crops and Nature tabs to add corn, wheat, tall grass, and flowers.
-- If local licensed MEGAVOXPACK files exist in `assets/megavoxpack_local_preview/`, fence, rock, flower-patch, and tall-grass props use those GLBs; otherwise they fall back to the built-in cube art. Keep the raw pack files out of git.
+- Use the Crops and Nature tabs to add corn, wheat, tall grass, trees, and flowers.
+- If local licensed MEGAVOXPACK files exist in `assets/megavoxpack_local_preview/`, fence, rock, flower-patch, tall-grass, and tree props use those GLBs; otherwise they fall back to the built-in cube art. Keep the raw pack files out of git.
 - Click farm tiles to apply the active tool.
 - Press `End Day` to grow planted crops by one stage.
 - Harvest full corn or wheat to earn coins.
@@ -230,7 +230,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_parley_favor_verdicts.gd` exercises NPC end-day verdicts that name a spent Parley favor.
 - `tools/smoke_parley_memory_verdicts.gd` exercises NPC end-day verdicts that name remembered-help Parley context without calling it a favor.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
-- `tools/smoke_local_megavox_prop_swaps.gd` exercises optional MEGAVOX fence/rock/flower-patch/tall-grass swaps when local files exist and procedural fallbacks when they do not.
+- `tools/smoke_local_megavox_prop_swaps.gd` exercises optional MEGAVOX fence/rock/flower-patch/tall-grass/tree swaps when local files exist and procedural fallbacks when they do not.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, and harvest orders.

@@ -15,6 +15,7 @@ func _run() -> void:
 	var placement_tool = scene.get_node("PlacementTool")
 	var rock_tile = grid.get_tile(Vector2i(0, 0))
 	var grass_tile = grid.get_tile(Vector2i(0, 1))
+	var tree_tile = grid.get_tile(Vector2i(10, 0))
 
 	placement_tool.call("set_tool", "place")
 	placement_tool.call("set_selected_item", "rock")
@@ -42,6 +43,21 @@ func _run() -> void:
 	placement_tool.call("_apply_to_tile", grass_tile)
 	if grass_tile.decor_id != "":
 		push_error("Sickle did not cut tall grass.")
+		quit(1)
+		return
+
+	tree_tile.erase()
+	placement_tool.call("set_selected_item", "tree")
+	placement_tool.call("_apply_to_tile", tree_tile)
+	if tree_tile.decor_id != "tree":
+		push_error("Tree placement failed.")
+		quit(1)
+		return
+
+	placement_tool.call("set_selected_item", "pickaxe")
+	placement_tool.call("_apply_to_tile", tree_tile)
+	if tree_tile.decor_id != "":
+		push_error("Pickaxe did not break tree.")
 		quit(1)
 		return
 

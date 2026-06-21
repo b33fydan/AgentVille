@@ -591,7 +591,7 @@ func _build_world_snapshot() -> Dictionary:
 
 			if str(tile.decor_id) in ["tall_grass", "flower_patch"]:
 				brush_tiles.append(tile.grid_pos)
-			if str(tile.structure_id) != "" or str(tile.decor_id) in ["rock", "fence", "wooden_sign"]:
+			if str(tile.structure_id) != "" or str(tile.decor_id) in ["rock", "fence", "tree", "wooden_sign"]:
 				structure_tiles.append(tile.grid_pos)
 
 	return {

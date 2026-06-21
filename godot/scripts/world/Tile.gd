@@ -189,7 +189,7 @@ func can_apply_item(item_id: String) -> bool:
 			return crop == null and structure_id == "" and terrain != "dirt_path"
 		"corn_seed", "wheat_seed":
 			return crop == null and is_tilled and structure_id == ""
-		"fence", "flower_patch", "tall_grass", "wooden_sign", "rock":
+		"fence", "flower_patch", "tall_grass", "tree", "wooden_sign", "rock":
 			return crop == null and structure_id == ""
 		"barn", "silo", "well":
 			return crop == null
@@ -201,7 +201,7 @@ func can_apply_item(item_id: String) -> bool:
 
 
 func can_pickaxe() -> bool:
-	return structure_id != "" or decor_id in ["rock", "fence", "wooden_sign"] or terrain == "dirt_path"
+	return structure_id != "" or decor_id in ["rock", "fence", "tree", "wooden_sign"] or terrain == "dirt_path"
 
 
 func can_sickle() -> bool:
@@ -216,7 +216,7 @@ func break_with_pickaxe() -> bool:
 
 	if structure_id != "":
 		structure_id = ""
-	elif decor_id in ["rock", "fence", "wooden_sign"]:
+	elif decor_id in ["rock", "fence", "tree", "wooden_sign"]:
 		decor_id = ""
 	elif terrain == "dirt_path":
 		terrain = "grass"
@@ -254,7 +254,7 @@ func place_item(item_id: String) -> bool:
 			return plant_corn()
 		"wheat_seed":
 			return plant_wheat()
-		"fence", "flower_patch", "tall_grass", "wooden_sign", "rock":
+		"fence", "flower_patch", "tall_grass", "tree", "wooden_sign", "rock":
 			if crop != null or structure_id != "":
 				return false
 			decor_id = item_id
@@ -316,6 +316,8 @@ func refresh() -> void:
 			_build_flower_patch(_decor_root)
 		"tall_grass":
 			_build_tall_grass(_decor_root)
+		"tree":
+			_build_tree(_decor_root)
 		"wooden_sign":
 			_build_wooden_sign(_decor_root)
 		"rock":
@@ -449,6 +451,17 @@ func _build_tall_grass(root: Node3D) -> void:
 		root.add_child(VoxelFactory.cube("TallGrass%s" % i, Vector3(blade_width, blade_height, blade_width), colors[i % colors.size()], Vector3(offset.x, 0.16 + blade_height * 0.5, offset.z)))
 		if i % 3 == 0:
 			root.add_child(VoxelFactory.cube("SeedTop%s" % i, Vector3(0.07, 0.10, 0.07), Color("#dfc76a"), Vector3(offset.x, 0.29 + blade_height, offset.z)))
+
+
+func _build_tree(root: Node3D) -> void:
+	if LocalMegavoxAssets.add_prop(root, "tree", "MegavoxTree", Vector3(0.0, 0.12, 0.0)):
+		return
+
+	root.add_child(VoxelFactory.cube("TreeShadow", Vector3(0.62, 0.025, 0.52), Color(0.22, 0.16, 0.10, 0.18), Vector3(0.0, 0.13, 0.0)))
+	root.add_child(VoxelFactory.cube("TreeTrunk", Vector3(0.16, 0.62, 0.16), Color("#8a5a36"), Vector3(0.0, 0.48, 0.0)))
+	root.add_child(VoxelFactory.cube("TreeCanopyLow", Vector3(0.68, 0.42, 0.62), Color("#5f9f47"), Vector3(0.0, 0.90, 0.0)))
+	root.add_child(VoxelFactory.cube("TreeCanopyMid", Vector3(0.54, 0.38, 0.52), Color("#74b456"), Vector3(-0.05, 1.14, -0.03)))
+	root.add_child(VoxelFactory.cube("TreeCanopyTop", Vector3(0.38, 0.30, 0.38), Color("#91c76c"), Vector3(0.06, 1.36, 0.04)))
 
 
 func _build_wooden_sign(root: Node3D) -> void:

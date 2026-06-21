@@ -16,6 +16,7 @@ var _items_by_category := {
 	],
 	"Nature": [
 		{"id": "tall_grass", "icon": "TGR", "label": "Tall Grass"},
+		{"id": "tree", "icon": "TRE", "label": "Tree"},
 		{"id": "flower_patch", "icon": "FLR", "label": "Flowers"},
 		{"id": "rock", "icon": "RCK", "label": "Rock"}
 	],

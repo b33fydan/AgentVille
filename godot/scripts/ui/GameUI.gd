@@ -3960,6 +3960,8 @@ func _item_icon(item_id: String) -> String:
 			return "WHT"
 		"tall_grass":
 			return "TGR"
+		"tree":
+			return "TRE"
 		"flower_patch":
 			return "FLR"
 		"rock":
@@ -3999,6 +4001,8 @@ func _item_short_name(item_id: String) -> String:
 			return "Wheat"
 		"tall_grass":
 			return "Grass"
+		"tree":
+			return "Tree"
 		"flower_patch":
 			return "Flower"
 		"wooden_sign":

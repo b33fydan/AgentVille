@@ -59,6 +59,10 @@ func _rebuild() -> void:
 				var x := -0.24 + float(i % 4) * 0.16
 				var z := -0.18 + float(i / 4) * 0.28
 				_add_cube("Blade%s" % i, Vector3(0.045, 0.34 + float(i % 3) * 0.05, 0.045), tint, Vector3(x, 0.36, z), 0.46)
+		"tree":
+			_add_cube("TreeTrunk", Vector3(0.12, 0.54, 0.12), tint, Vector3(0.0, 0.46, 0.0), 0.42)
+			_add_cube("TreeCanopyLow", Vector3(0.58, 0.32, 0.52), tint, Vector3(0.0, 0.82, 0.0), 0.38)
+			_add_cube("TreeCanopyTop", Vector3(0.38, 0.28, 0.36), tint, Vector3(0.04, 1.06, 0.02), 0.44)
 		"wooden_sign":
 			_add_cube("SignPost", Vector3(0.08, 0.44, 0.08), tint, Vector3(0.0, 0.38, 0.0), 0.44)
 			_add_cube("SignFace", Vector3(0.46, 0.22, 0.06), tint, Vector3(0.0, 0.62, -0.04), 0.48)

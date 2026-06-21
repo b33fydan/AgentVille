@@ -264,7 +264,7 @@ func _apply_selected_item(tile) -> Dictionary:
 			var resource_gain: Dictionary = {}
 			if str(tile.decor_id) == "rock":
 				resource_gain["stone"] = 1
-			elif str(tile.decor_id) in ["fence", "wooden_sign"] or str(tile.structure_id) != "":
+			elif str(tile.decor_id) in ["fence", "tree", "wooden_sign"] or str(tile.structure_id) != "":
 				resource_gain["fiber"] = 1
 			var success: bool = tile.break_with_pickaxe()
 			return {
@@ -378,7 +378,7 @@ func _item_message(item_id: String, success: bool) -> String:
 				return "The silo needs a clear tile."
 			"well":
 				return "The well needs a clear tile."
-			"fence", "flower_patch", "tall_grass", "wooden_sign":
+			"fence", "flower_patch", "tall_grass", "tree", "wooden_sign":
 				return "Decor needs an empty tile."
 			"rock":
 				return "Rock needs an empty tile."
@@ -406,6 +406,8 @@ func _item_message(item_id: String, success: bool) -> String:
 			return "Flower patch placed."
 		"tall_grass":
 			return "Tall grass placed."
+		"tree":
+			return "Tree placed."
 		"wooden_sign":
 			return "Wooden sign placed."
 		"rock":
@@ -429,7 +431,7 @@ func _stamp_for_placed_item(item_id: String) -> String:
 			return "till_soft"
 		"corn_seed", "wheat_seed":
 			return "plant_pop"
-		"grass_block", "dirt_path", "dirt_road", "fence", "flower_patch", "tall_grass", "wooden_sign", "rock", "barn", "silo", "well":
+		"grass_block", "dirt_path", "dirt_road", "fence", "flower_patch", "tall_grass", "tree", "wooden_sign", "rock", "barn", "silo", "well":
 			return "place_soft"
 		"pickaxe", "sickle":
 			return "plant_pop"

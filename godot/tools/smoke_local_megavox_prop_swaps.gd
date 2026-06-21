@@ -56,6 +56,22 @@ func _run() -> void:
 	if _failed():
 		return
 
+	var tree_tile = grid_manager.get_tile(Vector2i(10, 0))
+	if tree_tile == null:
+		_fail("Could not inspect tree test tile.")
+		return
+	tree_tile.erase()
+	if not tree_tile.place_item("tree"):
+		_fail("Could not place tree for optional MEGAVOX art check.")
+		return
+
+	if LocalMegavoxAssets.has_prop("tree"):
+		_expect_child(tree_tile, "Decor/MegavoxTree", "placed tree should use local MEGAVOX art")
+	else:
+		_expect_child(tree_tile, "Decor/TreeTrunk", "placed tree should keep procedural fallback")
+	if _failed():
+		return
+
 	var rock_tile = grid_manager.get_tile(Vector2i(0, 0))
 	rock_tile.erase()
 	if not rock_tile.place_item("rock"):
