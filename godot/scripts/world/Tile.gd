@@ -454,6 +454,8 @@ func _build_tall_grass(root: Node3D) -> void:
 
 
 func _build_tree(root: Node3D) -> void:
+	if _uses_tree_variant() and LocalMegavoxAssets.add_prop(root, "tree_alt", "MegavoxTreeAlt", Vector3(0.0, 0.12, 0.0)):
+		return
 	if LocalMegavoxAssets.add_prop(root, "tree", "MegavoxTree", Vector3(0.0, 0.12, 0.0)):
 		return
 
@@ -491,6 +493,10 @@ func _build_rock(root: Node3D) -> void:
 
 func _uses_rock_variant() -> bool:
 	return grid_pos.y >= 5
+
+
+func _uses_tree_variant() -> bool:
+	return grid_pos.x <= 4
 
 
 func _build_barn(root: Node3D) -> void:

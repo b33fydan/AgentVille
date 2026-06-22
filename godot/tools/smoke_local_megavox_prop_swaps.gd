@@ -45,7 +45,9 @@ func _run() -> void:
 		_fail("Could not inspect starter tree tile.")
 		return
 
-	if LocalMegavoxAssets.has_prop("tree"):
+	if LocalMegavoxAssets.has_prop("tree_alt"):
+		_expect_child(starter_tree_tile, "Decor/MegavoxTreeAlt", "starter tree should use the alternate local MEGAVOX art")
+	elif LocalMegavoxAssets.has_prop("tree"):
 		_expect_child(starter_tree_tile, "Decor/MegavoxTree", "starter tree should use local MEGAVOX art")
 	else:
 		_expect_child(starter_tree_tile, "Decor/TreeTrunk", "starter tree should keep procedural fallback")
