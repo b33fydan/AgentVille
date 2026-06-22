@@ -68,7 +68,21 @@ func _run() -> void:
 	if _failed():
 		return
 
-	var grass_tile = grid_manager.get_tile(Vector2i(0, 1))
+	var starter_grass_tile = grid_manager.get_tile(Vector2i(0, 1))
+	if starter_grass_tile == null:
+		_fail("Could not inspect starter tall-grass tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("tall_grass_alt"):
+		_expect_child(starter_grass_tile, "Decor/MegavoxTallGrassAlt", "starter edge tall grass should use the alternate local MEGAVOX art")
+	elif LocalMegavoxAssets.has_prop("tall_grass"):
+		_expect_child(starter_grass_tile, "Decor/MegavoxTallGrass", "starter edge tall grass should use local MEGAVOX art")
+	else:
+		_expect_child(starter_grass_tile, "Decor/TallGrass0", "starter edge tall grass should keep procedural fallback")
+	if _failed():
+		return
+
+	var grass_tile = grid_manager.get_tile(Vector2i(1, 0))
 	if grass_tile == null:
 		_fail("Could not inspect tall-grass test tile.")
 		return

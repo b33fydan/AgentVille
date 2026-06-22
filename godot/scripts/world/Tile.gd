@@ -434,6 +434,8 @@ func _build_flower_patch(root: Node3D) -> void:
 
 
 func _build_tall_grass(root: Node3D) -> void:
+	if _uses_tall_grass_variant() and LocalMegavoxAssets.add_prop(root, "tall_grass_alt", "MegavoxTallGrassAlt", Vector3(0.0, 0.14, 0.0)):
+		return
 	if LocalMegavoxAssets.add_prop(root, "tall_grass", "MegavoxTallGrass", Vector3(0.0, 0.14, 0.0)):
 		return
 
@@ -493,6 +495,10 @@ func _build_rock(root: Node3D) -> void:
 
 func _uses_rock_variant() -> bool:
 	return grid_pos.y >= 5
+
+
+func _uses_tall_grass_variant() -> bool:
+	return grid_pos.x == 0
 
 
 func _uses_tree_variant() -> bool:
