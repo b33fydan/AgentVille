@@ -13,6 +13,11 @@ const PROP_ASSETS := {
 		"target_height": 0.42,
 		"yaw_degrees": 28.0
 	},
+	"rock_alt": {
+		"path": "%s/Rock_030.glb" % ASSET_ROOT,
+		"target_height": 0.42,
+		"yaw_degrees": -16.0
+	},
 	"flower_patch": {
 		"path": "%s/Plant_095.glb" % ASSET_ROOT,
 		"target_height": 0.36,

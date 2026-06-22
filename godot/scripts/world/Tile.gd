@@ -475,6 +475,8 @@ func _build_wooden_sign(root: Node3D) -> void:
 
 
 func _build_rock(root: Node3D) -> void:
+	if _uses_rock_variant() and LocalMegavoxAssets.add_prop(root, "rock_alt", "MegavoxRockAlt", Vector3(0.0, 0.14, 0.0)):
+		return
 	if LocalMegavoxAssets.add_prop(root, "rock", "MegavoxRock", Vector3(0.0, 0.14, 0.0)):
 		return
 
@@ -485,6 +487,10 @@ func _build_rock(root: Node3D) -> void:
 	root.add_child(VoxelFactory.cube("RockFaceA", Vector3(0.32, 0.28, 0.30), light, Vector3(-0.08, 0.38, -0.04)))
 	root.add_child(VoxelFactory.cube("RockFaceB", Vector3(0.24, 0.20, 0.26), dark, Vector3(0.15, 0.33, 0.10)))
 	root.add_child(VoxelFactory.cube("RockChip", Vector3(0.16, 0.12, 0.14), dark, Vector3(-0.28, 0.20, 0.18)))
+
+
+func _uses_rock_variant() -> bool:
+	return grid_pos.y >= 5
 
 
 func _build_barn(root: Node3D) -> void:
