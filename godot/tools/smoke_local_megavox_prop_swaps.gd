@@ -52,6 +52,18 @@ func _run() -> void:
 	if _failed():
 		return
 
+	var starter_rock_tile = grid_manager.get_tile(Vector2i(0, 6))
+	if starter_rock_tile == null:
+		_fail("Could not inspect starter rock tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("rock"):
+		_expect_child(starter_rock_tile, "Decor/MegavoxRock", "starter rock should use local MEGAVOX art")
+	else:
+		_expect_child(starter_rock_tile, "Decor/RockBase", "starter rock should keep procedural fallback")
+	if _failed():
+		return
+
 	var grass_tile = grid_manager.get_tile(Vector2i(0, 1))
 	if grass_tile == null:
 		_fail("Could not inspect tall-grass test tile.")
