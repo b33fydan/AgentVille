@@ -3,11 +3,6 @@ extends RefCounted
 
 const ASSET_ROOT := "res://assets/megavoxpack_local_preview"
 const PROP_ASSETS := {
-	"fence": {
-		"path": "%s/Asset_Fence_01.glb" % ASSET_ROOT,
-		"target_height": 0.70,
-		"yaw_degrees": 30.0
-	},
 	"rock": {
 		"path": "%s/Rock_033.glb" % ASSET_ROOT,
 		"target_height": 0.42,
@@ -39,9 +34,9 @@ const PROP_ASSETS := {
 		"yaw_degrees": 22.0
 	},
 	"tree_alt": {
-		"path": "%s/Tree_038.glb" % ASSET_ROOT,
+		"path": "%s/Tree_041.glb" % ASSET_ROOT,
 		"target_height": 1.24,
-		"yaw_degrees": -12.0
+		"yaw_degrees": 18.0
 	}
 }
 
