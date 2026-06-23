@@ -35,6 +35,7 @@ func _run() -> void:
 
 	if LocalMegavoxAssets.has_prop("flower_patch"):
 		_expect_child(flower_tile, "Decor/MegavoxFlowerPatch", "starter flower patch should use local MEGAVOX art")
+		_expect_local_prop_bounds(flower_tile, "Decor/MegavoxFlowerPatch", 0.95, 0.55, "starter flower patch should stay tile-scale")
 	else:
 		_expect_child(flower_tile, "Decor/FlowerSoil", "starter flower patch should keep procedural fallback")
 	if _failed():
@@ -47,8 +48,10 @@ func _run() -> void:
 
 	if LocalMegavoxAssets.has_prop("tree_alt"):
 		_expect_child(starter_tree_tile, "Decor/MegavoxTreeAlt", "starter tree should use the alternate local MEGAVOX art")
+		_expect_local_prop_bounds(starter_tree_tile, "Decor/MegavoxTreeAlt", 1.35, 1.55, "starter alternate tree should stay tile-scale")
 	elif LocalMegavoxAssets.has_prop("tree"):
 		_expect_child(starter_tree_tile, "Decor/MegavoxTree", "starter tree should use local MEGAVOX art")
+		_expect_local_prop_bounds(starter_tree_tile, "Decor/MegavoxTree", 1.35, 1.55, "starter tree should stay tile-scale")
 	else:
 		_expect_child(starter_tree_tile, "Decor/TreeTrunk", "starter tree should keep procedural fallback")
 	if _failed():
@@ -61,8 +64,10 @@ func _run() -> void:
 
 	if LocalMegavoxAssets.has_prop("rock_alt"):
 		_expect_child(starter_rock_tile, "Decor/MegavoxRockAlt", "starter rock should use the alternate local MEGAVOX art")
+		_expect_local_prop_bounds(starter_rock_tile, "Decor/MegavoxRockAlt", 0.75, 0.60, "starter alternate rock should stay tile-scale")
 	elif LocalMegavoxAssets.has_prop("rock"):
 		_expect_child(starter_rock_tile, "Decor/MegavoxRock", "starter rock should use local MEGAVOX art")
+		_expect_local_prop_bounds(starter_rock_tile, "Decor/MegavoxRock", 0.75, 0.60, "starter rock should stay tile-scale")
 	else:
 		_expect_child(starter_rock_tile, "Decor/RockBase", "starter rock should keep procedural fallback")
 	if _failed():
@@ -75,8 +80,10 @@ func _run() -> void:
 
 	if LocalMegavoxAssets.has_prop("tall_grass_alt"):
 		_expect_child(starter_grass_tile, "Decor/MegavoxTallGrassAlt", "starter edge tall grass should use the alternate local MEGAVOX art")
+		_expect_local_prop_bounds(starter_grass_tile, "Decor/MegavoxTallGrassAlt", 0.80, 0.65, "starter alternate tall grass should stay tile-scale")
 	elif LocalMegavoxAssets.has_prop("tall_grass"):
 		_expect_child(starter_grass_tile, "Decor/MegavoxTallGrass", "starter edge tall grass should use local MEGAVOX art")
+		_expect_local_prop_bounds(starter_grass_tile, "Decor/MegavoxTallGrass", 0.80, 0.65, "starter tall grass should stay tile-scale")
 	else:
 		_expect_child(starter_grass_tile, "Decor/TallGrass0", "starter edge tall grass should keep procedural fallback")
 	if _failed():
@@ -93,6 +100,7 @@ func _run() -> void:
 
 	if LocalMegavoxAssets.has_prop("tall_grass"):
 		_expect_child(grass_tile, "Decor/MegavoxTallGrass", "placed tall grass should use local MEGAVOX art")
+		_expect_local_prop_bounds(grass_tile, "Decor/MegavoxTallGrass", 0.80, 0.65, "placed tall grass should stay tile-scale")
 	else:
 		_expect_child(grass_tile, "Decor/TallGrass0", "placed tall grass should keep procedural fallback")
 	if _failed():
@@ -109,6 +117,7 @@ func _run() -> void:
 
 	if LocalMegavoxAssets.has_prop("tree"):
 		_expect_child(tree_tile, "Decor/MegavoxTree", "placed tree should use local MEGAVOX art")
+		_expect_local_prop_bounds(tree_tile, "Decor/MegavoxTree", 1.35, 1.55, "placed tree should stay tile-scale")
 	else:
 		_expect_child(tree_tile, "Decor/TreeTrunk", "placed tree should keep procedural fallback")
 	if _failed():
@@ -122,6 +131,7 @@ func _run() -> void:
 
 	if LocalMegavoxAssets.has_prop("rock"):
 		_expect_child(rock_tile, "Decor/MegavoxRock", "placed rock should use local MEGAVOX art")
+		_expect_local_prop_bounds(rock_tile, "Decor/MegavoxRock", 0.75, 0.60, "placed rock should stay tile-scale")
 	else:
 		_expect_child(rock_tile, "Decor/RockBase", "placed rock should keep procedural fallback")
 	if _failed():
@@ -133,6 +143,87 @@ func _run() -> void:
 func _expect_child(root: Node, node_path: String, context: String) -> void:
 	if root.get_node_or_null(node_path) == null:
 		_fail("Missing %s: %s." % [node_path, context])
+
+
+func _expect_local_prop_bounds(root: Node, node_path: String, max_footprint: float, max_height: float, context: String) -> void:
+	var root_3d := root as Node3D
+	if root_3d == null:
+		_fail("Could not measure %s: root is not Node3D." % node_path)
+		return
+
+	var prop_node := root.get_node_or_null(node_path)
+	if prop_node == null:
+		_fail("Could not measure missing %s: %s." % [node_path, context])
+		return
+
+	var report := _measure_mesh_bounds(root_3d, prop_node)
+	if not bool(report.get("has_aabb", false)):
+		_fail("Could not measure %s: no mesh bounds found." % node_path)
+		return
+
+	var aabb: AABB = report["aabb"]
+	var size := aabb.size
+	var footprint := maxf(size.x, size.z)
+	if footprint > max_footprint or size.y > max_height:
+		_fail("%s exceeded bounds: footprint=%.2f/%.2f height=%.2f/%.2f." % [
+			context,
+			footprint,
+			max_footprint,
+			size.y,
+			max_height
+		])
+
+
+func _measure_mesh_bounds(root_node: Node3D, asset_node: Node) -> Dictionary:
+	var combined := AABB()
+	var has_aabb := false
+	var root_inverse := root_node.global_transform.affine_inverse()
+
+	for node in _node_tree(asset_node):
+		if node is MeshInstance3D:
+			var mesh_instance := node as MeshInstance3D
+			if mesh_instance.mesh == null:
+				continue
+			var local_aabb := mesh_instance.mesh.get_aabb()
+			var root_space_aabb := _transform_aabb(root_inverse * mesh_instance.global_transform, local_aabb)
+			combined = root_space_aabb if not has_aabb else combined.merge(root_space_aabb)
+			has_aabb = true
+
+	return {
+		"has_aabb": has_aabb,
+		"aabb": combined
+	}
+
+
+func _node_tree(root_node: Node) -> Array[Node]:
+	var nodes: Array[Node] = [root_node]
+	var index := 0
+	while index < nodes.size():
+		var node := nodes[index]
+		for child in node.get_children():
+			nodes.append(child)
+		index += 1
+	return nodes
+
+
+func _transform_aabb(transform: Transform3D, aabb: AABB) -> AABB:
+	var min_corner := aabb.position
+	var max_corner := aabb.position + aabb.size
+	var corners := [
+		Vector3(min_corner.x, min_corner.y, min_corner.z),
+		Vector3(max_corner.x, min_corner.y, min_corner.z),
+		Vector3(min_corner.x, max_corner.y, min_corner.z),
+		Vector3(max_corner.x, max_corner.y, min_corner.z),
+		Vector3(min_corner.x, min_corner.y, max_corner.z),
+		Vector3(max_corner.x, min_corner.y, max_corner.z),
+		Vector3(min_corner.x, max_corner.y, max_corner.z),
+		Vector3(max_corner.x, max_corner.y, max_corner.z),
+	]
+
+	var transformed := AABB(transform * corners[0], Vector3.ZERO)
+	for i in range(1, corners.size()):
+		transformed = transformed.expand(transform * corners[i])
+	return transformed
 
 
 func _failed() -> bool:
