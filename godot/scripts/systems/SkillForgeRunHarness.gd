@@ -16,6 +16,10 @@ const CURRENT_WORK_ORDER_ACTIONS := {
 		"agent_action": "plant_seed",
 		"required_item": ""
 	},
+	"tend_crop": {
+		"agent_action": "tend_crop",
+		"required_item": ""
+	},
 	"build_fence": {
 		"agent_action": "build_fence_order",
 		"required_item": "fence_kit"

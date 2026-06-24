@@ -46,7 +46,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if tend_button == null or not str(tend_button.tooltip_text).contains("Stage: Starter Spec -> Spec Preview"):
 		_fail("Tend Crops template button did not expose the starter-to-preview stage. tooltip=%s" % (str(tend_button.tooltip_text) if tend_button else ""))
 		return
-	if not str(tend_button.tooltip_text).contains("Run Preview: Spec > tend_crop > Forge Receipt"):
+	if not str(tend_button.tooltip_text).contains("Run Preview: Spec > tend_crop > Crew Order"):
 		_fail("Tend Crops template button did not expose its preview trace. tooltip=%s" % str(tend_button.tooltip_text))
 		return
 	var plant_button = buttons.get("plant_seed_starter", null) as Button
@@ -94,7 +94,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _result_text(game_ui) != "Spec Preview: Tend Crops":
 		_fail("Skill Forge default preview header did not name the active starter. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Run Target: Tend Crops") or not _result_tooltip(game_ui).contains("Run Route: Spec > Forge Receipt"):
+	if not _result_tooltip(game_ui).contains("Run Target: Tend Crops") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order"):
 		_fail("Skill Forge default preview header tooltip did not keep preview trace detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 
@@ -112,17 +112,17 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if trace_label == null or not preview_tooltip.contains("Stage: Spec Preview"):
 		_fail("Skill Forge default preview did not expose the spec-preview stage. tooltip=%s" % preview_tooltip)
 		return
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > tend_crop > Forge Receipt":
-		_fail("Skill Forge default preview did not expose the Forge-only preview route. text=%s" % (trace_label.text if trace_label else ""))
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > tend_crop > Crew Order":
+		_fail("Skill Forge default preview did not expose the crew-order preview route. text=%s" % (trace_label.text if trace_label else ""))
 		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Forge Receipt":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order":
 		_fail("Skill Forge default preview did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if _visible_ref_text(game_ui) != "":
 		_fail("Skill Forge default preview should keep run refs hidden. text=%s" % _visible_ref_text(game_ui))
 		return
-	if not preview_tooltip.contains("Run Route: Spec > Forge Receipt"):
-		_fail("Skill Forge default preview did not expose its Forge-only route. tooltip=%s" % preview_tooltip)
+	if not preview_tooltip.contains("Run Route: Spec > Crew Order"):
+		_fail("Skill Forge default preview did not expose its crew-order route. tooltip=%s" % preview_tooltip)
 		return
 	if not preview_tooltip.contains("Spec Tools: inspect_tile -> tend_crop") or not preview_tooltip.contains("Success Check: crop_state on selected_tile") or not preview_tooltip.contains("Run Receipt: Tend Crops run"):
 		_fail("Skill Forge default preview did not expose check/receipt contract details. tooltip=%s" % preview_tooltip)
@@ -130,7 +130,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":
 		_fail("Skill Forge default preview did not expose the current stage line. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next Step: Run for Forge receipt or Check":
+	if _visible_next_text(game_ui) != "Next Step: Run to Tend Crops order or Check":
 		_fail("Skill Forge default preview did not expose the next-step line. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":
@@ -495,7 +495,7 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 		return
 	tend_button.pressed.emit()
 
-	if str(trace_label.text) != "Run Trace: Spec > tend_crop > Forge Receipt":
+	if str(trace_label.text) != "Run Trace: Spec > tend_crop > Crew Order":
 		_fail("Switching templates did not restore Tend Crops preview trace. text=%s" % str(trace_label.text))
 		return
 	var preview_tooltip := str(trace_label.tooltip_text)
@@ -514,19 +514,19 @@ func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
 	if _result_text(game_ui) != "Spec Preview: Tend Crops":
 		_fail("Forge preview switch should restore the active starter header. text=%s" % _result_text(game_ui))
 		return
-	if not _result_tooltip(game_ui).contains("Run Route: Spec > Forge Receipt") or not _result_tooltip(game_ui).contains("Run History: Passed Clear Patch"):
+	if not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order") or not _result_tooltip(game_ui).contains("Run History: Passed Clear Patch"):
 		_fail("Forge preview switch header tooltip did not keep preview and history detail. tooltip=%s" % _result_tooltip(game_ui))
 		return
 	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":
 		_fail("Forge current-stage line did not restore the Tend Crops preview. text=%s" % _visible_stage_text(game_ui))
 		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Forge Receipt":
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order":
 		_fail("Forge preview switch did not restore the compact route line. text=%s" % _visible_route_text(game_ui))
 		return
 	if _visible_ref_text(game_ui) != "":
 		_fail("Forge preview switch should hide concrete run refs. text=%s" % _visible_ref_text(game_ui))
 		return
-	if _visible_next_text(game_ui) != "Next Step: Run for Forge receipt or Check":
+	if _visible_next_text(game_ui) != "Next Step: Run to Tend Crops order or Check":
 		_fail("Forge next-step line did not restore the Tend Crops preview action. text=%s" % _visible_next_text(game_ui))
 		return
 	if _visible_detail_text(game_ui) != "":

@@ -16,7 +16,7 @@ func _run() -> void:
 	_test_harvest_crops_builds_work_order_directive()
 	_test_build_fence_builds_work_order_directive()
 	_test_plant_seed_builds_work_order_directive()
-	_test_tend_crops_builds_forge_only_directive()
+	_test_tend_crops_builds_work_order_directive()
 	_test_invalid_spec_blocks_with_drift_receipt()
 	_test_pass_and_fail_completion_receipts()
 	if not _failed:
@@ -142,13 +142,13 @@ func _test_build_fence_builds_work_order_directive() -> void:
 		return
 
 
-func _test_tend_crops_builds_forge_only_directive() -> void:
+func _test_tend_crops_builds_work_order_directive() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var harness = SkillForgeRunHarnessScript.new()
 	var result: Dictionary = harness.start_manual_run(library.get_template_spec("tend_crops_starter"), {
 		"agent_id": "marigold",
 		"agent_name": "Marigold",
-		"target_tile": [1, 4],
+		"target_tile": [1, 5],
 		"day": 6
 	})
 
@@ -156,14 +156,17 @@ func _test_tend_crops_builds_forge_only_directive() -> void:
 		_fail("Tend Crops run did not start. result=%s" % str(result))
 		return
 	var directive: Dictionary = result.get("directive", {})
-	if str(directive.get("kind", "")) != "skill_directive":
-		_fail("Tend Crops should remain a Forge-only directive until farm execution exists. directive=%s" % str(directive))
+	if str(directive.get("kind", "")) != "work_order_directive":
+		_fail("Tend Crops did not build a work-order-shaped directive. directive=%s" % str(directive))
 		return
-	if str(directive.get("action", "")) != "tend_crop":
-		_fail("Tend Crops directive did not use the tend_crop action. directive=%s" % str(directive))
+	if str(directive.get("action", "")) != "tend_crop" or str(directive.get("agent_action", "")) != "tend_crop":
+		_fail("Tend Crops directive did not map to tend_crop crew work. directive=%s" % str(directive))
 		return
-	if directive.get("target_tile", Vector2i.ZERO) != Vector2i(1, 4):
+	if directive.get("target_tile", Vector2i.ZERO) != Vector2i(1, 5):
 		_fail("Tend Crops did not parse array target context. directive=%s" % str(directive))
+		return
+	if str(result.get("run", {}).get("success_check_type", "")) != "crop_state":
+		_fail("Tend Crops did not preserve the crop-state success check. result=%s" % str(result))
 		return
 	if str(result.get("run", {}).get("drift", {}).get("level", "")) != "steady":
 		_fail("Tend Crops did not start steady. result=%s" % str(result))

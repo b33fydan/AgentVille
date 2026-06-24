@@ -159,6 +159,31 @@ func _run() -> void:
 		_fail("Completed harvest order marker stayed visible.")
 		return
 
+	var tend_target := Vector2i(1, 5)
+	var tend_tile = grid.get_tile(tend_target)
+	tend_tile.erase()
+	tend_tile.till()
+	tend_tile.plant_corn()
+	tend_tile.crop.setup("corn", 1)
+	var starting_stage := int(tend_tile.crop.stage)
+	scene.call("_on_crew_order_targeted", "tend_crop", tend_target)
+	if not tend_tile.get_node("OrderMarker").visible:
+		_fail("Tend order did not show an in-world marker.")
+		return
+	await create_timer(0.9).timeout
+
+	var tend_order_id := str(scene.work_order_ids.back())
+	var tend_order: Dictionary = scene.work_orders[tend_order_id]
+	if tend_tile.crop == null or int(tend_tile.crop.stage) <= starting_stage:
+		_fail("Crew tend order did not advance crop growth.")
+		return
+	if str(tend_order.get("status", "")) != "done":
+		_fail("Crew tend order was not marked done.")
+		return
+	if tend_tile.get_node("OrderMarker").visible:
+		_fail("Completed tend order marker stayed visible.")
+		return
+
 	var plant_target := Vector2i(1, 0)
 	var plant_tile = grid.get_tile(plant_target)
 	plant_tile.erase()

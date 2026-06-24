@@ -352,7 +352,7 @@ Mitigation: start with one or two farm skills and one manual trigger.
 
 - Implemented in `scripts/systems/SkillForgeRunHarness.gd`.
 - Converts a valid Tend Crops, Plant Seed, Clear Patch, Harvest Crops, or Build Fence spec into a deterministic local directive.
-- Maps Clear Patch, Plant Seed, Harvest Crops, and Build Fence to current work-order-shaped `clear_brush`, `plant_seed`, `harvest_crop`, and `build_fence` directives, while Tend Crops remains a Forge-only directive until crop-tending has a farm execution path.
+- Maps Tend Crops, Clear Patch, Plant Seed, Harvest Crops, and Build Fence to current work-order-shaped `tend_crop`, `clear_brush`, `plant_seed`, `harvest_crop`, and `build_fence` directives.
 - Returns Field Log copy and event-log payloads for start, pass, fail, and blocked states.
 - Covered by `tools/smoke_skill_forge_run_harness.gd`, including blocked-run Hallucination Drift copy.
 
@@ -387,8 +387,8 @@ Mitigation: start with one or two farm skills and one manual trigger.
 ### Slice 8: Work-Order Directive Drafts
 
 - Implemented in `scripts/core/Game.gd` and `scripts/ui/GameUI.gd`.
-- Turns valid Clear Patch, Plant Seed, Harvest Crops, and Build Fence `work_order_directive` specs into ready crew-order rows with Forge metadata, run id, skill name, Field Log receipt, work-order event, and `Forge` context chip.
-- Keeps Tend Crops as a Forge-only directive until crop-tending has a real crew-order path.
+- Turns valid Tend Crops, Clear Patch, Plant Seed, Harvest Crops, and Build Fence `work_order_directive` specs into ready crew-order rows with Forge metadata, run id, skill name, Field Log receipt, work-order event, and `Forge` context chip.
+- Tend Crops targets a growing, not-ready crop and advances its growth once through the existing crop-growth path.
 - Covered by `tools/smoke_skill_forge_work_order_directive.gd`.
 
 ### Slice 9: Forge Work Receipts

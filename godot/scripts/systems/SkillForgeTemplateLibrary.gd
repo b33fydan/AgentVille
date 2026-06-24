@@ -105,8 +105,8 @@ func _tend_crops_spec() -> Dictionary:
 	return {
 		"id": "tend_crops_starter",
 		"name": "Tend Crops",
-		"summary": "Teach an NPC to inspect one selected crop tile and tend it when it needs attention.",
-		"lesson": "Manual trigger, selected farm context, one tool call, and a visible crop-state success check.",
+		"summary": "Teach an NPC to inspect one selected growing crop, tend it, and report the growth nudge.",
+		"lesson": "Manual trigger, growing-crop guard, tend work-order route, and visible growth-state success check.",
 		"trigger": {
 			"type": "manual"
 		},
@@ -131,15 +131,15 @@ func _tend_crops_spec() -> Dictionary:
 		"success_check": {
 			"type": "crop_state",
 			"target": "context.target",
-			"state": "tended"
+			"state": "growth_advanced"
 		},
 		"failure_handling": {
 			"on_blocked": "record_receipt",
-			"suggestion": "Pick a crop tile that needs tending."
+			"suggestion": "Pick a growing crop tile before it is ready to harvest."
 		},
 		"receipt": {
 			"label": "Tend Crops run",
-			"template": "{agent} tended {target} and checked {result}.",
+			"template": "{agent} tended {target} and checked growth advanced.",
 			"include_source_context": false
 		}
 	}

@@ -27,7 +27,7 @@ func _run() -> void:
 	await _test_plant_seed_drafts_ready_work_order(scene, game_ui)
 	if _failed:
 		return
-	await _test_tend_crops_stays_receipt_only(scene, game_ui)
+	await _test_tend_crops_drafts_ready_work_order(scene, game_ui)
 	if _failed:
 		return
 
@@ -316,7 +316,7 @@ func _test_build_fence_drafts_ready_work_order(scene: Node, game_ui) -> void:
 		return
 
 
-func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
+func _test_tend_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	_select_template(game_ui, "tend_crops_starter")
 	if _failed:
 		return
@@ -326,79 +326,63 @@ func _test_tend_crops_stays_receipt_only(scene: Node, game_ui) -> void:
 	run_button.pressed.emit()
 	await process_frame
 
-	if _forge_order_count(scene) != before_count:
-		_fail("Tend Crops should stay receipt-only until a farm work order exists. before=%s after=%s" % [before_count, _forge_order_count(scene)])
+	if _forge_order_count(scene) != before_count + 1:
+		_fail("Tend Crops did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
+		return
+
+	var order_id := _latest_forge_order_id(scene, "tend_crops_starter")
+	if order_id == "":
+		_fail("Tend Crops did not create a Forge-tagged work order.")
+		return
+	var order: Dictionary = scene.work_orders.get(order_id, {})
+	if str(order.get("action", "")) != "tend_crop" or str(order.get("agent_action", "")) != "tend_crop":
+		_fail("Tend Crops work order did not keep the tend_crop directive. order=%s" % str(order))
+		return
+	if str(order.get("skill_name", "")) != "Tend Crops":
+		_fail("Tend Crops work order did not keep a readable skill name. order=%s" % str(order))
+		return
+	if not str(order.get("label", "")).begins_with("Tend Crops: Tend"):
+		_fail("Tend Crops work order did not keep a readable crew work label. order=%s" % str(order))
+		return
+	if str(order.get("agent_name", "")) != "Marigold":
+		_fail("Tend Crops work order did not keep the readable harness agent. order=%s" % str(order))
+		return
+	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
+	if not scene.call("_can_target_crew_order", "tend_crop", target_tile):
+		_fail("Tend Crops work order target was not a growing crop. order=%s" % str(order))
+		return
+
+	var rows: Dictionary = game_ui.get("_work_order_rows")
+	if not rows.has(order_id):
+		_fail("Tend Crops work order did not appear in the crew order rows. rows=%s" % str(rows.keys()))
+		return
+	var row: Dictionary = rows.get(order_id, {})
+	var preference := row.get("preference", null) as Label
+	if preference == null or not preference.visible or str(preference.text) != "Forge":
+		_fail("Tend Crops work order row did not show the Forge context chip.")
+		return
+	if not str(preference.tooltip_text).begins_with("Forge Work Order: Tend Crops"):
+		_fail("Tend Crops chip tooltip did not open with the work-order role. tooltip=%s" % str(preference.tooltip_text))
+		return
+	if not str(preference.tooltip_text).contains("Tool: tend_crop"):
+		_fail("Tend Crops chip tooltip did not expose the tend tool call. tooltip=%s" % str(preference.tooltip_text))
+		return
+	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Tend Crops":
+		_fail("Tend Crops run did not expose the harness receipt stage. text=%s" % _visible_stage_text(game_ui))
+		return
+	if _visible_next_text(game_ui) != "Next Step: Send crew order":
+		_fail("Tend Crops run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Tend Crops run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
+		return
+	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed crop-tending checks"):
+		_fail("Tend Crops run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 
 	var field_log_entries: Array = game_ui.get("_field_log_entries")
-	if not _entries_contain(field_log_entries, "Skill Forge passed Tend Crops"):
-		_fail("Tend Crops receipt-only run did not still pass. entries=%s" % str(field_log_entries))
-		return
-
-	var result_label = game_ui.get("_skill_forge_result_label") as Label
-	var result_tooltip := str(result_label.tooltip_text) if result_label != null else ""
-	if result_label == null or not result_tooltip.contains("Stage: Forge Receipt"):
-		_fail("Tend Crops result tooltip did not expose the Forge-only receipt stage. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Run Trace: Spec > Directive > Forge Receipt"):
-		_fail("Tend Crops result tooltip did not expose the Forge-only trace path. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Trace Scan: Spec checked | Forge receipt only | Next field log"):
-		_fail("Tend Crops result tooltip did not expose the Forge-only trace scan. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Run Receipt: manual harness receipt confirmed crop-tending checks"):
-		_fail("Tend Crops result tooltip did not expose labeled receipt detail. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Lesson: Spec -> Forge-only receipt; field log keeps receipt."):
-		_fail("Tend Crops result tooltip did not expose the Forge-only lesson cue. tooltip=%s" % result_tooltip)
-		return
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Forge Receipt":
-		_fail("Tend Crops did not show a Forge-only receipt trace. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Run Route Note: receipt-only until this action has a crew-order path"):
-		_fail("Tend Crops trace did not explain why no crew order was drafted. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Stage: Forge Receipt"):
-		_fail("Tend Crops trace did not expose the Forge-only receipt stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Trace: Spec > Directive > Forge Receipt"):
-		_fail("Tend Crops trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Trace Scan: Spec checked | Forge receipt only | Next field log"):
-		_fail("Tend Crops trace did not expose the Forge-only trace scan. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Receipt: manual harness receipt confirmed crop-tending checks"):
-		_fail("Tend Crops trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Lesson: Spec -> Forge-only receipt; field log keeps receipt."):
-		_fail("Tend Crops trace did not expose the Forge-only lesson cue. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Passed Tend Crops (Forge Receipt)") or not trace_tooltip.contains("Passed Build Fence (Harness Receipt)"):
-		_fail("Tend Crops trace history did not name Forge/harness receipt endpoints. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Context: agent Marigold | target ") or not trace_tooltip.contains("| source Starter Lab"):
-		_fail("Tend Crops trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
-		return
-	if _visible_stage_text(game_ui) != "Stage: Forge Receipt | Tend Crops":
-		_fail("Tend Crops did not expose the Forge-only current stage line. text=%s" % _visible_stage_text(game_ui))
-		return
-	if _visible_next_text(game_ui) != "Next Step: Field Log receipt":
-		_fail("Tend Crops did not expose the Forge-only next step. text=%s" % _visible_next_text(game_ui))
-		return
-	if _lesson_text(game_ui) != "Lesson Spec -> Forge-only receipt; field log keeps receipt.":
-		_fail("Tend Crops did not teach the Forge-only receipt outcome. text=%s" % _lesson_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Tend Crops did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed crop-tending checks"):
-		_fail("Tend Crops did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_drift_text(game_ui) != "":
-		_fail("Tend Crops should keep Drift hidden for steady runs. text=%s" % _visible_drift_text(game_ui))
+	if not _entries_contain(field_log_entries, "Forge order drafted: Tend Crops"):
+		_fail("Tend Crops draft did not leave a Field Log receipt. entries=%s" % str(field_log_entries))
 		return
 
 

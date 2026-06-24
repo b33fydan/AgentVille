@@ -55,6 +55,13 @@ const WORK_ORDER_ACTIONS: Dictionary = {
 		"agent_action": "plant_seed",
 		"preview_item": "wheat_seed",
 		"required_item": ""
+	},
+	"tend_crop": {
+		"label": "Tend",
+		"verb": "Tend crop",
+		"agent_action": "tend_crop",
+		"preview_item": "watering_can",
+		"required_item": ""
 	}
 }
 const SPRING_HANDS_SECONDS := 12.0
@@ -466,7 +473,7 @@ func _skill_forge_target_for_template(template_id: String) -> Vector2i:
 				return open_seed_tile
 			return Vector2i(0, 0)
 		"tend_crops_starter":
-			var crop_target := _first_crop_tile()
+			var crop_target := _first_tend_crop_order_tile()
 			if crop_target != Vector2i(-1, -1):
 				return crop_target
 			return Vector2i(1, 4)
@@ -488,6 +495,15 @@ func _first_plant_seed_order_tile() -> Vector2i:
 		for z in range(grid_manager.height):
 			var grid_pos := Vector2i(x, z)
 			if _can_target_crew_order("plant_seed", grid_pos):
+				return grid_pos
+	return Vector2i(-1, -1)
+
+
+func _first_tend_crop_order_tile() -> Vector2i:
+	for x in range(grid_manager.width):
+		for z in range(grid_manager.height):
+			var grid_pos := Vector2i(x, z)
+			if _can_target_crew_order("tend_crop", grid_pos):
 				return grid_pos
 	return Vector2i(-1, -1)
 
@@ -2822,6 +2838,8 @@ func _can_target_crew_order(action_id: String, grid_pos: Vector2i) -> bool:
 			return tile.crop != null and tile.crop.is_ready()
 		"plant_seed":
 			return tile.crop == null and str(tile.decor_id) == "" and str(tile.structure_id) == "" and str(tile.terrain) != "dirt_path"
+		"tend_crop":
+			return tile.crop != null and not tile.crop.is_ready()
 	return false
 
 
@@ -2835,6 +2853,8 @@ func _targeting_error_message(action_id: String) -> String:
 			return "Harvest orders need a ready crop."
 		"plant_seed":
 			return "Plant orders need an open tile."
+		"tend_crop":
+			return "Tend orders need a growing crop."
 	return "That tile cannot take this order."
 
 
@@ -3283,6 +3303,8 @@ func _format_agent_receipt(event: Dictionary) -> String:
 			return "%s cleared %s at %s.%s%s" % [name, subject, target, _format_resource_suffix(event.get("resources", {})), context_suffix]
 		"plant_seed":
 			return "%s planted %s at %s%s." % [name, subject, target, context_suffix]
+		"tend_crop":
+			return "%s tended %s at %s%s." % [name, subject, target, context_suffix]
 		"inspect_structure":
 			return "%s inspected %s at %s%s." % [name, subject, target, context_suffix]
 		"inspect_ready_crop":
