@@ -90,6 +90,7 @@ func _build_initial_farm() -> void:
 	get_tile(Vector2i(7, 2)).place_item("flower_patch")
 	get_tile(Vector2i(4, 1)).place_item("tree")
 	get_tile(Vector2i(0, 6)).place_item("rock")
+	_build_starter_homestead_edge()
 
 	var corn_tiles := [
 		Vector2i(1, 5), Vector2i(2, 5), Vector2i(3, 5),
@@ -120,6 +121,19 @@ func _build_initial_farm() -> void:
 
 	for grid_pos in [Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 7), Vector2i(2, 7), Vector2i(9, 7), Vector2i(10, 2), Vector2i(10, 6)]:
 		get_tile(grid_pos).place_item("tall_grass")
+
+
+func _build_starter_homestead_edge() -> void:
+	var decor_layout := {
+		Vector2i(6, 0): "tall_grass",
+		Vector2i(8, 0): "tree",
+		Vector2i(9, 0): "flower_patch",
+		Vector2i(10, 3): "rock"
+	}
+	for grid_pos in decor_layout.keys():
+		var tile = get_tile(grid_pos)
+		if tile != null:
+			tile.place_item(str(decor_layout[grid_pos]))
 
 
 func _build_shadow_card() -> void:

@@ -89,6 +89,58 @@ func _run() -> void:
 	if _failed():
 		return
 
+	var homestead_tree_tile = grid_manager.get_tile(Vector2i(8, 0))
+	if homestead_tree_tile == null:
+		_fail("Could not inspect homestead-edge tree tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("tree"):
+		_expect_child(homestead_tree_tile, "Decor/MegavoxTree", "homestead-edge tree should use local MEGAVOX art")
+		_expect_local_prop_bounds(homestead_tree_tile, "Decor/MegavoxTree", 1.35, 1.55, "homestead-edge tree should stay tile-scale")
+	else:
+		_expect_child(homestead_tree_tile, "Decor/TreeTrunk", "homestead-edge tree should keep procedural fallback")
+	if _failed():
+		return
+
+	var homestead_flower_tile = grid_manager.get_tile(Vector2i(9, 0))
+	if homestead_flower_tile == null:
+		_fail("Could not inspect homestead-edge flower tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("flower_patch"):
+		_expect_child(homestead_flower_tile, "Decor/MegavoxFlowerPatch", "homestead-edge flowers should use local MEGAVOX art")
+		_expect_local_prop_bounds(homestead_flower_tile, "Decor/MegavoxFlowerPatch", 0.95, 0.55, "homestead-edge flowers should stay tile-scale")
+	else:
+		_expect_child(homestead_flower_tile, "Decor/FlowerSoil", "homestead-edge flowers should keep procedural fallback")
+	if _failed():
+		return
+
+	var homestead_grass_tile = grid_manager.get_tile(Vector2i(6, 0))
+	if homestead_grass_tile == null:
+		_fail("Could not inspect homestead-edge grass tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("tall_grass"):
+		_expect_child(homestead_grass_tile, "Decor/MegavoxTallGrass", "homestead-edge tall grass should use local MEGAVOX art")
+		_expect_local_prop_bounds(homestead_grass_tile, "Decor/MegavoxTallGrass", 0.80, 0.65, "homestead-edge tall grass should stay tile-scale")
+	else:
+		_expect_child(homestead_grass_tile, "Decor/TallGrass0", "homestead-edge tall grass should keep procedural fallback")
+	if _failed():
+		return
+
+	var homestead_rock_tile = grid_manager.get_tile(Vector2i(10, 3))
+	if homestead_rock_tile == null:
+		_fail("Could not inspect homestead-edge rock tile.")
+		return
+
+	if LocalMegavoxAssets.has_prop("rock"):
+		_expect_child(homestead_rock_tile, "Decor/MegavoxRock", "homestead-edge rock should use local MEGAVOX art")
+		_expect_local_prop_bounds(homestead_rock_tile, "Decor/MegavoxRock", 0.75, 0.60, "homestead-edge rock should stay tile-scale")
+	else:
+		_expect_child(homestead_rock_tile, "Decor/RockBase", "homestead-edge rock should keep procedural fallback")
+	if _failed():
+		return
+
 	var grass_tile = grid_manager.get_tile(Vector2i(1, 0))
 	if grass_tile == null:
 		_fail("Could not inspect tall-grass test tile.")
