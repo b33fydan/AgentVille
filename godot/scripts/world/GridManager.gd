@@ -91,6 +91,7 @@ func _build_initial_farm() -> void:
 	get_tile(Vector2i(4, 1)).place_item("tree")
 	get_tile(Vector2i(0, 6)).place_item("rock")
 	_build_starter_homestead_edge()
+	_build_starter_south_meadow_edge()
 
 	var corn_tiles := [
 		Vector2i(1, 5), Vector2i(2, 5), Vector2i(3, 5),
@@ -129,6 +130,20 @@ func _build_starter_homestead_edge() -> void:
 		Vector2i(8, 0): "tree",
 		Vector2i(9, 0): "flower_patch",
 		Vector2i(10, 3): "rock"
+	}
+	for grid_pos in decor_layout.keys():
+		var tile = get_tile(grid_pos)
+		if tile != null:
+			tile.place_item(str(decor_layout[grid_pos]))
+
+
+func _build_starter_south_meadow_edge() -> void:
+	var decor_layout := {
+		Vector2i(0, 8): "flower_patch",
+		Vector2i(2, 8): "tall_grass",
+		Vector2i(3, 8): "rock",
+		Vector2i(9, 8): "tall_grass",
+		Vector2i(10, 7): "flower_patch"
 	}
 	for grid_pos in decor_layout.keys():
 		var tile = get_tile(grid_pos)

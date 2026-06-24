@@ -141,6 +141,60 @@ func _run() -> void:
 	if _failed():
 		return
 
+	var south_meadow_specs := [
+		{
+			"grid_pos": Vector2i(0, 8),
+			"primary_prop": "flower_patch",
+			"primary_node": "Decor/MegavoxFlowerPatch",
+			"fallback_node": "Decor/FlowerSoil",
+			"max_footprint": 0.95,
+			"max_height": 0.55,
+			"context": "south meadow flowers"
+		},
+		{
+			"grid_pos": Vector2i(2, 8),
+			"primary_prop": "tall_grass",
+			"primary_node": "Decor/MegavoxTallGrass",
+			"fallback_node": "Decor/TallGrass0",
+			"max_footprint": 0.80,
+			"max_height": 0.65,
+			"context": "south meadow tall grass"
+		},
+		{
+			"grid_pos": Vector2i(3, 8),
+			"primary_prop": "rock_alt",
+			"primary_node": "Decor/MegavoxRockAlt",
+			"secondary_prop": "rock",
+			"secondary_node": "Decor/MegavoxRock",
+			"fallback_node": "Decor/RockBase",
+			"max_footprint": 0.75,
+			"max_height": 0.60,
+			"context": "south meadow rock"
+		},
+		{
+			"grid_pos": Vector2i(9, 8),
+			"primary_prop": "tall_grass",
+			"primary_node": "Decor/MegavoxTallGrass",
+			"fallback_node": "Decor/TallGrass0",
+			"max_footprint": 0.80,
+			"max_height": 0.65,
+			"context": "east meadow tall grass"
+		},
+		{
+			"grid_pos": Vector2i(10, 7),
+			"primary_prop": "flower_patch",
+			"primary_node": "Decor/MegavoxFlowerPatch",
+			"fallback_node": "Decor/FlowerSoil",
+			"max_footprint": 0.95,
+			"max_height": 0.55,
+			"context": "east meadow flowers"
+		}
+	]
+	for spec in south_meadow_specs:
+		_expect_optional_prop_tile(grid_manager, spec)
+		if _failed():
+			return
+
 	var grass_tile = grid_manager.get_tile(Vector2i(1, 0))
 	if grass_tile == null:
 		_fail("Could not inspect tall-grass test tile.")
@@ -195,6 +249,36 @@ func _run() -> void:
 func _expect_child(root: Node, node_path: String, context: String) -> void:
 	if root.get_node_or_null(node_path) == null:
 		_fail("Missing %s: %s." % [node_path, context])
+
+
+func _expect_optional_prop_tile(grid_manager, spec: Dictionary) -> void:
+	var grid_pos: Vector2i = spec["grid_pos"]
+	var context := str(spec.get("context", "starter prop"))
+	var tile = grid_manager.get_tile(grid_pos)
+	if tile == null:
+		_fail("Could not inspect %s tile." % context)
+		return
+
+	var primary_prop := str(spec.get("primary_prop", ""))
+	var primary_node := str(spec.get("primary_node", ""))
+	var secondary_prop := str(spec.get("secondary_prop", ""))
+	var secondary_node := str(spec.get("secondary_node", ""))
+	var fallback_node := str(spec.get("fallback_node", ""))
+	var max_footprint := float(spec.get("max_footprint", 1.0))
+	var max_height := float(spec.get("max_height", 1.0))
+
+	if primary_prop != "" and LocalMegavoxAssets.has_prop(primary_prop):
+		_expect_child(tile, primary_node, "%s should use local MEGAVOX art" % context)
+		if _failed():
+			return
+		_expect_local_prop_bounds(tile, primary_node, max_footprint, max_height, "%s should stay tile-scale" % context)
+	elif secondary_prop != "" and LocalMegavoxAssets.has_prop(secondary_prop):
+		_expect_child(tile, secondary_node, "%s should use secondary local MEGAVOX art" % context)
+		if _failed():
+			return
+		_expect_local_prop_bounds(tile, secondary_node, max_footprint, max_height, "%s should stay tile-scale" % context)
+	else:
+		_expect_child(tile, fallback_node, "%s should keep procedural fallback" % context)
 
 
 func _expect_local_prop_bounds(root: Node, node_path: String, max_footprint: float, max_height: float, context: String) -> void:
