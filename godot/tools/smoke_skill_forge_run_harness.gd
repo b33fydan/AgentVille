@@ -16,6 +16,7 @@ func _run() -> void:
 	_test_harvest_crops_builds_work_order_directive()
 	_test_build_fence_builds_work_order_directive()
 	_test_tend_crops_builds_forge_only_directive()
+	_test_plant_seed_builds_forge_only_directive()
 	_test_invalid_spec_blocks_with_drift_receipt()
 	_test_pass_and_fail_completion_receipts()
 	if not _failed:
@@ -166,6 +167,43 @@ func _test_tend_crops_builds_forge_only_directive() -> void:
 		return
 	if str(result.get("run", {}).get("drift", {}).get("level", "")) != "steady":
 		_fail("Tend Crops did not start steady. result=%s" % str(result))
+		return
+
+
+func _test_plant_seed_builds_forge_only_directive() -> void:
+	var library = SkillForgeTemplateLibraryScript.new()
+	var harness = SkillForgeRunHarnessScript.new()
+	var result: Dictionary = harness.start_manual_run(library.get_template_spec("plant_seed_starter"), {
+		"agent_id": "marigold",
+		"agent_name": "Marigold",
+		"target_tile": Vector2i(2, 4),
+		"day": 6
+	})
+
+	if str(result.get("status", "")) != "started":
+		_fail("Plant Seed run did not start. result=%s" % str(result))
+		return
+	var directive: Dictionary = result.get("directive", {})
+	if str(directive.get("kind", "")) != "skill_directive":
+		_fail("Plant Seed should remain a Forge-only directive until seed work orders exist. directive=%s" % str(directive))
+		return
+	if str(directive.get("action", "")) != "plant_seed":
+		_fail("Plant Seed directive did not use the plant_seed action. directive=%s" % str(directive))
+		return
+	if directive.get("target_tile", Vector2i.ZERO) != Vector2i(2, 4):
+		_fail("Plant Seed did not preserve selected tile context. directive=%s" % str(directive))
+		return
+	if str(result.get("run", {}).get("success_check_type", "")) != "crop_state":
+		_fail("Plant Seed did not preserve the crop-state success check. result=%s" % str(result))
+		return
+	if str(result.get("run", {}).get("drift", {}).get("level", "")) != "steady":
+		_fail("Plant Seed did not start steady. result=%s" % str(result))
+		return
+	if not _field_log_contains(result, "Skill Forge started Plant Seed for Marigold at 2,4"):
+		_fail("Plant Seed start line was not field-log ready. result=%s" % str(result))
+		return
+	if not _event_exists(result, "skill_forge_run", "started"):
+		_fail("Plant Seed run did not create a start event. result=%s" % str(result))
 		return
 
 

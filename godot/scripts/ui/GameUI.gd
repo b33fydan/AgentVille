@@ -1393,6 +1393,8 @@ func _skill_forge_button_text(preview: Dictionary) -> String:
 	match name:
 		"Tend Crops":
 			return "TND\nCrops"
+		"Plant Seed":
+			return "PLT\nSeed"
 		"Clear Patch":
 			return "CLR\nPatch"
 		"Harvest Crops":
@@ -1660,7 +1662,7 @@ func _skill_forge_preview_route_text(final_tool: String) -> String:
 	match final_tool.strip_edges():
 		"build_fence", "clear_brush", "harvest_crop":
 			return "Crew Order"
-		"tend_crop":
+		"plant_seed", "tend_crop":
 			return "Forge Receipt"
 	return ""
 

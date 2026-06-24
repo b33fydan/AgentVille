@@ -420,6 +420,11 @@ func _skill_forge_agent_for_template(template_id: String) -> Dictionary:
 				"id": "bert",
 				"name": "Bert"
 			}
+		"plant_seed_starter":
+			return {
+				"id": "marigold",
+				"name": "Marigold"
+			}
 		"tend_crops_starter":
 			return {
 				"id": "marigold",
@@ -448,6 +453,14 @@ func _skill_forge_target_for_template(template_id: String) -> Vector2i:
 			if harvest_target != Vector2i(-1, -1):
 				return harvest_target
 			return Vector2i(1, 6)
+		"plant_seed_starter":
+			var seed_tile = _find_spring_hands_seed_tile()
+			if seed_tile != null:
+				return seed_tile.grid_pos
+			var open_seed_tile = _find_fence_hands_tile()
+			if open_seed_tile != null:
+				return open_seed_tile.grid_pos
+			return Vector2i(0, 0)
 		"tend_crops_starter":
 			var crop_target := _first_crop_tile()
 			if crop_target != Vector2i(-1, -1):
@@ -474,6 +487,8 @@ func _skill_forge_completion_detail(template_id: String) -> String:
 			return "manual harness receipt confirmed clear-patch checks"
 		"harvest_crops_starter":
 			return "manual harness receipt confirmed harvest-crop checks"
+		"plant_seed_starter":
+			return "manual harness receipt confirmed seed-planting checks"
 		"tend_crops_starter":
 			return "manual harness receipt confirmed crop-tending checks"
 	return "manual harness receipt recorded"
@@ -487,6 +502,8 @@ func _skill_forge_revision_completion_detail(template_id: String) -> String:
 			return "replaced summon_rain with clear_brush"
 		"harvest_crops_starter":
 			return "replaced summon_rain with harvest_crop"
+		"plant_seed_starter":
+			return "replaced summon_rain with plant_seed"
 		"tend_crops_starter":
 			return "replaced summon_rain with tend_crop"
 	return "starter spec revised and rerun"
@@ -500,6 +517,8 @@ func _skill_forge_expected_revision_tool(template_id: String, spec: Dictionary) 
 			return "clear_brush"
 		"harvest_crops_starter":
 			return "harvest_crop"
+		"plant_seed_starter":
+			return "plant_seed"
 		"tend_crops_starter":
 			return "tend_crop"
 

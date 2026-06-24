@@ -1,7 +1,7 @@
 class_name SkillForgeTemplateLibrary
 extends RefCounted
 
-const TEMPLATE_IDS := ["tend_crops_starter", "clear_patch_starter", "harvest_crops_starter", "build_fence_starter"]
+const TEMPLATE_IDS := ["tend_crops_starter", "plant_seed_starter", "clear_patch_starter", "harvest_crops_starter", "build_fence_starter"]
 
 
 func get_template_ids() -> Array:
@@ -16,6 +16,8 @@ func get_template_spec(template_id: String) -> Dictionary:
 	match template_id:
 		"tend_crops_starter":
 			return _tend_crops_spec()
+		"plant_seed_starter":
+			return _plant_seed_spec()
 		"clear_patch_starter":
 			return _clear_patch_spec()
 		"harvest_crops_starter":
@@ -138,6 +140,50 @@ func _tend_crops_spec() -> Dictionary:
 		"receipt": {
 			"label": "Tend Crops run",
 			"template": "{agent} tended {target} and checked {result}.",
+			"include_source_context": false
+		}
+	}
+
+
+func _plant_seed_spec() -> Dictionary:
+	return {
+		"id": "plant_seed_starter",
+		"name": "Plant Seed",
+		"summary": "Teach an NPC to inspect one selected planting tile, plan a seed placement, and record the Forge receipt.",
+		"lesson": "Allowed plant_seed tool, open-tile guard, Forge-only route, and crop-state success check.",
+		"trigger": {
+			"type": "manual"
+		},
+		"context": {
+			"target": "selected_tile",
+			"include_recent_source": false
+		},
+		"tools": ["inspect_tile", "plant_seed"],
+		"steps": [
+			{
+				"id": "inspect",
+				"tool": "inspect_tile",
+				"target": "context.target"
+			},
+			{
+				"id": "plant",
+				"tool": "plant_seed",
+				"target": "context.target",
+				"when": "tile.empty"
+			}
+		],
+		"success_check": {
+			"type": "crop_state",
+			"target": "context.target",
+			"state": "planted"
+		},
+		"failure_handling": {
+			"on_blocked": "record_receipt",
+			"suggestion": "Pick an open tilled tile before planting."
+		},
+		"receipt": {
+			"label": "Plant Seed run",
+			"template": "{agent} planned seed placement at {target} and checked {result}.",
 			"include_source_context": false
 		}
 	}

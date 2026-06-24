@@ -22,12 +22,15 @@ func _run() -> void:
 func _test_starter_template_ids_are_deterministic() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var ids: Array = library.get_template_ids()
-	if ids != ["tend_crops_starter", "clear_patch_starter", "harvest_crops_starter", "build_fence_starter"]:
+	if ids != ["tend_crops_starter", "plant_seed_starter", "clear_patch_starter", "harvest_crops_starter", "build_fence_starter"]:
 		_fail("Starter template ids were not deterministic. ids=%s" % str(ids))
 		return
 
 	if not library.has_template("tend_crops_starter"):
 		_fail("Tend Crops starter template was not registered.")
+		return
+	if not library.has_template("plant_seed_starter"):
+		_fail("Plant Seed starter template was not registered.")
 		return
 	if not library.has_template("harvest_crops_starter"):
 		_fail("Harvest Crops starter template was not registered.")
@@ -67,7 +70,7 @@ func _test_templates_validate_cleanly() -> void:
 func _test_template_previews_are_compact() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var previews: Array = library.list_template_previews()
-	if previews.size() != 4:
+	if previews.size() != 5:
 		_fail("Template preview count was wrong. previews=%s" % str(previews))
 		return
 
@@ -77,6 +80,19 @@ func _test_template_previews_are_compact() -> void:
 		return
 	if not str(tend_preview.get("lesson", "")).contains("success check"):
 		_fail("Tend Crops preview did not name the lesson. preview=%s" % str(tend_preview))
+		return
+	var plant_preview: Dictionary = library.get_template_preview("plant_seed_starter")
+	if str(plant_preview.get("tools_label", "")) != "inspect_tile -> plant_seed":
+		_fail("Plant Seed preview did not expose ordered seed tools. preview=%s" % str(plant_preview))
+		return
+	if str(plant_preview.get("step_label", "")) != "inspect -> plant":
+		_fail("Plant Seed preview did not expose compact step order. preview=%s" % str(plant_preview))
+		return
+	if str(plant_preview.get("check_label", "")) != "crop_state on selected_tile":
+		_fail("Plant Seed preview did not expose the crop-state success check. preview=%s" % str(plant_preview))
+		return
+	if str(plant_preview.get("receipt_label", "")) != "Plant Seed run":
+		_fail("Plant Seed preview did not expose its receipt label. preview=%s" % str(plant_preview))
 		return
 	var harvest_preview: Dictionary = library.get_template_preview("harvest_crops_starter")
 	if str(harvest_preview.get("tools_label", "")) != "inspect_tile -> harvest_crop":

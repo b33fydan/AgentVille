@@ -39,7 +39,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 		_fail("Skill Forge panel did not expose template buttons.")
 		return
 	var buttons: Dictionary = buttons_value
-	if not buttons.has("tend_crops_starter") or not buttons.has("clear_patch_starter") or not buttons.has("harvest_crops_starter") or not buttons.has("build_fence_starter"):
+	if not buttons.has("tend_crops_starter") or not buttons.has("plant_seed_starter") or not buttons.has("clear_patch_starter") or not buttons.has("harvest_crops_starter") or not buttons.has("build_fence_starter"):
 		_fail("Skill Forge panel did not expose all starter templates. buttons=%s" % str(buttons.keys()))
 		return
 	var tend_button = buttons.get("tend_crops_starter", null) as Button
@@ -48,6 +48,13 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 		return
 	if not str(tend_button.tooltip_text).contains("Run Preview: Spec > tend_crop > Forge Receipt"):
 		_fail("Tend Crops template button did not expose its preview trace. tooltip=%s" % str(tend_button.tooltip_text))
+		return
+	var plant_button = buttons.get("plant_seed_starter", null) as Button
+	if plant_button == null or str(plant_button.text) != "PLT\nSeed":
+		_fail("Plant Seed template button did not expose its compact label. text=%s" % (str(plant_button.text) if plant_button else ""))
+		return
+	if not str(plant_button.tooltip_text).contains("Run Preview: Spec > plant_seed > Forge Receipt"):
+		_fail("Plant Seed template button did not expose its Forge-only preview trace. tooltip=%s" % str(plant_button.tooltip_text))
 		return
 	var harvest_button = buttons.get("harvest_crops_starter", null) as Button
 	if harvest_button == null or str(harvest_button.text) != "HRV\nCrops":
