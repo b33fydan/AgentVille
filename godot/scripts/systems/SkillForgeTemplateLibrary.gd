@@ -149,8 +149,8 @@ func _plant_seed_spec() -> Dictionary:
 	return {
 		"id": "plant_seed_starter",
 		"name": "Plant Seed",
-		"summary": "Teach an NPC to inspect one selected planting tile, plan a seed placement, and record the Forge receipt.",
-		"lesson": "Allowed plant_seed tool, open-tile guard, Forge-only route, and crop-state success check.",
+		"summary": "Teach an NPC to inspect one selected open tile, plant a seed, and report the crop start.",
+		"lesson": "Allowed plant_seed tool, open-tile guard, seed work-order route, and crop-state success check.",
 		"trigger": {
 			"type": "manual"
 		},
@@ -179,7 +179,7 @@ func _plant_seed_spec() -> Dictionary:
 		},
 		"failure_handling": {
 			"on_blocked": "record_receipt",
-			"suggestion": "Pick an open tilled tile before planting."
+			"suggestion": "Pick an open tile before planting."
 		},
 		"receipt": {
 			"label": "Plant Seed run",

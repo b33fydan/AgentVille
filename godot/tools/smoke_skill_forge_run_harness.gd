@@ -15,8 +15,8 @@ func _run() -> void:
 	_test_clear_patch_builds_work_order_directive()
 	_test_harvest_crops_builds_work_order_directive()
 	_test_build_fence_builds_work_order_directive()
+	_test_plant_seed_builds_work_order_directive()
 	_test_tend_crops_builds_forge_only_directive()
-	_test_plant_seed_builds_forge_only_directive()
 	_test_invalid_spec_blocks_with_drift_receipt()
 	_test_pass_and_fail_completion_receipts()
 	if not _failed:
@@ -170,7 +170,7 @@ func _test_tend_crops_builds_forge_only_directive() -> void:
 		return
 
 
-func _test_plant_seed_builds_forge_only_directive() -> void:
+func _test_plant_seed_builds_work_order_directive() -> void:
 	var library = SkillForgeTemplateLibraryScript.new()
 	var harness = SkillForgeRunHarnessScript.new()
 	var result: Dictionary = harness.start_manual_run(library.get_template_spec("plant_seed_starter"), {
@@ -184,11 +184,11 @@ func _test_plant_seed_builds_forge_only_directive() -> void:
 		_fail("Plant Seed run did not start. result=%s" % str(result))
 		return
 	var directive: Dictionary = result.get("directive", {})
-	if str(directive.get("kind", "")) != "skill_directive":
-		_fail("Plant Seed should remain a Forge-only directive until seed work orders exist. directive=%s" % str(directive))
+	if str(directive.get("kind", "")) != "work_order_directive":
+		_fail("Plant Seed did not build a work-order-shaped directive. directive=%s" % str(directive))
 		return
-	if str(directive.get("action", "")) != "plant_seed":
-		_fail("Plant Seed directive did not use the plant_seed action. directive=%s" % str(directive))
+	if str(directive.get("action", "")) != "plant_seed" or str(directive.get("agent_action", "")) != "plant_seed":
+		_fail("Plant Seed directive did not map to plant_seed crew work. directive=%s" % str(directive))
 		return
 	if directive.get("target_tile", Vector2i.ZERO) != Vector2i(2, 4):
 		_fail("Plant Seed did not preserve selected tile context. directive=%s" % str(directive))

@@ -14,6 +14,9 @@ func _run() -> void:
 	await _test_harvest_crops_completion_reaches_agent_receipt()
 	if _failed:
 		return
+	await _test_plant_seed_completion_reaches_agent_receipt()
+	if _failed:
+		return
 	await _test_build_fence_completion_reaches_agent_receipt()
 	if _failed:
 		return
@@ -573,6 +576,114 @@ func _test_build_fence_completion_reaches_agent_receipt() -> void:
 	var formatted_summary := str(scene.call("_format_day_summary", summary))
 	if not formatted_summary.contains("forge work") or not formatted_summary.contains("Build Fence"):
 		_fail("Build Fence formatted day summary did not include Forge work context. saw=%s" % formatted_summary)
+		return
+
+	scene.queue_free()
+	await process_frame
+
+
+func _test_plant_seed_completion_reaches_agent_receipt() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	root.size = Vector2i(1600, 900)
+	await process_frame
+	await process_frame
+
+	var game_ui = scene.get_node("GameUI")
+	_select_template(game_ui, "plant_seed_starter")
+	if _failed:
+		return
+
+	var run_button = game_ui.get("_skill_forge_run_button") as Button
+	if run_button == null:
+		_fail("Skill Forge run button missing before Plant Seed receipt smoke.")
+		return
+	run_button.pressed.emit()
+	await process_frame
+
+	var order_id := _latest_forge_order_id(scene, "plant_seed_starter")
+	if order_id == "" or not scene.work_orders.has(order_id):
+		_fail("Plant Seed did not draft a Forge work order for receipt smoke.")
+		return
+	var order: Dictionary = scene.work_orders[order_id]
+	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
+	var tile = scene.get_node("FarmWorld/GridManager").get_tile(target_tile)
+	if tile == null or not scene.call("_can_target_crew_order", "plant_seed", target_tile):
+		_fail("Plant Seed did not target an open planting tile. order=%s" % str(order))
+		return
+
+	var agent_manager = scene.get_node("FarmWorld/AgentManager")
+	for agent in agent_manager.agents:
+		agent.move_speed = 42.0
+
+	scene.call("_on_work_order_requested", order_id)
+	await process_frame
+	await process_frame
+
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Queued":
+		_fail("Plant Seed did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	if _result_text(game_ui) != "Crew Queued: Plant Seed":
+		_fail("Plant Seed queued header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
+		return
+	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
+		_fail("Plant Seed queued state did not expose the Forge run context. text=%s" % _visible_detail_text(game_ui))
+		return
+
+	await create_timer(1.1).timeout
+	if tile.crop == null:
+		_fail("Plant Seed Forge work did not plant a crop.")
+		return
+	if not tile.is_tilled:
+		_fail("Plant Seed Forge work did not leave tilled soil.")
+		return
+
+	var completed_event: Dictionary = _completed_forge_world_action(scene, order)
+	if completed_event.is_empty():
+		_fail("Plant Seed did not record a Forge-tagged plant action.")
+		return
+	if str(completed_event.get("skill_name", "")) != "Plant Seed":
+		_fail("Plant Seed completed work did not keep the readable skill name. event=%s" % str(completed_event))
+		return
+	if str(completed_event.get("action", "")) != "plant_seed":
+		_fail("Plant Seed completed work did not use the plant action. event=%s" % str(completed_event))
+		return
+
+	var receipt := str(scene.call("_format_agent_receipt", completed_event))
+	if not receipt.contains("[Forge: Plant Seed]") or not receipt.contains("planted"):
+		_fail("Plant Seed receipt did not name the Forge plant work. receipt=%s" % receipt)
+		return
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Agent Receipt":
+		_fail("Plant Seed did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
+		return
+	var trace_tooltip := str(trace_label.tooltip_text)
+	if not trace_tooltip.contains("Run Target: Plant Seed") or not trace_tooltip.contains("Stage: Agent Receipt"):
+		_fail("Plant Seed receipt trace did not expose target and stage. tooltip=%s" % trace_tooltip)
+		return
+	if not trace_tooltip.contains("Run Receipt: %s" % receipt):
+		_fail("Plant Seed receipt trace did not expose labeled receipt detail. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
+		return
+	if _result_text(game_ui) != "Agent Receipt: Plant Seed":
+		_fail("Plant Seed completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
+		return
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Agent Receipt":
+		_fail("Plant Seed completed-work route did not reach Agent Receipt. text=%s" % _visible_route_text(game_ui))
+		return
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("planted"):
+		_fail("Plant Seed completed-work did not expose compact plant receipt detail. text=%s" % _visible_receipt_text(game_ui))
+		return
+	if _visible_history_text(game_ui) != "Run Trail: Plant Seed | Passed (Harness Receipt) > Crew Queued > Agent Receipt [current]":
+		_fail("Plant Seed visible Run Trail did not summarize the lifecycle. text=%s" % _visible_history_text(game_ui))
+		return
+
+	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)
+	if not _summary_has_forge_work(summary, str(order.get("forge_run_id", "")), "Plant Seed"):
+		_fail("Plant Seed day summary did not keep Forge work context. summary=%s" % str(summary.get("agent_skill_forge_actions", {})))
+		return
+	var formatted_summary := str(scene.call("_format_day_summary", summary))
+	if not formatted_summary.contains("forge work") or not formatted_summary.contains("Plant Seed"):
+		_fail("Plant Seed formatted day summary did not include Forge work context. saw=%s" % formatted_summary)
 		return
 
 	scene.queue_free()

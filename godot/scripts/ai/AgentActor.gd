@@ -699,6 +699,8 @@ func _execute_arrival_action(decision: Dictionary) -> void:
 			_harvest_crop_at(tile_pos, str(decision.get("work_order_id", "")))
 		"clear_brush":
 			_clear_brush_at(tile_pos, str(decision.get("work_order_id", "")))
+		"plant_seed":
+			_plant_seed_at(tile_pos, str(decision.get("work_order_id", "")))
 		"inspect_structure":
 			_inspect_structure_at(tile_pos)
 		"inspect_ready_crop":
@@ -776,6 +778,19 @@ func _clear_brush_at(tile_pos: Vector2i, work_order_id: String = "") -> void:
 	var resource_gain := {"fiber": 2} if success else {}
 	var message := "%s cleared %s." % [display_name, brush_name] if success else "%s found nothing useful to cut." % display_name
 	_emit_world_action("clear_brush", tile_pos, success, message, 0, brush_name, ["plant_pop"] if success else [], resource_gain, {}, work_order_id)
+
+
+func _plant_seed_at(tile_pos: Vector2i, work_order_id: String = "") -> void:
+	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
+	var subject := "wheat"
+	var success: bool = tile != null and tile.crop == null and str(tile.decor_id) == "" and str(tile.structure_id) == "" and str(tile.terrain) != "dirt_path"
+	if success and not tile.is_tilled:
+		success = tile.till()
+	if success:
+		success = tile.plant_wheat()
+
+	var message := "%s planted %s." % [display_name, subject] if success else "%s found no open planting tile." % display_name
+	_emit_world_action("plant_seed", tile_pos, success, message, 0, subject, ["place_soft", "plant_pop"] if success else [], {}, {}, work_order_id)
 
 
 func _inspect_structure_at(tile_pos: Vector2i) -> void:
@@ -1034,6 +1049,14 @@ func _work_comment(action_name: String, value: int, subject: String) -> String:
 					return "Cleared the %s. We made room for something nicer." % subject
 				"chaotic":
 					return "The %s has been dramatically removed." % subject
+		"plant_seed":
+			match personality_trait:
+				"grizzled":
+					return "%s planted. We have made a future chore." % subject.capitalize()
+				"hopeful":
+					return "%s planted. Tiny start, good direction." % subject.capitalize()
+				"chaotic":
+					return "%s entered the ground with ceremony." % subject.capitalize()
 		"inspect_structure":
 			match personality_trait:
 				"grizzled":

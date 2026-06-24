@@ -48,6 +48,13 @@ const WORK_ORDER_ACTIONS: Dictionary = {
 		"agent_action": "harvest_crop",
 		"preview_item": "sickle",
 		"required_item": ""
+	},
+	"plant_seed": {
+		"label": "Plant",
+		"verb": "Plant seed",
+		"agent_action": "plant_seed",
+		"preview_item": "wheat_seed",
+		"required_item": ""
 	}
 }
 const SPRING_HANDS_SECONDS := 12.0
@@ -454,12 +461,9 @@ func _skill_forge_target_for_template(template_id: String) -> Vector2i:
 				return harvest_target
 			return Vector2i(1, 6)
 		"plant_seed_starter":
-			var seed_tile = _find_spring_hands_seed_tile()
-			if seed_tile != null:
-				return seed_tile.grid_pos
-			var open_seed_tile = _find_fence_hands_tile()
-			if open_seed_tile != null:
-				return open_seed_tile.grid_pos
+			var open_seed_tile := _first_plant_seed_order_tile()
+			if open_seed_tile != Vector2i(-1, -1):
+				return open_seed_tile
 			return Vector2i(0, 0)
 		"tend_crops_starter":
 			var crop_target := _first_crop_tile()
@@ -475,6 +479,15 @@ func _first_crop_tile() -> Vector2i:
 			var grid_pos := Vector2i(x, z)
 			var tile = grid_manager.get_tile(grid_pos)
 			if tile != null and tile.crop != null:
+				return grid_pos
+	return Vector2i(-1, -1)
+
+
+func _first_plant_seed_order_tile() -> Vector2i:
+	for x in range(grid_manager.width):
+		for z in range(grid_manager.height):
+			var grid_pos := Vector2i(x, z)
+			if _can_target_crew_order("plant_seed", grid_pos):
 				return grid_pos
 	return Vector2i(-1, -1)
 
@@ -2807,6 +2820,8 @@ func _can_target_crew_order(action_id: String, grid_pos: Vector2i) -> bool:
 			return str(tile.decor_id) in ["tall_grass", "flower_patch"]
 		"harvest_crop":
 			return tile.crop != null and tile.crop.is_ready()
+		"plant_seed":
+			return tile.crop == null and str(tile.decor_id) == "" and str(tile.structure_id) == "" and str(tile.terrain) != "dirt_path"
 	return false
 
 
@@ -2818,6 +2833,8 @@ func _targeting_error_message(action_id: String) -> String:
 			return "Clear orders need flowers or tall grass."
 		"harvest_crop":
 			return "Harvest orders need a ready crop."
+		"plant_seed":
+			return "Plant orders need an open tile."
 	return "That tile cannot take this order."
 
 
@@ -3264,6 +3281,8 @@ func _format_agent_receipt(event: Dictionary) -> String:
 			return "%s harvested %s coins at %s.%s%s" % [name, int(event.get("value", 0)), target, _format_resource_suffix(event.get("resources", {})), context_suffix]
 		"clear_brush":
 			return "%s cleared %s at %s.%s%s" % [name, subject, target, _format_resource_suffix(event.get("resources", {})), context_suffix]
+		"plant_seed":
+			return "%s planted %s at %s%s." % [name, subject, target, context_suffix]
 		"inspect_structure":
 			return "%s inspected %s at %s%s." % [name, subject, target, context_suffix]
 		"inspect_ready_crop":

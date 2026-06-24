@@ -1101,6 +1101,7 @@ func _build_work_order_controls(parent: VBoxContainer) -> void:
 	_add_work_order_action_button(action_row, "build_fence", "FNC\nFence", "Mark a tile for crew-built fence")
 	_add_work_order_action_button(action_row, "clear_brush", "CLR\nClear", "Mark brush for the crew to clear")
 	_add_work_order_action_button(action_row, "harvest_crop", "HRV\nPick", "Mark a ready crop for the crew to harvest")
+	_add_work_order_action_button(action_row, "plant_seed", "PLT\nSeed", "Mark an open tile for the crew to plant")
 
 	_work_order_list_stack = VBoxContainer.new()
 	_work_order_list_stack.add_theme_constant_override("separation", 2)
@@ -1652,7 +1653,10 @@ func _skill_forge_preview_next_text(preview: Dictionary) -> String:
 					return "Run to Clear Patch order or Check"
 				"harvest_crop":
 					return "Run to Harvest Crops order or Check"
-			return "Run to crew order or Check"
+				"plant_seed":
+					return "Run to Plant Seed order or Check"
+				_:
+					return "Run to crew order or Check"
 		"Forge Receipt":
 			return "Run for Forge receipt or Check"
 	return "Run or Check"
@@ -1660,9 +1664,9 @@ func _skill_forge_preview_next_text(preview: Dictionary) -> String:
 
 func _skill_forge_preview_route_text(final_tool: String) -> String:
 	match final_tool.strip_edges():
-		"build_fence", "clear_brush", "harvest_crop":
+		"build_fence", "clear_brush", "harvest_crop", "plant_seed":
 			return "Crew Order"
-		"plant_seed", "tend_crop":
+		"tend_crop":
 			return "Forge Receipt"
 	return ""
 
@@ -3877,6 +3881,8 @@ func _format_action(action: String, phase: String = "idle") -> String:
 		match action:
 			"harvest_crop":
 				return "Heading to crops"
+			"plant_seed":
+				return "Heading to plant"
 			"clear_brush":
 				return "Heading to brush"
 			"inspect_structure":
@@ -3895,6 +3901,8 @@ func _format_action(action: String, phase: String = "idle") -> String:
 			return "Building fence"
 		"harvest_crop":
 			return "Harvesting crop"
+		"plant_seed":
+			return "Planting seed"
 		"clear_brush":
 			return "Clearing brush"
 		"inspect_structure":
@@ -3950,6 +3958,8 @@ func _item_icon(item_id: String) -> String:
 			return "CLR"
 		"order_harvest_crop":
 			return "HRV"
+		"order_plant_seed":
+			return "PLT"
 		"grass_block":
 			return "GRS"
 		"dirt_road":
@@ -3992,6 +4002,8 @@ func _item_short_name(item_id: String) -> String:
 		"order_clear_brush":
 			return "Crew"
 		"order_harvest_crop":
+			return "Crew"
+		"order_plant_seed":
 			return "Crew"
 		"grass_block":
 			return "Grass"

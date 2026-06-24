@@ -12,6 +12,10 @@ const CURRENT_WORK_ORDER_ACTIONS := {
 		"agent_action": "harvest_crop",
 		"required_item": ""
 	},
+	"plant_seed": {
+		"agent_action": "plant_seed",
+		"required_item": ""
+	},
 	"build_fence": {
 		"agent_action": "build_fence_order",
 		"required_item": "fence_kit"

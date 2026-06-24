@@ -159,6 +159,30 @@ func _run() -> void:
 		_fail("Completed harvest order marker stayed visible.")
 		return
 
+	var plant_target := Vector2i(1, 0)
+	var plant_tile = grid.get_tile(plant_target)
+	plant_tile.erase()
+	scene.call("_on_crew_order_targeted", "plant_seed", plant_target)
+	if not plant_tile.get_node("OrderMarker").visible:
+		_fail("Plant order did not show an in-world marker.")
+		return
+	await create_timer(0.9).timeout
+
+	var plant_order_id := str(scene.work_order_ids.back())
+	var plant_order: Dictionary = scene.work_orders[plant_order_id]
+	if plant_tile.crop == null:
+		_fail("Crew plant order did not plant a crop.")
+		return
+	if not plant_tile.is_tilled:
+		_fail("Crew plant order did not leave tilled soil.")
+		return
+	if str(plant_order.get("status", "")) != "done":
+		_fail("Crew plant order was not marked done.")
+		return
+	if plant_tile.get_node("OrderMarker").visible:
+		_fail("Completed plant order marker stayed visible.")
+		return
+
 	await create_timer(0.6).timeout
 	quit()
 

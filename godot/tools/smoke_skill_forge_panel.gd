@@ -53,8 +53,8 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if plant_button == null or str(plant_button.text) != "PLT\nSeed":
 		_fail("Plant Seed template button did not expose its compact label. text=%s" % (str(plant_button.text) if plant_button else ""))
 		return
-	if not str(plant_button.tooltip_text).contains("Run Preview: Spec > plant_seed > Forge Receipt"):
-		_fail("Plant Seed template button did not expose its Forge-only preview trace. tooltip=%s" % str(plant_button.tooltip_text))
+	if not str(plant_button.tooltip_text).contains("Run Preview: Spec > plant_seed > Crew Order"):
+		_fail("Plant Seed template button did not expose its crew-order preview trace. tooltip=%s" % str(plant_button.tooltip_text))
 		return
 	var harvest_button = buttons.get("harvest_crops_starter", null) as Button
 	if harvest_button == null or str(harvest_button.text) != "HRV\nCrops":
