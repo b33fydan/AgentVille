@@ -195,6 +195,51 @@ func _run() -> void:
 		if _failed():
 			return
 
+	var east_grove_specs := [
+		{
+			"grid_pos": Vector2i(8, 7),
+			"primary_prop": "tall_grass",
+			"primary_node": "Decor/MegavoxTallGrass",
+			"fallback_node": "Decor/TallGrass0",
+			"max_footprint": 0.80,
+			"max_height": 0.65,
+			"context": "east grove tall grass"
+		},
+		{
+			"grid_pos": Vector2i(9, 5),
+			"primary_prop": "flower_patch",
+			"primary_node": "Decor/MegavoxFlowerPatch",
+			"fallback_node": "Decor/FlowerSoil",
+			"max_footprint": 0.95,
+			"max_height": 0.55,
+			"context": "east grove flowers"
+		},
+		{
+			"grid_pos": Vector2i(9, 6),
+			"primary_prop": "rock_alt",
+			"primary_node": "Decor/MegavoxRockAlt",
+			"secondary_prop": "rock",
+			"secondary_node": "Decor/MegavoxRock",
+			"fallback_node": "Decor/RockBase",
+			"max_footprint": 0.75,
+			"max_height": 0.60,
+			"context": "east grove rock"
+		},
+		{
+			"grid_pos": Vector2i(10, 5),
+			"primary_prop": "tree",
+			"primary_node": "Decor/MegavoxTree",
+			"fallback_node": "Decor/TreeTrunk",
+			"max_footprint": 1.35,
+			"max_height": 1.55,
+			"context": "east grove tree"
+		}
+	]
+	for spec in east_grove_specs:
+		_expect_optional_prop_tile(grid_manager, spec)
+		if _failed():
+			return
+
 	var grass_tile = grid_manager.get_tile(Vector2i(1, 0))
 	if grass_tile == null:
 		_fail("Could not inspect tall-grass test tile.")
