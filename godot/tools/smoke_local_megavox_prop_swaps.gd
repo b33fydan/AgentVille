@@ -1,6 +1,40 @@
 extends SceneTree
 
 const LocalMegavoxAssets := preload("res://scripts/world/LocalMegavoxAssets.gd")
+const EXPECTED_STARTER_DECOR_CLUSTERS := {
+	"homestead_edge": 4,
+	"south_meadow_edge": 5,
+	"east_grove_edge": 4
+}
+const RESERVED_STARTER_CLUSTER_TILES := {
+	"work_order_smoke": [
+		Vector2i(0, 0),
+		Vector2i(0, 1),
+		Vector2i(0, 3),
+		Vector2i(1, 0),
+		Vector2i(1, 5),
+		Vector2i(1, 6),
+		Vector2i(4, 5),
+		Vector2i(6, 2)
+	],
+	"ui_field_targeting_smoke": [
+		Vector2i(0, 0),
+		Vector2i(4, 5),
+		Vector2i(4, 7),
+		Vector2i(6, 5),
+		Vector2i(6, 7),
+		Vector2i(10, 8)
+	],
+	"skill_forge_scan_targets": [
+		Vector2i(0, 0),
+		Vector2i(0, 1),
+		Vector2i(1, 1),
+		Vector2i(1, 5),
+		Vector2i(1, 6),
+		Vector2i(4, 5),
+		Vector2i(6, 2)
+	]
+}
 
 var _has_failed := false
 
@@ -16,6 +50,10 @@ func _run() -> void:
 	await process_frame
 
 	var grid_manager = scene.get_node("FarmWorld/GridManager")
+	_expect_starter_decor_catalog_safe(grid_manager)
+	if _failed():
+		return
+
 	var fence_tile = grid_manager.get_tile(Vector2i(8, 1))
 	if fence_tile == null:
 		_fail("Could not inspect starter fence tile.")
@@ -294,6 +332,81 @@ func _run() -> void:
 func _expect_child(root: Node, node_path: String, context: String) -> void:
 	if root.get_node_or_null(node_path) == null:
 		_fail("Missing %s: %s." % [node_path, context])
+
+
+func _expect_starter_decor_catalog_safe(grid_manager) -> void:
+	if not grid_manager.has_method("starter_decor_clusters"):
+		_fail("GridManager should expose starter decor clusters for map-art validation.")
+		return
+
+	var clusters: Dictionary = grid_manager.call("starter_decor_clusters")
+	for cluster_id in EXPECTED_STARTER_DECOR_CLUSTERS.keys():
+		if not clusters.has(cluster_id):
+			_fail("Starter decor catalog is missing %s." % cluster_id)
+			return
+		var entries = clusters.get(cluster_id, [])
+		if typeof(entries) != TYPE_ARRAY:
+			_fail("Starter decor catalog %s should be an array of entries." % cluster_id)
+			return
+		if entries.size() != int(EXPECTED_STARTER_DECOR_CLUSTERS[cluster_id]):
+			_fail("Starter decor catalog %s should have %s entries, saw %s." % [
+				cluster_id,
+				int(EXPECTED_STARTER_DECOR_CLUSTERS[cluster_id]),
+				entries.size()
+			])
+			return
+
+	var reserved_by_tile := _reserved_starter_cluster_tiles()
+	for cluster_id in clusters.keys():
+		var entries = clusters.get(cluster_id, [])
+		if typeof(entries) != TYPE_ARRAY:
+			_fail("Starter decor catalog %s should be an array of entries." % cluster_id)
+			return
+		for entry in entries:
+			if typeof(entry) != TYPE_DICTIONARY:
+				_fail("Starter decor catalog %s contains a non-dictionary entry." % cluster_id)
+				return
+			var grid_pos = entry.get("grid_pos", Vector2i(-1, -1))
+			if typeof(grid_pos) != TYPE_VECTOR2I:
+				_fail("Starter decor catalog %s contains an entry without a Vector2i grid_pos." % cluster_id)
+				return
+			var decor_id := str(entry.get("decor_id", ""))
+			if not ["flower_patch", "rock", "tall_grass", "tree"].has(decor_id):
+				_fail("Starter decor catalog %s uses unsupported decor %s." % [cluster_id, decor_id])
+				return
+			if reserved_by_tile.has(grid_pos):
+				_fail("Starter decor catalog %s uses reserved target tile %s from %s." % [
+					cluster_id,
+					_format_tile(grid_pos),
+					str(reserved_by_tile[grid_pos])
+				])
+				return
+			var tile = grid_manager.get_tile(grid_pos)
+			if tile == null:
+				_fail("Starter decor catalog %s points outside the grid at %s." % [cluster_id, _format_tile(grid_pos)])
+				return
+			if str(tile.decor_id) != decor_id:
+				_fail("Starter decor catalog %s expected %s at %s, saw %s." % [
+					cluster_id,
+					decor_id,
+					_format_tile(grid_pos),
+					str(tile.decor_id)
+				])
+				return
+
+
+func _reserved_starter_cluster_tiles() -> Dictionary:
+	var reserved := {}
+	for source_id in RESERVED_STARTER_CLUSTER_TILES.keys():
+		for grid_pos in RESERVED_STARTER_CLUSTER_TILES[source_id]:
+			if not reserved.has(grid_pos):
+				reserved[grid_pos] = []
+			reserved[grid_pos].append(str(source_id))
+	return reserved
+
+
+func _format_tile(grid_pos: Vector2i) -> String:
+	return "%s,%s" % [grid_pos.x, grid_pos.y]
 
 
 func _expect_optional_prop_tile(grid_manager, spec: Dictionary) -> void:

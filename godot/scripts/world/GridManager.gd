@@ -5,6 +5,32 @@ signal day_advanced(day: int)
 
 const TileScene := preload("res://scenes/world/Tile.tscn")
 const VoxelFactory := preload("res://scripts/core/Voxel.gd")
+const STARTER_DECOR_CLUSTER_ORDER := [
+	"homestead_edge",
+	"south_meadow_edge",
+	"east_grove_edge"
+]
+const STARTER_DECOR_CLUSTERS := {
+	"homestead_edge": [
+		{"grid_pos": Vector2i(6, 0), "decor_id": "tall_grass"},
+		{"grid_pos": Vector2i(8, 0), "decor_id": "tree"},
+		{"grid_pos": Vector2i(9, 0), "decor_id": "flower_patch"},
+		{"grid_pos": Vector2i(10, 3), "decor_id": "rock"}
+	],
+	"south_meadow_edge": [
+		{"grid_pos": Vector2i(0, 8), "decor_id": "flower_patch"},
+		{"grid_pos": Vector2i(2, 8), "decor_id": "tall_grass"},
+		{"grid_pos": Vector2i(3, 8), "decor_id": "rock"},
+		{"grid_pos": Vector2i(9, 8), "decor_id": "tall_grass"},
+		{"grid_pos": Vector2i(10, 7), "decor_id": "flower_patch"}
+	],
+	"east_grove_edge": [
+		{"grid_pos": Vector2i(8, 7), "decor_id": "tall_grass"},
+		{"grid_pos": Vector2i(9, 5), "decor_id": "flower_patch"},
+		{"grid_pos": Vector2i(9, 6), "decor_id": "rock"},
+		{"grid_pos": Vector2i(10, 5), "decor_id": "tree"}
+	]
+}
 
 @export var width: int = 11
 @export var height: int = 9
@@ -60,6 +86,10 @@ func get_tile_from_world(world_position: Vector3):
 	return get_tile(Vector2i(gx, gz))
 
 
+func starter_decor_clusters() -> Dictionary:
+	return STARTER_DECOR_CLUSTERS.duplicate(true)
+
+
 func set_grid_visible(is_visible: bool) -> void:
 	show_grid = is_visible
 	for tile in tiles.values():
@@ -90,9 +120,7 @@ func _build_initial_farm() -> void:
 	get_tile(Vector2i(7, 2)).place_item("flower_patch")
 	get_tile(Vector2i(4, 1)).place_item("tree")
 	get_tile(Vector2i(0, 6)).place_item("rock")
-	_build_starter_homestead_edge()
-	_build_starter_south_meadow_edge()
-	_build_starter_east_grove_edge()
+	_build_starter_decor_clusters()
 
 	var corn_tiles := [
 		Vector2i(1, 5), Vector2i(2, 5), Vector2i(3, 5),
@@ -125,39 +153,17 @@ func _build_initial_farm() -> void:
 		get_tile(grid_pos).place_item("tall_grass")
 
 
-func _build_starter_homestead_edge() -> void:
-	_place_decor_layout({
-		Vector2i(6, 0): "tall_grass",
-		Vector2i(8, 0): "tree",
-		Vector2i(9, 0): "flower_patch",
-		Vector2i(10, 3): "rock"
-	})
+func _build_starter_decor_clusters() -> void:
+	for cluster_id in STARTER_DECOR_CLUSTER_ORDER:
+		_place_decor_entries(STARTER_DECOR_CLUSTERS.get(cluster_id, []))
 
 
-func _build_starter_south_meadow_edge() -> void:
-	_place_decor_layout({
-		Vector2i(0, 8): "flower_patch",
-		Vector2i(2, 8): "tall_grass",
-		Vector2i(3, 8): "rock",
-		Vector2i(9, 8): "tall_grass",
-		Vector2i(10, 7): "flower_patch"
-	})
-
-
-func _build_starter_east_grove_edge() -> void:
-	_place_decor_layout({
-		Vector2i(8, 7): "tall_grass",
-		Vector2i(9, 5): "flower_patch",
-		Vector2i(9, 6): "rock",
-		Vector2i(10, 5): "tree"
-	})
-
-
-func _place_decor_layout(decor_layout: Dictionary) -> void:
-	for grid_pos in decor_layout.keys():
+func _place_decor_entries(decor_entries: Array) -> void:
+	for entry in decor_entries:
+		var grid_pos: Vector2i = entry.get("grid_pos", Vector2i(-1, -1))
 		var tile = get_tile(grid_pos)
 		if tile != null:
-			tile.place_item(str(decor_layout[grid_pos]))
+			tile.place_item(str(entry.get("decor_id", "")))
 
 
 func _build_shadow_card() -> void:

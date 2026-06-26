@@ -12,7 +12,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Hovering a selected palette item over the farm shows a hologram footprint before placement.
 - The Tools tab includes Pickaxe for breaking rocks/structures/roads and Sickle for cutting brush or harvesting ready crops.
 - Use the Crops and Nature tabs to add corn, wheat, tall grass, trees, and flowers.
-- If local licensed MEGAVOXPACK files exist in `assets/megavoxpack_local_preview/`, rock, alternate-rock, flower-patch, tall-grass, alternate-tall-grass, tree, and alternate-tree props use those GLBs; otherwise they fall back to the built-in cube art. The starter map now includes small homestead-edge, south-meadow, and east-grove art-direction clusters using those same one-tile-safe props. Starter fences stay procedural because the available local fence asset is a multi-tile rail piece. Keep the raw pack files out of git.
+- If local licensed MEGAVOXPACK files exist in `assets/megavoxpack_local_preview/`, rock, alternate-rock, flower-patch, tall-grass, alternate-tall-grass, tree, and alternate-tree props use those GLBs; otherwise they fall back to the built-in cube art. The starter map now includes named homestead-edge, south-meadow, and east-grove art-direction clusters using those same one-tile-safe props. Starter fences stay procedural because the available local fence asset is a multi-tile rail piece. Keep the raw pack files out of git.
 - The starter farm includes alternate grass along the left edge, one alternate tree near the fields, and one alternate rock so the optional local art direction is visible on first load without oversized imported props.
 - Click farm tiles to apply the active tool.
 - Press `End Day` to grow planted crops by one stage.
@@ -231,7 +231,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_parley_favor_verdicts.gd` exercises NPC end-day verdicts that name a spent Parley favor.
 - `tools/smoke_parley_memory_verdicts.gd` exercises NPC end-day verdicts that name remembered-help Parley context without calling it a favor.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
-- `tools/smoke_local_megavox_prop_swaps.gd` exercises procedural starter-fence fallback plus optional MEGAVOX rock/alternate-rock/flower-patch/tall-grass/alternate-tall-grass/tree/alternate-tree swaps and the starter homestead-edge/south-meadow/east-grove clusters, including tile-scale bounds checks for local imports and procedural fallbacks when files are absent.
+- `tools/smoke_local_megavox_prop_swaps.gd` exercises procedural starter-fence fallback plus optional MEGAVOX rock/alternate-rock/flower-patch/tall-grass/alternate-tall-grass/tree/alternate-tree swaps and the starter homestead-edge/south-meadow/east-grove catalog, including tile-scale bounds checks for local imports, procedural fallbacks when files are absent, and reserved target-tile guards for work-order/Forge smokes.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, harvest orders, tend orders, and plant orders.
