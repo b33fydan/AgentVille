@@ -7,6 +7,7 @@ const TileScene := preload("res://scenes/world/Tile.tscn")
 const VoxelFactory := preload("res://scripts/core/Voxel.gd")
 const STARTER_DECOR_CLUSTER_ORDER := [
 	"homestead_edge",
+	"north_field_edge",
 	"south_meadow_edge",
 	"east_grove_edge"
 ]
@@ -16,6 +17,11 @@ const STARTER_DECOR_CLUSTERS := {
 		{"grid_pos": Vector2i(8, 0), "decor_id": "tree"},
 		{"grid_pos": Vector2i(9, 0), "decor_id": "flower_patch"},
 		{"grid_pos": Vector2i(10, 3), "decor_id": "rock"}
+	],
+	"north_field_edge": [
+		{"grid_pos": Vector2i(2, 0), "decor_id": "tall_grass"},
+		{"grid_pos": Vector2i(3, 0), "decor_id": "flower_patch"},
+		{"grid_pos": Vector2i(4, 0), "decor_id": "rock"}
 	],
 	"south_meadow_edge": [
 		{"grid_pos": Vector2i(0, 8), "decor_id": "flower_patch"},
