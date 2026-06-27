@@ -53,6 +53,9 @@ func _run() -> void:
 	_expect_starter_decor_catalog_safe(grid_manager)
 	if _failed():
 		return
+	_expect_starter_decor_catalog_props(grid_manager)
+	if _failed():
+		return
 
 	var fence_tile = grid_manager.get_tile(Vector2i(8, 1))
 	if fence_tile == null:
@@ -126,157 +129,6 @@ func _run() -> void:
 		_expect_child(starter_grass_tile, "Decor/TallGrass0", "starter edge tall grass should keep procedural fallback")
 	if _failed():
 		return
-
-	var homestead_tree_tile = grid_manager.get_tile(Vector2i(8, 0))
-	if homestead_tree_tile == null:
-		_fail("Could not inspect homestead-edge tree tile.")
-		return
-
-	if LocalMegavoxAssets.has_prop("tree"):
-		_expect_child(homestead_tree_tile, "Decor/MegavoxTree", "homestead-edge tree should use local MEGAVOX art")
-		_expect_local_prop_bounds(homestead_tree_tile, "Decor/MegavoxTree", 1.35, 1.55, "homestead-edge tree should stay tile-scale")
-	else:
-		_expect_child(homestead_tree_tile, "Decor/TreeTrunk", "homestead-edge tree should keep procedural fallback")
-	if _failed():
-		return
-
-	var homestead_flower_tile = grid_manager.get_tile(Vector2i(9, 0))
-	if homestead_flower_tile == null:
-		_fail("Could not inspect homestead-edge flower tile.")
-		return
-
-	if LocalMegavoxAssets.has_prop("flower_patch"):
-		_expect_child(homestead_flower_tile, "Decor/MegavoxFlowerPatch", "homestead-edge flowers should use local MEGAVOX art")
-		_expect_local_prop_bounds(homestead_flower_tile, "Decor/MegavoxFlowerPatch", 0.95, 0.55, "homestead-edge flowers should stay tile-scale")
-	else:
-		_expect_child(homestead_flower_tile, "Decor/FlowerSoil", "homestead-edge flowers should keep procedural fallback")
-	if _failed():
-		return
-
-	var homestead_grass_tile = grid_manager.get_tile(Vector2i(6, 0))
-	if homestead_grass_tile == null:
-		_fail("Could not inspect homestead-edge grass tile.")
-		return
-
-	if LocalMegavoxAssets.has_prop("tall_grass"):
-		_expect_child(homestead_grass_tile, "Decor/MegavoxTallGrass", "homestead-edge tall grass should use local MEGAVOX art")
-		_expect_local_prop_bounds(homestead_grass_tile, "Decor/MegavoxTallGrass", 0.80, 0.65, "homestead-edge tall grass should stay tile-scale")
-	else:
-		_expect_child(homestead_grass_tile, "Decor/TallGrass0", "homestead-edge tall grass should keep procedural fallback")
-	if _failed():
-		return
-
-	var homestead_rock_tile = grid_manager.get_tile(Vector2i(10, 3))
-	if homestead_rock_tile == null:
-		_fail("Could not inspect homestead-edge rock tile.")
-		return
-
-	if LocalMegavoxAssets.has_prop("rock"):
-		_expect_child(homestead_rock_tile, "Decor/MegavoxRock", "homestead-edge rock should use local MEGAVOX art")
-		_expect_local_prop_bounds(homestead_rock_tile, "Decor/MegavoxRock", 0.75, 0.60, "homestead-edge rock should stay tile-scale")
-	else:
-		_expect_child(homestead_rock_tile, "Decor/RockBase", "homestead-edge rock should keep procedural fallback")
-	if _failed():
-		return
-
-	var south_meadow_specs := [
-		{
-			"grid_pos": Vector2i(0, 8),
-			"primary_prop": "flower_patch",
-			"primary_node": "Decor/MegavoxFlowerPatch",
-			"fallback_node": "Decor/FlowerSoil",
-			"max_footprint": 0.95,
-			"max_height": 0.55,
-			"context": "south meadow flowers"
-		},
-		{
-			"grid_pos": Vector2i(2, 8),
-			"primary_prop": "tall_grass",
-			"primary_node": "Decor/MegavoxTallGrass",
-			"fallback_node": "Decor/TallGrass0",
-			"max_footprint": 0.80,
-			"max_height": 0.65,
-			"context": "south meadow tall grass"
-		},
-		{
-			"grid_pos": Vector2i(3, 8),
-			"primary_prop": "rock_alt",
-			"primary_node": "Decor/MegavoxRockAlt",
-			"secondary_prop": "rock",
-			"secondary_node": "Decor/MegavoxRock",
-			"fallback_node": "Decor/RockBase",
-			"max_footprint": 0.75,
-			"max_height": 0.60,
-			"context": "south meadow rock"
-		},
-		{
-			"grid_pos": Vector2i(9, 8),
-			"primary_prop": "tall_grass",
-			"primary_node": "Decor/MegavoxTallGrass",
-			"fallback_node": "Decor/TallGrass0",
-			"max_footprint": 0.80,
-			"max_height": 0.65,
-			"context": "east meadow tall grass"
-		},
-		{
-			"grid_pos": Vector2i(10, 7),
-			"primary_prop": "flower_patch",
-			"primary_node": "Decor/MegavoxFlowerPatch",
-			"fallback_node": "Decor/FlowerSoil",
-			"max_footprint": 0.95,
-			"max_height": 0.55,
-			"context": "east meadow flowers"
-		}
-	]
-	for spec in south_meadow_specs:
-		_expect_optional_prop_tile(grid_manager, spec)
-		if _failed():
-			return
-
-	var east_grove_specs := [
-		{
-			"grid_pos": Vector2i(8, 7),
-			"primary_prop": "tall_grass",
-			"primary_node": "Decor/MegavoxTallGrass",
-			"fallback_node": "Decor/TallGrass0",
-			"max_footprint": 0.80,
-			"max_height": 0.65,
-			"context": "east grove tall grass"
-		},
-		{
-			"grid_pos": Vector2i(9, 5),
-			"primary_prop": "flower_patch",
-			"primary_node": "Decor/MegavoxFlowerPatch",
-			"fallback_node": "Decor/FlowerSoil",
-			"max_footprint": 0.95,
-			"max_height": 0.55,
-			"context": "east grove flowers"
-		},
-		{
-			"grid_pos": Vector2i(9, 6),
-			"primary_prop": "rock_alt",
-			"primary_node": "Decor/MegavoxRockAlt",
-			"secondary_prop": "rock",
-			"secondary_node": "Decor/MegavoxRock",
-			"fallback_node": "Decor/RockBase",
-			"max_footprint": 0.75,
-			"max_height": 0.60,
-			"context": "east grove rock"
-		},
-		{
-			"grid_pos": Vector2i(10, 5),
-			"primary_prop": "tree",
-			"primary_node": "Decor/MegavoxTree",
-			"fallback_node": "Decor/TreeTrunk",
-			"max_footprint": 1.35,
-			"max_height": 1.55,
-			"context": "east grove tree"
-		}
-	]
-	for spec in east_grove_specs:
-		_expect_optional_prop_tile(grid_manager, spec)
-		if _failed():
-			return
 
 	var grass_tile = grid_manager.get_tile(Vector2i(1, 0))
 	if grass_tile == null:
@@ -407,6 +259,82 @@ func _reserved_starter_cluster_tiles() -> Dictionary:
 
 func _format_tile(grid_pos: Vector2i) -> String:
 	return "%s,%s" % [grid_pos.x, grid_pos.y]
+
+
+func _expect_starter_decor_catalog_props(grid_manager) -> void:
+	var clusters: Dictionary = grid_manager.call("starter_decor_clusters")
+	for cluster_id in clusters.keys():
+		var entries: Array = clusters.get(cluster_id, [])
+		for entry in entries:
+			var grid_pos: Vector2i = entry.get("grid_pos", Vector2i(-1, -1))
+			var decor_id := str(entry.get("decor_id", ""))
+			var spec := _starter_decor_prop_spec(grid_pos, decor_id, str(cluster_id))
+			if spec.is_empty():
+				_fail("Starter decor catalog %s has no prop smoke spec for %s at %s." % [
+					str(cluster_id),
+					decor_id,
+					_format_tile(grid_pos)
+				])
+				return
+			_expect_optional_prop_tile(grid_manager, spec)
+			if _failed():
+				return
+
+
+func _starter_decor_prop_spec(grid_pos: Vector2i, decor_id: String, cluster_id: String) -> Dictionary:
+	var context := "%s %s at %s" % [
+		cluster_id.replace("_", " "),
+		decor_id.replace("_", " "),
+		_format_tile(grid_pos)
+	]
+	match decor_id:
+		"flower_patch":
+			return {
+				"grid_pos": grid_pos,
+				"primary_prop": "flower_patch",
+				"primary_node": "Decor/MegavoxFlowerPatch",
+				"fallback_node": "Decor/FlowerSoil",
+				"max_footprint": 0.95,
+				"max_height": 0.55,
+				"context": context
+			}
+		"rock":
+			return {
+				"grid_pos": grid_pos,
+				"primary_prop": "rock_alt" if grid_pos.y >= 5 else "rock",
+				"primary_node": "Decor/MegavoxRockAlt" if grid_pos.y >= 5 else "Decor/MegavoxRock",
+				"secondary_prop": "rock" if grid_pos.y >= 5 else "",
+				"secondary_node": "Decor/MegavoxRock" if grid_pos.y >= 5 else "",
+				"fallback_node": "Decor/RockBase",
+				"max_footprint": 0.75,
+				"max_height": 0.60,
+				"context": context
+			}
+		"tall_grass":
+			return {
+				"grid_pos": grid_pos,
+				"primary_prop": "tall_grass_alt" if grid_pos.x == 0 else "tall_grass",
+				"primary_node": "Decor/MegavoxTallGrassAlt" if grid_pos.x == 0 else "Decor/MegavoxTallGrass",
+				"secondary_prop": "tall_grass" if grid_pos.x == 0 else "",
+				"secondary_node": "Decor/MegavoxTallGrass" if grid_pos.x == 0 else "",
+				"fallback_node": "Decor/TallGrass0",
+				"max_footprint": 0.80,
+				"max_height": 0.65,
+				"context": context
+			}
+		"tree":
+			return {
+				"grid_pos": grid_pos,
+				"primary_prop": "tree_alt" if grid_pos.x <= 4 else "tree",
+				"primary_node": "Decor/MegavoxTreeAlt" if grid_pos.x <= 4 else "Decor/MegavoxTree",
+				"secondary_prop": "tree" if grid_pos.x <= 4 else "",
+				"secondary_node": "Decor/MegavoxTree" if grid_pos.x <= 4 else "",
+				"fallback_node": "Decor/TreeTrunk",
+				"max_footprint": 1.35,
+				"max_height": 1.55,
+				"context": context
+			}
+	return {}
 
 
 func _expect_optional_prop_tile(grid_manager, spec: Dictionary) -> void:
