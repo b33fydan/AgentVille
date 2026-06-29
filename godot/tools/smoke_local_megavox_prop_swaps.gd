@@ -210,7 +210,11 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 			return
 
 	var reserved_by_tile := _reserved_starter_cluster_tiles()
+	var catalog_tiles := {}
 	for cluster_id in clusters.keys():
+		if not EXPECTED_STARTER_DECOR_CLUSTERS.has(str(cluster_id)):
+			_fail("Starter decor catalog has unexpected cluster %s." % str(cluster_id))
+			return
 		var entries = clusters.get(cluster_id, [])
 		if typeof(entries) != TYPE_ARRAY:
 			_fail("Starter decor catalog %s should be an array of entries." % cluster_id)
@@ -223,6 +227,14 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 			if typeof(grid_pos) != TYPE_VECTOR2I:
 				_fail("Starter decor catalog %s contains an entry without a Vector2i grid_pos." % cluster_id)
 				return
+			if catalog_tiles.has(grid_pos):
+				_fail("Starter decor catalog %s reuses tile %s already used by %s." % [
+					cluster_id,
+					_format_tile(grid_pos),
+					str(catalog_tiles[grid_pos])
+				])
+				return
+			catalog_tiles[grid_pos] = str(cluster_id)
 			var decor_id := str(entry.get("decor_id", ""))
 			if not ["flower_patch", "rock", "tall_grass", "tree"].has(decor_id):
 				_fail("Starter decor catalog %s uses unsupported decor %s." % [cluster_id, decor_id])
