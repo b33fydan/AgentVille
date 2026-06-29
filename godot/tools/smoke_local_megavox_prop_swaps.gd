@@ -4,6 +4,7 @@ const LocalMegavoxAssets := preload("res://scripts/world/LocalMegavoxAssets.gd")
 const EXPECTED_STARTER_DECOR_CLUSTERS := {
 	"homestead_edge": 5,
 	"north_field_edge": 3,
+	"west_meadow_edge": 3,
 	"south_meadow_edge": 6,
 	"east_grove_edge": 5
 }
