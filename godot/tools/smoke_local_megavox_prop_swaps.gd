@@ -211,6 +211,7 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 			return
 
 	var reserved_by_tile := _reserved_starter_cluster_tiles()
+	var protected_by_tile := _protected_starter_cluster_tiles()
 	var catalog_tiles := {}
 	for cluster_id in clusters.keys():
 		if not EXPECTED_STARTER_DECOR_CLUSTERS.has(str(cluster_id)):
@@ -247,6 +248,13 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 					str(reserved_by_tile[grid_pos])
 				])
 				return
+			if protected_by_tile.has(grid_pos):
+				_fail("Starter decor catalog %s uses protected starter tile %s from %s." % [
+					cluster_id,
+					_format_tile(grid_pos),
+					str(protected_by_tile[grid_pos])
+				])
+				return
 			var tile = grid_manager.get_tile(grid_pos)
 			if tile == null:
 				_fail("Starter decor catalog %s points outside the grid at %s." % [cluster_id, _format_tile(grid_pos)])
@@ -265,10 +273,45 @@ func _reserved_starter_cluster_tiles() -> Dictionary:
 	var reserved := {}
 	for source_id in RESERVED_STARTER_CLUSTER_TILES.keys():
 		for grid_pos in RESERVED_STARTER_CLUSTER_TILES[source_id]:
-			if not reserved.has(grid_pos):
-				reserved[grid_pos] = []
-			reserved[grid_pos].append(str(source_id))
+			_add_starter_cluster_tile_source(reserved, grid_pos, str(source_id))
 	return reserved
+
+
+func _protected_starter_cluster_tiles() -> Dictionary:
+	var protected := {}
+	for x in range(0, 11):
+		_add_starter_cluster_tile_source(protected, Vector2i(x, 4), "starter_paths")
+	for z in range(1, 8):
+		_add_starter_cluster_tile_source(protected, Vector2i(5, z), "starter_paths")
+	for grid_pos in [Vector2i(6, 3), Vector2i(7, 3), Vector2i(8, 3), Vector2i(9, 3)]:
+		_add_starter_cluster_tile_source(protected, grid_pos, "starter_paths")
+
+	for grid_pos in [Vector2i(7, 1), Vector2i(9, 1), Vector2i(4, 3)]:
+		_add_starter_cluster_tile_source(protected, grid_pos, "starter_structures")
+
+	for grid_pos in [
+		Vector2i(1, 5), Vector2i(2, 5), Vector2i(3, 5),
+		Vector2i(1, 6), Vector2i(2, 6), Vector2i(3, 6),
+		Vector2i(7, 5), Vector2i(8, 5), Vector2i(8, 6),
+		Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1),
+		Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2)
+	]:
+		_add_starter_cluster_tile_source(protected, grid_pos, "starter_crop_fields")
+
+	for grid_pos in [
+		Vector2i(8, 2), Vector2i(8, 1), Vector2i(6, 1),
+		Vector2i(7, 2), Vector2i(4, 1), Vector2i(0, 6),
+		Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 7),
+		Vector2i(2, 7), Vector2i(9, 7), Vector2i(10, 2), Vector2i(10, 6)
+	]:
+		_add_starter_cluster_tile_source(protected, grid_pos, "starter_anchor_decor")
+	return protected
+
+
+func _add_starter_cluster_tile_source(tile_sources: Dictionary, grid_pos: Vector2i, source_id: String) -> void:
+	if not tile_sources.has(grid_pos):
+		tile_sources[grid_pos] = []
+	tile_sources[grid_pos].append(source_id)
 
 
 func _format_tile(grid_pos: Vector2i) -> String:
