@@ -6,7 +6,7 @@ const EXPECTED_STARTER_DECOR_CLUSTERS := {
 	"north_field_edge": 4,
 	"west_meadow_edge": 3,
 	"south_meadow_edge": 6,
-	"east_grove_edge": 5
+	"east_grove_edge": 6
 }
 const RESERVED_STARTER_CLUSTER_TILES := {
 	"work_order_smoke": [
