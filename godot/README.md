@@ -248,7 +248,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/capture_hustle_hands_perk.gd` captures `artifacts/screenshots/agentville-hustle-hands-perk.png`.
 - `tools/capture_adversarial_reaction.gd` captures `artifacts/screenshots/agentville-adversarial-reaction.png`.
 - `tools/capture_adversarial_session.gd` captures `artifacts/screenshots/agentville-adversarial-session.png`.
-- `tools/capture_megavox_starter_map.gd` captures `artifacts/screenshots/agentville-megavox-starter-map.png` with the normal renderer for visual review.
+- `tools/capture_megavox_starter_map.gd` captures `artifacts/screenshots/agentville-megavox-starter-map.png` plus a starter-catalog manifest at `artifacts/screenshots/agentville-megavox-starter-map.json` with the normal renderer for visual review.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
 - `tools/capture_npc_work.gd` captures `artifacts/screenshots/agentville-npc-work.png`.
 - `tools/capture_placement_preview.gd` captures `artifacts/screenshots/agentville-placement-preview.png`.

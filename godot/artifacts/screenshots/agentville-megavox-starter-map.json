@@ -1,0 +1,217 @@
+{
+	"camera": {
+		"centered_on_farm": true,
+		"size": 9.2
+	},
+	"display_server": "macOS",
+	"image_path": "res://artifacts/screenshots/agentville-megavox-starter-map.png",
+	"starter_decor": {
+		"cluster_count": 5,
+		"clusters": [
+			{
+				"cluster_id": "east_grove_edge",
+				"entries": [
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							7,
+							8
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							7,
+							7
+						]
+					},
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							8,
+							7
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							9,
+							5
+						]
+					},
+					{
+						"decor_id": "rock",
+						"grid_pos": [
+							9,
+							6
+						]
+					},
+					{
+						"decor_id": "tree",
+						"grid_pos": [
+							10,
+							5
+						]
+					}
+				],
+				"entry_count": 6
+			},
+			{
+				"cluster_id": "homestead_edge",
+				"entries": [
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							6,
+							0
+						]
+					},
+					{
+						"decor_id": "tree",
+						"grid_pos": [
+							8,
+							0
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							9,
+							0
+						]
+					},
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							10,
+							1
+						]
+					},
+					{
+						"decor_id": "rock",
+						"grid_pos": [
+							10,
+							3
+						]
+					}
+				],
+				"entry_count": 5
+			},
+			{
+				"cluster_id": "north_field_edge",
+				"entries": [
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							2,
+							0
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							3,
+							0
+						]
+					},
+					{
+						"decor_id": "rock",
+						"grid_pos": [
+							4,
+							0
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							5,
+							0
+						]
+					}
+				],
+				"entry_count": 4
+			},
+			{
+				"cluster_id": "south_meadow_edge",
+				"entries": [
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							0,
+							8
+						]
+					},
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							2,
+							8
+						]
+					},
+					{
+						"decor_id": "rock",
+						"grid_pos": [
+							3,
+							8
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							4,
+							8
+						]
+					},
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							9,
+							8
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							10,
+							7
+						]
+					}
+				],
+				"entry_count": 6
+			},
+			{
+				"cluster_id": "west_meadow_edge",
+				"entries": [
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							0,
+							5
+						]
+					},
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							1,
+							7
+						]
+					},
+					{
+						"decor_id": "rock",
+						"grid_pos": [
+							1,
+							8
+						]
+					}
+				],
+				"entry_count": 3
+			}
+		],
+		"entry_count": 24
+	},
+	"ui_hidden": true,
+	"viewport_size": [
+		1600,
+		900
+	]
+}
