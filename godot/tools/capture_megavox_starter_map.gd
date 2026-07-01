@@ -9,6 +9,10 @@ func _initialize() -> void:
 
 
 func _capture() -> void:
+	if DisplayServer.get_name() == "headless":
+		_fail("MEGAVOX starter map capture needs a normal renderer; run without --headless.")
+		return
+
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 
