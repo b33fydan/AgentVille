@@ -7,55 +7,14 @@
 	"image_path": "res://artifacts/screenshots/agentville-megavox-starter-map.png",
 	"starter_decor": {
 		"cluster_count": 5,
+		"cluster_order": [
+			"homestead_edge",
+			"north_field_edge",
+			"west_meadow_edge",
+			"south_meadow_edge",
+			"east_grove_edge"
+		],
 		"clusters": [
-			{
-				"cluster_id": "east_grove_edge",
-				"entries": [
-					{
-						"decor_id": "flower_patch",
-						"grid_pos": [
-							7,
-							8
-						]
-					},
-					{
-						"decor_id": "flower_patch",
-						"grid_pos": [
-							7,
-							7
-						]
-					},
-					{
-						"decor_id": "tall_grass",
-						"grid_pos": [
-							8,
-							7
-						]
-					},
-					{
-						"decor_id": "flower_patch",
-						"grid_pos": [
-							9,
-							5
-						]
-					},
-					{
-						"decor_id": "rock",
-						"grid_pos": [
-							9,
-							6
-						]
-					},
-					{
-						"decor_id": "tree",
-						"grid_pos": [
-							10,
-							5
-						]
-					}
-				],
-				"entry_count": 6
-			},
 			{
 				"cluster_id": "homestead_edge",
 				"entries": [
@@ -132,6 +91,33 @@
 				"entry_count": 4
 			},
 			{
+				"cluster_id": "west_meadow_edge",
+				"entries": [
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							0,
+							5
+						]
+					},
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							1,
+							7
+						]
+					},
+					{
+						"decor_id": "rock",
+						"grid_pos": [
+							1,
+							8
+						]
+					}
+				],
+				"entry_count": 3
+			},
+			{
 				"cluster_id": "south_meadow_edge",
 				"entries": [
 					{
@@ -180,31 +166,52 @@
 				"entry_count": 6
 			},
 			{
-				"cluster_id": "west_meadow_edge",
+				"cluster_id": "east_grove_edge",
 				"entries": [
 					{
 						"decor_id": "flower_patch",
 						"grid_pos": [
-							0,
-							5
+							7,
+							8
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							7,
+							7
 						]
 					},
 					{
 						"decor_id": "tall_grass",
 						"grid_pos": [
-							1,
+							8,
 							7
+						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							9,
+							5
 						]
 					},
 					{
 						"decor_id": "rock",
 						"grid_pos": [
-							1,
-							8
+							9,
+							6
+						]
+					},
+					{
+						"decor_id": "tree",
+						"grid_pos": [
+							10,
+							5
 						]
 					}
 				],
-				"entry_count": 3
+				"entry_count": 6
 			}
 		],
 		"entry_count": 24

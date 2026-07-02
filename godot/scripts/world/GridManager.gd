@@ -107,6 +107,10 @@ func starter_decor_clusters() -> Dictionary:
 	return STARTER_DECOR_CLUSTERS.duplicate(true)
 
 
+func starter_decor_cluster_order() -> Array:
+	return STARTER_DECOR_CLUSTER_ORDER.duplicate()
+
+
 func set_grid_visible(is_visible: bool) -> void:
 	show_grid = is_visible
 	for tile in tiles.values():

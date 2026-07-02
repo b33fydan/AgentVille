@@ -41,7 +41,7 @@ func _capture() -> void:
 	await create_timer(0.45).timeout
 
 	var grid_manager = scene.get_node_or_null("FarmWorld/GridManager")
-	if grid_manager == null or not grid_manager.has_method("starter_decor_clusters"):
+	if grid_manager == null or not grid_manager.has_method("starter_decor_clusters") or not grid_manager.has_method("starter_decor_cluster_order"):
 		_fail("Could not capture MEGAVOX starter map: starter decor catalog is unavailable.")
 		return
 
@@ -74,7 +74,8 @@ func _save_manifest(grid_manager: Node, ui_hidden: bool, camera_centered: bool, 
 	if file == null:
 		return FileAccess.get_open_error()
 
-	var cluster_summary := _starter_cluster_summary(grid_manager)
+	var cluster_order := _starter_cluster_order(grid_manager)
+	var cluster_summary := _starter_cluster_summary(grid_manager, cluster_order)
 	var manifest := {
 		"image_path": OUTPUT_PATH,
 		"viewport_size": [CAPTURE_SIZE.x, CAPTURE_SIZE.y],
@@ -85,6 +86,7 @@ func _save_manifest(grid_manager: Node, ui_hidden: bool, camera_centered: bool, 
 			"size": camera_size
 		},
 		"starter_decor": {
+			"cluster_order": cluster_order,
 			"cluster_count": cluster_summary.size(),
 			"entry_count": _starter_cluster_entry_count(cluster_summary),
 			"clusters": cluster_summary
@@ -95,13 +97,18 @@ func _save_manifest(grid_manager: Node, ui_hidden: bool, camera_centered: bool, 
 	return OK
 
 
-func _starter_cluster_summary(grid_manager: Node) -> Array:
-	var clusters: Dictionary = grid_manager.call("starter_decor_clusters")
-	var cluster_ids := clusters.keys()
-	cluster_ids.sort()
+func _starter_cluster_order(grid_manager: Node) -> Array:
+	var raw_order: Array = grid_manager.call("starter_decor_cluster_order")
+	var cluster_order := []
+	for cluster_id in raw_order:
+		cluster_order.append(str(cluster_id))
+	return cluster_order
 
+
+func _starter_cluster_summary(grid_manager: Node, cluster_order: Array) -> Array:
+	var clusters: Dictionary = grid_manager.call("starter_decor_clusters")
 	var summary := []
-	for cluster_id in cluster_ids:
+	for cluster_id in cluster_order:
 		var entries = clusters.get(cluster_id, [])
 		var clean_entries := []
 		if typeof(entries) == TYPE_ARRAY:

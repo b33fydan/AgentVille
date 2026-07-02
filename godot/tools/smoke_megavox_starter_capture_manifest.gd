@@ -79,12 +79,14 @@ func _read_manifest() -> Dictionary:
 
 
 func _expect_starter_decor_manifest(manifest: Dictionary, grid_manager) -> void:
-	if not grid_manager.has_method("starter_decor_clusters"):
+	if not grid_manager.has_method("starter_decor_clusters") or not grid_manager.has_method("starter_decor_cluster_order"):
 		_fail("GridManager should expose starter decor clusters for manifest validation.")
 		return
 
 	var starter_decor := _dictionary_field(manifest, "starter_decor", "manifest")
-	var expected_clusters := _starter_cluster_summary(grid_manager)
+	var expected_cluster_order := _starter_cluster_order(grid_manager)
+	var expected_clusters := _starter_cluster_summary(grid_manager, expected_cluster_order)
+	_expect_string_array(starter_decor.get("cluster_order", []), expected_cluster_order, "manifest.starter_decor.cluster_order")
 	_expect_int_field(starter_decor, "cluster_count", expected_clusters.size(), "manifest.starter_decor")
 	_expect_int_field(starter_decor, "entry_count", _starter_cluster_entry_count(expected_clusters), "manifest.starter_decor")
 	if _failed():
@@ -155,13 +157,18 @@ func _expect_entry_matches_catalog(actual, expected: Dictionary, context: String
 	_expect_number_array(actual_entry.get("grid_pos", []), expected.get("grid_pos", []), "%s.grid_pos" % context)
 
 
-func _starter_cluster_summary(grid_manager) -> Array:
-	var clusters: Dictionary = grid_manager.call("starter_decor_clusters")
-	var cluster_ids := clusters.keys()
-	cluster_ids.sort()
+func _starter_cluster_order(grid_manager) -> Array:
+	var raw_order: Array = grid_manager.call("starter_decor_cluster_order")
+	var cluster_order := []
+	for cluster_id in raw_order:
+		cluster_order.append(str(cluster_id))
+	return cluster_order
 
+
+func _starter_cluster_summary(grid_manager, cluster_order: Array) -> Array:
+	var clusters: Dictionary = grid_manager.call("starter_decor_clusters")
 	var summary := []
-	for cluster_id in cluster_ids:
+	for cluster_id in cluster_order:
 		var entries = clusters.get(cluster_id, [])
 		var clean_entries := []
 		if typeof(entries) == TYPE_ARRAY:
@@ -253,6 +260,26 @@ func _expect_number_array(actual, expected: Array, context: String) -> void:
 				index,
 				int(expected[index]),
 				int(actual_value)
+			])
+			return
+
+
+func _expect_string_array(actual, expected: Array, context: String) -> void:
+	if typeof(actual) != TYPE_ARRAY:
+		_fail("%s should be an array." % context)
+		return
+	if actual.size() != expected.size():
+		_fail("%s should have %s values, saw %s." % [context, expected.size(), actual.size()])
+		return
+	for index in range(expected.size()):
+		var actual_value := str(actual[index])
+		var expected_value := str(expected[index])
+		if actual_value != expected_value:
+			_fail("%s[%s] should be %s, saw %s." % [
+				context,
+				index,
+				expected_value,
+				actual_value
 			])
 			return
 

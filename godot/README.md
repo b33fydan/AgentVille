@@ -232,7 +232,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_parley_memory_verdicts.gd` exercises NPC end-day verdicts that name remembered-help Parley context without calling it a favor.
 - `tools/smoke_palette_tools.gd` exercises rock placement, pickaxe breaking, and sickle cutting.
 - `tools/smoke_local_megavox_prop_swaps.gd` exercises procedural starter-fence fallback plus optional MEGAVOX rock/alternate-rock/flower-patch/tall-grass/alternate-tall-grass/tree/alternate-tree swaps and the starter homestead-edge/north-field/west-meadow/south-meadow/east-grove catalog, including catalog-driven tile-scale bounds checks for local imports, procedural fallbacks when files are absent, reserved target-tile guards for work-order/Forge smokes, and protected starter readability tiles for paths, crops, structures, and anchor decor.
-- `tools/smoke_megavox_starter_capture_manifest.gd` exercises the committed MEGAVOX starter-map review manifest staying in sync with the live starter decor catalog and capture metadata.
+- `tools/smoke_megavox_starter_capture_manifest.gd` exercises the committed MEGAVOX starter-map review manifest staying in sync with the live starter decor catalog, authored cluster order, and capture metadata.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, harvest orders, tend orders, and plant orders.
