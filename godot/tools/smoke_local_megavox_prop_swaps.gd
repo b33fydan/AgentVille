@@ -5,6 +5,7 @@ const EXPECTED_STARTER_DECOR_CLUSTER_ORDER := [
 	"homestead_edge",
 	"north_field_edge",
 	"north_homestead_gap",
+	"west_field_gap",
 	"west_meadow_edge",
 	"south_meadow_edge",
 	"east_grove_edge"
@@ -13,6 +14,7 @@ const EXPECTED_STARTER_DECOR_CLUSTERS := {
 	"homestead_edge": 5,
 	"north_field_edge": 4,
 	"north_homestead_gap": 1,
+	"west_field_gap": 1,
 	"west_meadow_edge": 3,
 	"south_meadow_edge": 6,
 	"east_grove_edge": 6
