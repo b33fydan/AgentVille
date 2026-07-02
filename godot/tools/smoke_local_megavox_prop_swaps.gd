@@ -1,6 +1,13 @@
 extends SceneTree
 
 const LocalMegavoxAssets := preload("res://scripts/world/LocalMegavoxAssets.gd")
+const EXPECTED_STARTER_DECOR_CLUSTER_ORDER := [
+	"homestead_edge",
+	"north_field_edge",
+	"west_meadow_edge",
+	"south_meadow_edge",
+	"east_grove_edge"
+]
 const EXPECTED_STARTER_DECOR_CLUSTERS := {
 	"homestead_edge": 5,
 	"north_field_edge": 4,
@@ -192,8 +199,15 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 	if not grid_manager.has_method("starter_decor_clusters"):
 		_fail("GridManager should expose starter decor clusters for map-art validation.")
 		return
+	if not grid_manager.has_method("starter_decor_cluster_order"):
+		_fail("GridManager should expose starter decor cluster order for map-art validation.")
+		return
 
 	var clusters: Dictionary = grid_manager.call("starter_decor_clusters")
+	_expect_starter_decor_cluster_order(grid_manager, clusters)
+	if _failed():
+		return
+
 	for cluster_id in EXPECTED_STARTER_DECOR_CLUSTERS.keys():
 		if not clusters.has(cluster_id):
 			_fail("Starter decor catalog is missing %s." % cluster_id)
@@ -267,6 +281,39 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 					str(tile.decor_id)
 				])
 				return
+
+
+func _expect_starter_decor_cluster_order(grid_manager, clusters: Dictionary) -> void:
+	var raw_order = grid_manager.call("starter_decor_cluster_order")
+	if typeof(raw_order) != TYPE_ARRAY:
+		_fail("Starter decor cluster order should be an array.")
+		return
+	if raw_order.size() != EXPECTED_STARTER_DECOR_CLUSTER_ORDER.size():
+		_fail("Starter decor cluster order should have %s entries, saw %s." % [
+			EXPECTED_STARTER_DECOR_CLUSTER_ORDER.size(),
+			raw_order.size()
+		])
+		return
+
+	var seen := {}
+	for index in range(EXPECTED_STARTER_DECOR_CLUSTER_ORDER.size()):
+		var cluster_id := str(raw_order[index])
+		var expected_id := str(EXPECTED_STARTER_DECOR_CLUSTER_ORDER[index])
+		if cluster_id != expected_id:
+			_fail("Starter decor cluster order at %s should be %s, saw %s." % [index, expected_id, cluster_id])
+			return
+		if seen.has(cluster_id):
+			_fail("Starter decor cluster order repeats %s." % cluster_id)
+			return
+		seen[cluster_id] = true
+		if not clusters.has(cluster_id):
+			_fail("Starter decor cluster order references missing cluster %s." % cluster_id)
+			return
+
+	for cluster_id in clusters.keys():
+		if not seen.has(str(cluster_id)):
+			_fail("Starter decor cluster %s is missing from the authored order." % str(cluster_id))
+			return
 
 
 func _reserved_starter_cluster_tiles() -> Dictionary:
