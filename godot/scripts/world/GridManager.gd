@@ -8,6 +8,7 @@ const VoxelFactory := preload("res://scripts/core/Voxel.gd")
 const STARTER_DECOR_CLUSTER_ORDER := [
 	"homestead_edge",
 	"north_field_edge",
+	"north_homestead_gap",
 	"west_meadow_edge",
 	"south_meadow_edge",
 	"east_grove_edge"
@@ -25,6 +26,9 @@ const STARTER_DECOR_CLUSTERS := {
 		{"grid_pos": Vector2i(3, 0), "decor_id": "flower_patch"},
 		{"grid_pos": Vector2i(4, 0), "decor_id": "rock"},
 		{"grid_pos": Vector2i(5, 0), "decor_id": "flower_patch"}
+	],
+	"north_homestead_gap": [
+		{"grid_pos": Vector2i(7, 0), "decor_id": "flower_patch"}
 	],
 	"west_meadow_edge": [
 		{"grid_pos": Vector2i(0, 5), "decor_id": "flower_patch"},
