@@ -6,7 +6,7 @@
 	"display_server": "macOS",
 	"image_path": "res://artifacts/screenshots/agentville-megavox-starter-map.png",
 	"starter_decor": {
-		"cluster_count": 10,
+		"cluster_count": 11,
 		"cluster_order": [
 			"homestead_edge",
 			"silo_garden_gap",
@@ -15,6 +15,7 @@
 			"well_garden_gap",
 			"west_field_gap",
 			"west_meadow_edge",
+			"lower_field_gap",
 			"south_meadow_edge",
 			"south_grove_gap",
 			"east_grove_edge"
@@ -175,6 +176,19 @@
 				"entry_count": 3
 			},
 			{
+				"cluster_id": "lower_field_gap",
+				"entries": [
+					{
+						"decor_id": "tall_grass",
+						"grid_pos": [
+							4,
+							6
+						]
+					}
+				],
+				"entry_count": 1
+			},
+			{
 				"cluster_id": "south_meadow_edge",
 				"entries": [
 					{
@@ -284,7 +298,7 @@
 				"entry_count": 6
 			}
 		],
-		"entry_count": 29
+		"entry_count": 30
 	},
 	"ui_hidden": true,
 	"viewport_size": [

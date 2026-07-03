@@ -9,6 +9,7 @@ const EXPECTED_STARTER_DECOR_CLUSTER_ORDER := [
 	"well_garden_gap",
 	"west_field_gap",
 	"west_meadow_edge",
+	"lower_field_gap",
 	"south_meadow_edge",
 	"south_grove_gap",
 	"east_grove_edge"
@@ -21,6 +22,7 @@ const EXPECTED_STARTER_DECOR_CLUSTERS := {
 	"well_garden_gap": 1,
 	"west_field_gap": 1,
 	"west_meadow_edge": 3,
+	"lower_field_gap": 1,
 	"south_meadow_edge": 6,
 	"south_grove_gap": 1,
 	"east_grove_edge": 6

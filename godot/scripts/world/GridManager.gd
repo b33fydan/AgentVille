@@ -13,6 +13,7 @@ const STARTER_DECOR_CLUSTER_ORDER := [
 	"well_garden_gap",
 	"west_field_gap",
 	"west_meadow_edge",
+	"lower_field_gap",
 	"south_meadow_edge",
 	"south_grove_gap",
 	"east_grove_edge"
@@ -47,6 +48,9 @@ const STARTER_DECOR_CLUSTERS := {
 		{"grid_pos": Vector2i(0, 5), "decor_id": "flower_patch"},
 		{"grid_pos": Vector2i(1, 7), "decor_id": "tall_grass"},
 		{"grid_pos": Vector2i(1, 8), "decor_id": "rock"}
+	],
+	"lower_field_gap": [
+		{"grid_pos": Vector2i(4, 6), "decor_id": "tall_grass"}
 	],
 	"south_meadow_edge": [
 		{"grid_pos": Vector2i(0, 8), "decor_id": "flower_patch"},
