@@ -56,6 +56,33 @@ const RESERVED_STARTER_CLUSTER_TILES := {
 		Vector2i(6, 2)
 	]
 }
+const STARTER_DECOR_DENSITY_ZONES := {
+	"west_field_readability": {
+		"min": Vector2i(0, 0),
+		"max": Vector2i(4, 3),
+		"max_entries": 5
+	},
+	"central_aisle_readability": {
+		"min": Vector2i(4, 2),
+		"max": Vector2i(6, 6),
+		"max_entries": 2
+	},
+	"north_homestead_readability": {
+		"min": Vector2i(6, 0),
+		"max": Vector2i(10, 3),
+		"max_entries": 7
+	},
+	"lower_field_readability": {
+		"min": Vector2i(0, 5),
+		"max": Vector2i(4, 8),
+		"max_entries": 8
+	},
+	"east_grove_readability": {
+		"min": Vector2i(7, 5),
+		"max": Vector2i(10, 8),
+		"max_entries": 8
+	}
+}
 
 var _has_failed := false
 
@@ -293,6 +320,37 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 					str(tile.decor_id)
 				])
 				return
+	_expect_starter_decor_density(catalog_tiles)
+
+
+func _expect_starter_decor_density(catalog_tiles: Dictionary) -> void:
+	for zone_id in STARTER_DECOR_DENSITY_ZONES.keys():
+		var zone: Dictionary = STARTER_DECOR_DENSITY_ZONES[zone_id]
+		var min_pos: Vector2i = zone.get("min", Vector2i.ZERO)
+		var max_pos: Vector2i = zone.get("max", Vector2i.ZERO)
+		var max_entries := int(zone.get("max_entries", 0))
+		var occupied := []
+		for grid_pos in catalog_tiles.keys():
+			if _is_tile_in_density_zone(grid_pos, min_pos, max_pos):
+				occupied.append("%s from %s" % [_format_tile(grid_pos), str(catalog_tiles[grid_pos])])
+		if occupied.size() > max_entries:
+			occupied.sort()
+			_fail("Starter decor density zone %s allows %s entries, saw %s: %s." % [
+				str(zone_id),
+				max_entries,
+				occupied.size(),
+				", ".join(occupied)
+			])
+			return
+
+
+func _is_tile_in_density_zone(grid_pos: Vector2i, min_pos: Vector2i, max_pos: Vector2i) -> bool:
+	return (
+		grid_pos.x >= min_pos.x
+		and grid_pos.x <= max_pos.x
+		and grid_pos.y >= min_pos.y
+		and grid_pos.y <= max_pos.y
+	)
 
 
 func _expect_starter_decor_cluster_order(grid_manager, clusters: Dictionary) -> void:
