@@ -3,6 +3,7 @@ extends SceneTree
 const LocalMegavoxAssets := preload("res://scripts/world/LocalMegavoxAssets.gd")
 const EXPECTED_STARTER_DECOR_CLUSTER_ORDER := [
 	"homestead_edge",
+	"silo_garden_gap",
 	"north_field_edge",
 	"north_homestead_gap",
 	"west_field_gap",
@@ -13,6 +14,7 @@ const EXPECTED_STARTER_DECOR_CLUSTER_ORDER := [
 ]
 const EXPECTED_STARTER_DECOR_CLUSTERS := {
 	"homestead_edge": 5,
+	"silo_garden_gap": 1,
 	"north_field_edge": 4,
 	"north_homestead_gap": 1,
 	"west_field_gap": 1,
