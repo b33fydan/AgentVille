@@ -271,6 +271,7 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 	var reserved_by_tile := _reserved_starter_cluster_tiles()
 	var protected_by_tile := _protected_starter_cluster_tiles()
 	var catalog_tiles := {}
+	var catalog_entries := []
 	for cluster_id in clusters.keys():
 		if not EXPECTED_STARTER_DECOR_CLUSTERS.has(str(cluster_id)):
 			_fail("Starter decor catalog has unexpected cluster %s." % str(cluster_id))
@@ -325,7 +326,15 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 					str(tile.decor_id)
 				])
 				return
+			catalog_entries.append({
+				"cluster_id": str(cluster_id),
+				"decor_id": decor_id,
+				"grid_pos": grid_pos
+			})
 	_expect_starter_decor_density(catalog_tiles)
+	if _failed():
+		return
+	_expect_starter_decor_variety(catalog_entries)
 
 
 func _expect_starter_decor_density(catalog_tiles: Dictionary) -> void:
@@ -373,6 +382,20 @@ func _is_tile_in_density_zone(grid_pos: Vector2i, min_pos: Vector2i, max_pos: Ve
 		and grid_pos.y >= min_pos.y
 		and grid_pos.y <= max_pos.y
 	)
+
+
+func _expect_starter_decor_variety(catalog_entries: Array) -> void:
+	var west_edge_tall_grass := []
+	for entry in catalog_entries:
+		var grid_pos: Vector2i = entry.get("grid_pos", Vector2i(-1, -1))
+		if str(entry.get("decor_id", "")) == "tall_grass" and grid_pos.x == 0:
+			west_edge_tall_grass.append("%s from %s" % [
+				_format_tile(grid_pos),
+				str(entry.get("cluster_id", ""))
+			])
+	if west_edge_tall_grass.size() == 0:
+		_fail("Starter decor catalog should include west-edge tall grass for meadow art variety.")
+		return
 
 
 func _expect_starter_decor_cluster_order(grid_manager, clusters: Dictionary) -> void:
