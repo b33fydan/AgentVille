@@ -59,8 +59,8 @@ const RESERVED_STARTER_CLUSTER_TILES := {
 const STARTER_DECOR_DENSITY_ZONES := {
 	"west_field_readability": {
 		"min": Vector2i(0, 0),
-		"max": Vector2i(4, 3),
-		"max_entries": 5
+		"max": Vector2i(5, 3),
+		"max_entries": 6
 	},
 	"central_aisle_readability": {
 		"min": Vector2i(4, 2),
@@ -76,6 +76,11 @@ const STARTER_DECOR_DENSITY_ZONES := {
 		"min": Vector2i(0, 5),
 		"max": Vector2i(4, 8),
 		"max_entries": 8
+	},
+	"south_grove_bridge_readability": {
+		"min": Vector2i(5, 7),
+		"max": Vector2i(7, 8),
+		"max_entries": 3
 	},
 	"east_grove_readability": {
 		"min": Vector2i(7, 5),
@@ -324,6 +329,10 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 
 
 func _expect_starter_decor_density(catalog_tiles: Dictionary) -> void:
+	var coverage_by_tile := {}
+	for grid_pos in catalog_tiles.keys():
+		coverage_by_tile[grid_pos] = []
+
 	for zone_id in STARTER_DECOR_DENSITY_ZONES.keys():
 		var zone: Dictionary = STARTER_DECOR_DENSITY_ZONES[zone_id]
 		var min_pos: Vector2i = zone.get("min", Vector2i.ZERO)
@@ -333,6 +342,9 @@ func _expect_starter_decor_density(catalog_tiles: Dictionary) -> void:
 		for grid_pos in catalog_tiles.keys():
 			if _is_tile_in_density_zone(grid_pos, min_pos, max_pos):
 				occupied.append("%s from %s" % [_format_tile(grid_pos), str(catalog_tiles[grid_pos])])
+				var covered_zones: Array = coverage_by_tile[grid_pos]
+				covered_zones.append(str(zone_id))
+				coverage_by_tile[grid_pos] = covered_zones
 		if occupied.size() > max_entries:
 			occupied.sort()
 			_fail("Starter decor density zone %s allows %s entries, saw %s: %s." % [
@@ -342,6 +354,16 @@ func _expect_starter_decor_density(catalog_tiles: Dictionary) -> void:
 				", ".join(occupied)
 			])
 			return
+
+	var uncovered := []
+	for grid_pos in coverage_by_tile.keys():
+		var covered_zones: Array = coverage_by_tile[grid_pos]
+		if covered_zones.size() == 0:
+			uncovered.append("%s from %s" % [_format_tile(grid_pos), str(catalog_tiles[grid_pos])])
+	if uncovered.size() > 0:
+		uncovered.sort()
+		_fail("Starter decor density zones do not cover %s." % ", ".join(uncovered))
+		return
 
 
 func _is_tile_in_density_zone(grid_pos: Vector2i, min_pos: Vector2i, max_pos: Vector2i) -> bool:
