@@ -50,7 +50,7 @@ const STARTER_DECOR_CLUSTERS := {
 		{"grid_pos": Vector2i(1, 8), "decor_id": "rock"}
 	],
 	"lower_field_gap": [
-		{"grid_pos": Vector2i(4, 6), "decor_id": "tall_grass"}
+		{"grid_pos": Vector2i(4, 6), "decor_id": "flower_patch"}
 	],
 	"south_meadow_edge": [
 		{"grid_pos": Vector2i(0, 8), "decor_id": "flower_patch"},

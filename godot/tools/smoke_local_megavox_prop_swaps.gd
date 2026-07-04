@@ -386,15 +386,26 @@ func _is_tile_in_density_zone(grid_pos: Vector2i, min_pos: Vector2i, max_pos: Ve
 
 func _expect_starter_decor_variety(catalog_entries: Array) -> void:
 	var west_edge_tall_grass := []
+	var lower_field_flower_patch := []
 	for entry in catalog_entries:
 		var grid_pos: Vector2i = entry.get("grid_pos", Vector2i(-1, -1))
-		if str(entry.get("decor_id", "")) == "tall_grass" and grid_pos.x == 0:
+		var cluster_id := str(entry.get("cluster_id", ""))
+		var decor_id := str(entry.get("decor_id", ""))
+		if decor_id == "tall_grass" and grid_pos.x == 0:
 			west_edge_tall_grass.append("%s from %s" % [
 				_format_tile(grid_pos),
-				str(entry.get("cluster_id", ""))
+				cluster_id
+			])
+		if cluster_id == "lower_field_gap" and decor_id == "flower_patch":
+			lower_field_flower_patch.append("%s from %s" % [
+				_format_tile(grid_pos),
+				cluster_id
 			])
 	if west_edge_tall_grass.size() == 0:
 		_fail("Starter decor catalog should include west-edge tall grass for meadow art variety.")
+		return
+	if lower_field_flower_patch.size() == 0:
+		_fail("Starter decor catalog should include a lower-field flower patch for field-edge color variety.")
 		return
 
 
