@@ -88,6 +88,21 @@ const STARTER_DECOR_DENSITY_ZONES := {
 		"max_entries": 8
 	}
 }
+const STARTER_DECOR_VARIETY_RULES := [
+	{
+		"id": "west_edge_meadow",
+		"decor_id": "tall_grass",
+		"min": Vector2i(0, 0),
+		"max": Vector2i(0, 8),
+		"failure": "Starter decor catalog should include west-edge tall grass for meadow art variety."
+	},
+	{
+		"id": "lower_field_color",
+		"cluster_id": "lower_field_gap",
+		"decor_id": "flower_patch",
+		"failure": "Starter decor catalog should include a lower-field flower patch for field-edge color variety."
+	}
+]
 
 var _has_failed := false
 
@@ -385,28 +400,33 @@ func _is_tile_in_density_zone(grid_pos: Vector2i, min_pos: Vector2i, max_pos: Ve
 
 
 func _expect_starter_decor_variety(catalog_entries: Array) -> void:
-	var west_edge_tall_grass := []
-	var lower_field_flower_patch := []
-	for entry in catalog_entries:
-		var grid_pos: Vector2i = entry.get("grid_pos", Vector2i(-1, -1))
-		var cluster_id := str(entry.get("cluster_id", ""))
-		var decor_id := str(entry.get("decor_id", ""))
-		if decor_id == "tall_grass" and grid_pos.x == 0:
-			west_edge_tall_grass.append("%s from %s" % [
-				_format_tile(grid_pos),
-				cluster_id
-			])
-		if cluster_id == "lower_field_gap" and decor_id == "flower_patch":
-			lower_field_flower_patch.append("%s from %s" % [
-				_format_tile(grid_pos),
-				cluster_id
-			])
-	if west_edge_tall_grass.size() == 0:
-		_fail("Starter decor catalog should include west-edge tall grass for meadow art variety.")
-		return
-	if lower_field_flower_patch.size() == 0:
-		_fail("Starter decor catalog should include a lower-field flower patch for field-edge color variety.")
-		return
+	for rule in STARTER_DECOR_VARIETY_RULES:
+		var matches := []
+		for entry in catalog_entries:
+			if _starter_decor_entry_matches_variety_rule(entry, rule):
+				matches.append("%s from %s" % [
+					_format_tile(entry.get("grid_pos", Vector2i(-1, -1))),
+					str(entry.get("cluster_id", ""))
+				])
+		if matches.size() == 0:
+			_fail(str(rule.get("failure", "Starter decor catalog is missing a required variety marker.")))
+			return
+
+
+func _starter_decor_entry_matches_variety_rule(entry: Dictionary, rule: Dictionary) -> bool:
+	var grid_pos: Vector2i = entry.get("grid_pos", Vector2i(-1, -1))
+	var cluster_id := str(entry.get("cluster_id", ""))
+	var decor_id := str(entry.get("decor_id", ""))
+	if rule.has("cluster_id") and cluster_id != str(rule["cluster_id"]):
+		return false
+	if rule.has("decor_id") and decor_id != str(rule["decor_id"]):
+		return false
+	if rule.has("min") and rule.has("max"):
+		var min_pos: Vector2i = rule["min"]
+		var max_pos: Vector2i = rule["max"]
+		if not _is_tile_in_density_zone(grid_pos, min_pos, max_pos):
+			return false
+	return true
 
 
 func _expect_starter_decor_cluster_order(grid_manager, clusters: Dictionary) -> void:
