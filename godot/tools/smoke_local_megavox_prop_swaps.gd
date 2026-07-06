@@ -27,6 +27,7 @@ const EXPECTED_STARTER_DECOR_CLUSTERS := {
 	"south_grove_gap": 1,
 	"east_grove_edge": 6
 }
+const SUPPORTED_STARTER_DECOR_IDS := ["flower_patch", "rock", "tall_grass", "tree"]
 const RESERVED_STARTER_CLUSTER_TILES := {
 	"work_order_smoke": [
 		Vector2i(0, 0),
@@ -266,6 +267,9 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 	_expect_starter_decor_cluster_order(grid_manager, clusters)
 	if _failed():
 		return
+	_expect_starter_decor_variety_rules_safe()
+	if _failed():
+		return
 
 	for cluster_id in EXPECTED_STARTER_DECOR_CLUSTERS.keys():
 		if not clusters.has(cluster_id):
@@ -312,7 +316,7 @@ func _expect_starter_decor_catalog_safe(grid_manager) -> void:
 				return
 			catalog_tiles[grid_pos] = str(cluster_id)
 			var decor_id := str(entry.get("decor_id", ""))
-			if not ["flower_patch", "rock", "tall_grass", "tree"].has(decor_id):
+			if not SUPPORTED_STARTER_DECOR_IDS.has(decor_id):
 				_fail("Starter decor catalog %s uses unsupported decor %s." % [cluster_id, decor_id])
 				return
 			if reserved_by_tile.has(grid_pos):
@@ -427,6 +431,47 @@ func _starter_decor_entry_matches_variety_rule(entry: Dictionary, rule: Dictiona
 		if not _is_tile_in_density_zone(grid_pos, min_pos, max_pos):
 			return false
 	return true
+
+
+func _expect_starter_decor_variety_rules_safe() -> void:
+	var seen_ids := {}
+	for rule in STARTER_DECOR_VARIETY_RULES:
+		if typeof(rule) != TYPE_DICTIONARY:
+			_fail("Starter decor variety rules should be dictionaries.")
+			return
+		var rule_id := str(rule.get("id", ""))
+		if rule_id == "":
+			_fail("Starter decor variety rule is missing an id.")
+			return
+		if seen_ids.has(rule_id):
+			_fail("Starter decor variety rule repeats id %s." % rule_id)
+			return
+		seen_ids[rule_id] = true
+		if str(rule.get("failure", "")) == "":
+			_fail("Starter decor variety rule %s is missing failure copy." % rule_id)
+			return
+		if rule.has("cluster_id") and not EXPECTED_STARTER_DECOR_CLUSTERS.has(str(rule["cluster_id"])):
+			_fail("Starter decor variety rule %s references unknown cluster %s." % [
+				rule_id,
+				str(rule["cluster_id"])
+			])
+			return
+		if rule.has("decor_id") and not SUPPORTED_STARTER_DECOR_IDS.has(str(rule["decor_id"])):
+			_fail("Starter decor variety rule %s references unsupported decor %s." % [
+				rule_id,
+				str(rule["decor_id"])
+			])
+			return
+		if rule.has("min") != rule.has("max"):
+			_fail("Starter decor variety rule %s should define both min and max bounds." % rule_id)
+			return
+		if rule.has("min"):
+			if typeof(rule["min"]) != TYPE_VECTOR2I or typeof(rule["max"]) != TYPE_VECTOR2I:
+				_fail("Starter decor variety rule %s bounds should be Vector2i values." % rule_id)
+				return
+		if not rule.has("cluster_id") and not rule.has("decor_id") and not rule.has("min"):
+			_fail("Starter decor variety rule %s should define at least one matcher." % rule_id)
+			return
 
 
 func _expect_starter_decor_cluster_order(grid_manager, clusters: Dictionary) -> void:
