@@ -6,6 +6,7 @@ signal changed(tile)
 const CropScene := preload("res://scenes/world/Crop.tscn")
 const VoxelFactory := preload("res://scripts/core/Voxel.gd")
 const LocalMegavoxAssets := preload("res://scripts/world/LocalMegavoxAssets.gd")
+const MICRO_GRID_SIZE := 4
 
 var grid_pos: Vector2i
 var terrain: String = "grass"
@@ -305,6 +306,7 @@ func refresh() -> void:
 	_clear_children(_decor_root)
 	_clear_children(_structure_root)
 	_clear_children(_terrain_detail_root)
+	_build_micro_detail_layer(_terrain_detail_root)
 
 	if terrain == "dirt_path":
 		_build_dirt_road_details(_terrain_detail_root)
@@ -392,11 +394,99 @@ func _top_color() -> Color:
 			return Color("#a8cf65")
 
 
+func micro_detail_grid_size() -> int:
+	return MICRO_GRID_SIZE
+
+
+func micro_detail_count() -> int:
+	var micro_root := get_node_or_null("TerrainDetails/MicroCells")
+	if micro_root == null:
+		return 0
+	return micro_root.get_child_count()
+
+
 func _build_frame(root: Node3D, color: Color, thickness: float, y: float) -> void:
 	root.add_child(VoxelFactory.cube("North", Vector3(0.98, thickness, thickness), color, Vector3(0.0, y, -0.49)))
 	root.add_child(VoxelFactory.cube("South", Vector3(0.98, thickness, thickness), color, Vector3(0.0, y, 0.49)))
 	root.add_child(VoxelFactory.cube("West", Vector3(thickness, thickness, 0.98), color, Vector3(-0.49, y, 0.0)))
 	root.add_child(VoxelFactory.cube("East", Vector3(thickness, thickness, 0.98), color, Vector3(0.49, y, 0.0)))
+
+
+func _build_micro_detail_layer(root: Node3D) -> void:
+	var micro_root := Node3D.new()
+	micro_root.name = "MicroCells"
+	root.add_child(micro_root)
+	for x in range(MICRO_GRID_SIZE):
+		for z in range(MICRO_GRID_SIZE):
+			var cell := Vector2i(x, z)
+			var detail := VoxelFactory.cube(
+				"MicroCell_%s_%s" % [x, z],
+				_micro_cell_size(cell),
+				_micro_cell_color(cell),
+				_micro_cell_position(cell)
+			)
+			detail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			micro_root.add_child(detail)
+
+
+func _micro_cell_position(cell: Vector2i) -> Vector3:
+	var cell_size := tile_size / float(MICRO_GRID_SIZE)
+	var x := -tile_size * 0.5 + cell_size * 0.5 + float(cell.x) * cell_size
+	var z := -tile_size * 0.5 + cell_size * 0.5 + float(cell.y) * cell_size
+	return Vector3(x, _micro_cell_y(), z)
+
+
+func _micro_cell_size(cell: Vector2i) -> Vector3:
+	var seed := _micro_cell_seed(cell)
+	match _micro_surface_id():
+		"soil":
+			var furrow_width := 0.15 + float(seed % 3) * 0.008
+			return Vector3(furrow_width, 0.014, 0.060)
+		"dirt_path":
+			var path_width := 0.13 + float(seed % 4) * 0.012
+			var path_depth := 0.10 + float(int(seed / 3) % 3) * 0.012
+			return Vector3(path_width, 0.012, path_depth)
+		_:
+			var grass_width := 0.11 + float(seed % 4) * 0.014
+			var grass_depth := 0.10 + float(int(seed / 5) % 4) * 0.012
+			var grass_height := 0.012 + float(seed % 2) * 0.006
+			return Vector3(grass_width, grass_height, grass_depth)
+
+
+func _micro_cell_color(cell: Vector2i) -> Color:
+	var seed := _micro_cell_seed(cell)
+	match _micro_surface_id():
+		"soil":
+			var soil_colors := [Color("#70452f"), Color("#845136"), Color("#9b6040"), Color("#623d2b")]
+			return soil_colors[seed % soil_colors.size()]
+		"dirt_path":
+			var path_colors := [Color("#f0d08b"), Color("#d7aa66"), Color("#e5bd78"), Color("#c89457")]
+			return path_colors[seed % path_colors.size()]
+		_:
+			var grass_colors := [Color("#b7da72"), Color("#93c260"), Color("#c6e27a"), Color("#84b857")]
+			return grass_colors[seed % grass_colors.size()]
+
+
+func _micro_cell_y() -> float:
+	match _micro_surface_id():
+		"soil":
+			return 0.135
+		"dirt_path":
+			return 0.122
+		_:
+			return 0.118
+
+
+func _micro_surface_id() -> String:
+	if is_tilled:
+		return "soil"
+	if terrain == "dirt_path":
+		return "dirt_path"
+	return "grass"
+
+
+func _micro_cell_seed(cell: Vector2i) -> int:
+	return int(abs(grid_pos.x * 31 + grid_pos.y * 47 + cell.x * 13 + cell.y * 17))
 
 
 func _build_dirt_road_details(root: Node3D) -> void:
