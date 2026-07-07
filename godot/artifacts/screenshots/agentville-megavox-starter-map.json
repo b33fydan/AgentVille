@@ -144,9 +144,16 @@
 							1,
 							3
 						]
+					},
+					{
+						"decor_id": "rock",
+						"grid_pos": [
+							3,
+							3
+						]
 					}
 				],
-				"entry_count": 1
+				"entry_count": 2
 			},
 			{
 				"cluster_id": "west_meadow_edge",
@@ -184,9 +191,16 @@
 							4,
 							6
 						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							3,
+							7
+						]
 					}
 				],
-				"entry_count": 1
+				"entry_count": 2
 			},
 			{
 				"cluster_id": "south_meadow_edge",
@@ -245,9 +259,16 @@
 							6,
 							8
 						]
+					},
+					{
+						"decor_id": "flower_patch",
+						"grid_pos": [
+							5,
+							8
+						]
 					}
 				],
-				"entry_count": 1
+				"entry_count": 2
 			},
 			{
 				"cluster_id": "east_grove_edge",
@@ -293,12 +314,19 @@
 							10,
 							5
 						]
+					},
+					{
+						"decor_id": "tree",
+						"grid_pos": [
+							8,
+							8
+						]
 					}
 				],
-				"entry_count": 6
+				"entry_count": 7
 			}
 		],
-		"entry_count": 30
+		"entry_count": 34
 	},
 	"ui_hidden": true,
 	"viewport_size": [

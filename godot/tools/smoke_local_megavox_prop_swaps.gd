@@ -20,12 +20,12 @@ const EXPECTED_STARTER_DECOR_CLUSTERS := {
 	"north_field_edge": 4,
 	"north_homestead_gap": 1,
 	"well_garden_gap": 1,
-	"west_field_gap": 1,
+	"west_field_gap": 2,
 	"west_meadow_edge": 3,
-	"lower_field_gap": 1,
+	"lower_field_gap": 2,
 	"south_meadow_edge": 6,
-	"south_grove_gap": 1,
-	"east_grove_edge": 6
+	"south_grove_gap": 2,
+	"east_grove_edge": 7
 }
 const SUPPORTED_STARTER_DECOR_IDS := ["flower_patch", "rock", "tall_grass", "tree"]
 const RESERVED_STARTER_CLUSTER_TILES := {
@@ -61,7 +61,7 @@ const STARTER_DECOR_DENSITY_ZONES := {
 	"west_field_readability": {
 		"min": Vector2i(0, 0),
 		"max": Vector2i(5, 3),
-		"max_entries": 6
+		"max_entries": 7
 	},
 	"central_aisle_readability": {
 		"min": Vector2i(4, 2),
@@ -76,17 +76,17 @@ const STARTER_DECOR_DENSITY_ZONES := {
 	"lower_field_readability": {
 		"min": Vector2i(0, 5),
 		"max": Vector2i(4, 8),
-		"max_entries": 8
+		"max_entries": 9
 	},
 	"south_grove_bridge_readability": {
 		"min": Vector2i(5, 7),
 		"max": Vector2i(7, 8),
-		"max_entries": 3
+		"max_entries": 4
 	},
 	"east_grove_readability": {
 		"min": Vector2i(7, 5),
 		"max": Vector2i(10, 8),
-		"max_entries": 8
+		"max_entries": 9
 	}
 }
 const STARTER_DECOR_VARIETY_RULES := [

@@ -42,7 +42,8 @@ const STARTER_DECOR_CLUSTERS := {
 		{"grid_pos": Vector2i(4, 2), "decor_id": "flower_patch"}
 	],
 	"west_field_gap": [
-		{"grid_pos": Vector2i(1, 3), "decor_id": "flower_patch"}
+		{"grid_pos": Vector2i(1, 3), "decor_id": "flower_patch"},
+		{"grid_pos": Vector2i(3, 3), "decor_id": "rock"}
 	],
 	"west_meadow_edge": [
 		{"grid_pos": Vector2i(0, 5), "decor_id": "tall_grass"},
@@ -50,7 +51,8 @@ const STARTER_DECOR_CLUSTERS := {
 		{"grid_pos": Vector2i(1, 8), "decor_id": "rock"}
 	],
 	"lower_field_gap": [
-		{"grid_pos": Vector2i(4, 6), "decor_id": "flower_patch"}
+		{"grid_pos": Vector2i(4, 6), "decor_id": "flower_patch"},
+		{"grid_pos": Vector2i(3, 7), "decor_id": "flower_patch"}
 	],
 	"south_meadow_edge": [
 		{"grid_pos": Vector2i(0, 8), "decor_id": "flower_patch"},
@@ -61,7 +63,8 @@ const STARTER_DECOR_CLUSTERS := {
 		{"grid_pos": Vector2i(10, 7), "decor_id": "flower_patch"}
 	],
 	"south_grove_gap": [
-		{"grid_pos": Vector2i(6, 8), "decor_id": "tall_grass"}
+		{"grid_pos": Vector2i(6, 8), "decor_id": "tall_grass"},
+		{"grid_pos": Vector2i(5, 8), "decor_id": "flower_patch"}
 	],
 	"east_grove_edge": [
 		{"grid_pos": Vector2i(7, 8), "decor_id": "flower_patch"},
@@ -69,7 +72,8 @@ const STARTER_DECOR_CLUSTERS := {
 		{"grid_pos": Vector2i(8, 7), "decor_id": "tall_grass"},
 		{"grid_pos": Vector2i(9, 5), "decor_id": "flower_patch"},
 		{"grid_pos": Vector2i(9, 6), "decor_id": "rock"},
-		{"grid_pos": Vector2i(10, 5), "decor_id": "tree"}
+		{"grid_pos": Vector2i(10, 5), "decor_id": "tree"},
+		{"grid_pos": Vector2i(8, 8), "decor_id": "tree"}
 	]
 }
 
