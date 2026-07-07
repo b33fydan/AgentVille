@@ -405,6 +405,10 @@ func micro_detail_count() -> int:
 	return micro_root.get_child_count()
 
 
+func micro_detail_surface_id() -> String:
+	return _micro_surface_id()
+
+
 func _build_frame(root: Node3D, color: Color, thickness: float, y: float) -> void:
 	root.add_child(VoxelFactory.cube("North", Vector3(0.98, thickness, thickness), color, Vector3(0.0, y, -0.49)))
 	root.add_child(VoxelFactory.cube("South", Vector3(0.98, thickness, thickness), color, Vector3(0.0, y, 0.49)))
@@ -439,6 +443,10 @@ func _micro_cell_position(cell: Vector2i) -> Vector3:
 func _micro_cell_size(cell: Vector2i) -> Vector3:
 	var seed := _micro_cell_seed(cell)
 	match _micro_surface_id():
+		"crop_soil":
+			var row_width := 0.18 if cell.x % 2 == 0 else 0.08
+			var row_depth := 0.070 + float(seed % 2) * 0.010
+			return Vector3(row_width, 0.014, row_depth)
 		"soil":
 			var furrow_width := 0.15 + float(seed % 3) * 0.008
 			return Vector3(furrow_width, 0.014, 0.060)
@@ -446,6 +454,14 @@ func _micro_cell_size(cell: Vector2i) -> Vector3:
 			var path_width := 0.13 + float(seed % 4) * 0.012
 			var path_depth := 0.10 + float(int(seed / 3) % 3) * 0.012
 			return Vector3(path_width, 0.012, path_depth)
+		"decor_grass":
+			var accent_width := 0.075 + float(seed % 3) * 0.010
+			var accent_depth := 0.075 + float(int(seed / 5) % 3) * 0.010
+			return Vector3(accent_width, 0.012, accent_depth)
+		"foundation_grass":
+			var pad_width := 0.14 + float(seed % 2) * 0.014
+			var pad_depth := 0.12 + float(int(seed / 7) % 2) * 0.014
+			return Vector3(pad_width, 0.010, pad_depth)
 		_:
 			var grass_width := 0.11 + float(seed % 4) * 0.014
 			var grass_depth := 0.10 + float(int(seed / 5) % 4) * 0.012
@@ -456,12 +472,21 @@ func _micro_cell_size(cell: Vector2i) -> Vector3:
 func _micro_cell_color(cell: Vector2i) -> Color:
 	var seed := _micro_cell_seed(cell)
 	match _micro_surface_id():
+		"crop_soil":
+			var crop_soil_colors := [Color("#7c4b31"), Color("#9f6842"), Color("#6c422d"), Color("#b37a4a")]
+			return crop_soil_colors[seed % crop_soil_colors.size()]
 		"soil":
 			var soil_colors := [Color("#70452f"), Color("#845136"), Color("#9b6040"), Color("#623d2b")]
 			return soil_colors[seed % soil_colors.size()]
 		"dirt_path":
 			var path_colors := [Color("#f0d08b"), Color("#d7aa66"), Color("#e5bd78"), Color("#c89457")]
 			return path_colors[seed % path_colors.size()]
+		"decor_grass":
+			var decor_grass_colors := [Color("#a6d26b"), Color("#7fb75a"), Color("#c8de78"), Color("#6fa24f")]
+			return decor_grass_colors[seed % decor_grass_colors.size()]
+		"foundation_grass":
+			var foundation_colors := [Color("#729e50"), Color("#85ad58"), Color("#668d48"), Color("#93bd66")]
+			return foundation_colors[seed % foundation_colors.size()]
 		_:
 			var grass_colors := [Color("#b7da72"), Color("#93c260"), Color("#c6e27a"), Color("#84b857")]
 			return grass_colors[seed % grass_colors.size()]
@@ -469,19 +494,29 @@ func _micro_cell_color(cell: Vector2i) -> Color:
 
 func _micro_cell_y() -> float:
 	match _micro_surface_id():
+		"crop_soil":
+			return 0.136
 		"soil":
 			return 0.135
 		"dirt_path":
 			return 0.122
+		"decor_grass", "foundation_grass":
+			return 0.119
 		_:
 			return 0.118
 
 
 func _micro_surface_id() -> String:
+	if crop != null:
+		return "crop_soil"
 	if is_tilled:
 		return "soil"
 	if terrain == "dirt_path":
 		return "dirt_path"
+	if structure_id != "":
+		return "foundation_grass"
+	if decor_id != "":
+		return "decor_grass"
 	return "grass"
 
 
@@ -729,7 +764,7 @@ func _clear_children(node: Node) -> void:
 	if node == null:
 		return
 	for child in node.get_children():
-		child.queue_free()
+		child.free()
 
 
 func _pulse() -> void:
