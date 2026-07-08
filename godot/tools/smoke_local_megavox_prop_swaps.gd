@@ -102,6 +102,14 @@ const STARTER_DECOR_VARIETY_RULES := [
 		"cluster_id": "lower_field_gap",
 		"decor_id": "flower_patch",
 		"failure": "Starter decor catalog should include a lower-field flower patch for field-edge color variety."
+	},
+	{
+		"id": "southeast_grove_stone_anchor",
+		"cluster_id": "east_grove_edge",
+		"decor_id": "rock",
+		"min": Vector2i(7, 8),
+		"max": Vector2i(7, 8),
+		"failure": "Starter decor catalog should keep a southeast grove rock anchor for tree-edge contrast."
 	}
 ]
 
