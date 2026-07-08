@@ -39,6 +39,19 @@ func _run() -> void:
 	_expect_micro_surface(path_tile, "dirt_path", "dirt path tile")
 	if _has_failed:
 		return
+	var adjacent_path_tile = grid_manager.get_tile(Vector2i(6, 4))
+	_expect_micro_surface(adjacent_path_tile, "dirt_path", "adjacent dirt path tile")
+	if _has_failed:
+		return
+	var path_detail_signature := _road_detail_signature(path_tile, "dirt path tile")
+	if _has_failed:
+		return
+	var adjacent_detail_signature := _road_detail_signature(adjacent_path_tile, "adjacent dirt path tile")
+	if _has_failed:
+		return
+	if path_detail_signature == adjacent_detail_signature:
+		_fail("Adjacent dirt path tiles should vary their visual-only edge and pebble details.")
+		return
 	var crop_tile = grid_manager.get_tile(Vector2i(1, 5))
 	_expect_micro_surface(crop_tile, "crop_soil", "planted crop tile")
 	if _has_failed:
@@ -101,6 +114,23 @@ func _expect_micro_surface(tile, expected_surface: String, context: String) -> v
 	if detail_count != 16:
 		_fail("%s should keep 16 visual micro-detail cells, saw %s." % [context, detail_count])
 		return
+
+
+func _road_detail_signature(tile, context: String) -> String:
+	var edge = tile.get_node_or_null("TerrainDetails/RoadEdgeA") as MeshInstance3D
+	var pebble = tile.get_node_or_null("TerrainDetails/PebbleA") as MeshInstance3D
+	if edge == null or pebble == null:
+		_fail("%s should render road edge and pebble detail nodes." % context)
+		return ""
+	if edge.mesh == null or pebble.mesh == null:
+		_fail("%s should render mesh-backed road detail nodes." % context)
+		return ""
+	return "%s|%s|%s|%s" % [
+		str(edge.position),
+		str(edge.mesh.get("size")),
+		str(pebble.position),
+		str(pebble.mesh.get("size"))
+	]
 
 
 func _fail(message: String) -> void:

@@ -14,7 +14,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Use the Crops and Nature tabs to add corn, wheat, tall grass, trees, and flowers.
 - If local licensed MEGAVOXPACK files exist in `assets/megavoxpack_local_preview/`, rock, alternate-rock, flower-patch, tall-grass, alternate-tall-grass, tree, and alternate-tree props use those GLBs; otherwise they fall back to the built-in cube art. The starter map now includes named homestead-edge, silo-garden-gap, north-field, north-homestead-gap, well-garden-gap, west-field-gap, west-meadow, lower-field-gap, south-meadow, south-grove-gap, and east-grove art-direction clusters using those same one-tile-safe props, with extra south/east edge accents and a southeast grove rock anchor for a stronger MEGAVOX silhouette. Starter fences stay procedural because the available local fence asset is a multi-tile rail piece. Keep the raw pack files out of git.
 - The starter farm includes alternate grass along the left edge, one alternate tree near the fields, and one alternate rock so the optional local art direction is visible on first load without oversized imported props.
-- Farm tiles render a visual-only 4x4 micro-detail layer with separate grass, road, bare-soil, crop-soil, decor-grass, and structure-foundation surface personalities while clicks, work orders, crops, NPC targets, and catalog decor stay on the original one-tile gameplay grid.
+- Farm tiles render a visual-only 4x4 micro-detail layer with separate grass, road, bare-soil, crop-soil, decor-grass, and structure-foundation surface personalities while clicks, work orders, crops, NPC targets, and catalog decor stay on the original one-tile gameplay grid. Dirt roads also vary their edge and pebble details per tile so long paths do not read as stamped repeats.
 - Click farm tiles to apply the active tool.
 - Press `End Day` to grow planted crops by one stage.
 - Harvest full corn or wheat to earn coins.
@@ -236,7 +236,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_megavox_starter_capture_manifest.gd` exercises the committed MEGAVOX starter-map review manifest staying in sync with the live starter decor catalog, authored cluster order, and capture metadata.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
-- `tools/smoke_tile_micro_detail_grid.gd` exercises the visual-only 4x4 tile micro-detail layer, terrain/content-specific surface personalities, and original-grid gameplay targeting.
+- `tools/smoke_tile_micro_detail_grid.gd` exercises the visual-only 4x4 tile micro-detail layer, terrain/content-specific surface personalities, varied dirt-road detail signatures, and original-grid gameplay targeting.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, harvest orders, tend orders, and plant orders.
 - `tools/capture_crafting.gd` captures `artifacts/screenshots/agentville-crafting.png`.
 - `tools/capture_crafting_demand.gd` captures `artifacts/screenshots/agentville-crafting-demand.png`.

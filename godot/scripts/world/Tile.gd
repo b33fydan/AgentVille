@@ -524,13 +524,27 @@ func _micro_cell_seed(cell: Vector2i) -> int:
 	return int(abs(grid_pos.x * 31 + grid_pos.y * 47 + cell.x * 13 + cell.y * 17))
 
 
+func _road_detail_seed() -> int:
+	return int(abs(grid_pos.x * 19 + grid_pos.y * 23))
+
+
 func _build_dirt_road_details(root: Node3D) -> void:
-	var edge := Color("#d6ad6b")
-	var pebble := Color("#b88755")
-	root.add_child(VoxelFactory.cube("RoadEdgeA", Vector3(0.80, 0.025, 0.035), edge, Vector3(0.0, 0.14, -0.32)))
-	root.add_child(VoxelFactory.cube("RoadEdgeB", Vector3(0.78, 0.025, 0.035), edge, Vector3(0.0, 0.14, 0.32)))
-	root.add_child(VoxelFactory.cube("PebbleA", Vector3(0.09, 0.025, 0.06), pebble, Vector3(-0.22, 0.155, -0.05)))
-	root.add_child(VoxelFactory.cube("PebbleB", Vector3(0.06, 0.025, 0.08), pebble, Vector3(0.18, 0.155, 0.10)))
+	var seed := _road_detail_seed()
+	var edge_colors := [Color("#d6ad6b"), Color("#e0b977"), Color("#c99b5f")]
+	var pebble_colors := [Color("#b88755"), Color("#9f774f"), Color("#c0915c")]
+	var edge: Color = edge_colors[seed % edge_colors.size()]
+	var pebble: Color = pebble_colors[int(seed / 3) % pebble_colors.size()]
+	var edge_shift := (float(seed % 5) - 2.0) * 0.010
+	var edge_a_width := 0.72 + float(seed % 4) * 0.035
+	var edge_b_width := 0.72 + float(int(seed / 5) % 4) * 0.035
+	var pebble_a_size := Vector3(0.07 + float(seed % 3) * 0.012, 0.025, 0.05 + float(int(seed / 7) % 3) * 0.010)
+	var pebble_b_size := Vector3(0.05 + float(int(seed / 11) % 3) * 0.012, 0.025, 0.06 + float(int(seed / 13) % 3) * 0.010)
+	var pebble_a_pos := Vector3(-0.28 + float(seed % 6) * 0.045, 0.155, -0.12 + float(int(seed / 5) % 5) * 0.040)
+	var pebble_b_pos := Vector3(0.08 + float(int(seed / 7) % 6) * 0.040, 0.155, 0.03 + float(int(seed / 11) % 5) * 0.040)
+	root.add_child(VoxelFactory.cube("RoadEdgeA", Vector3(edge_a_width, 0.025, 0.035), edge, Vector3(edge_shift, 0.14, -0.32)))
+	root.add_child(VoxelFactory.cube("RoadEdgeB", Vector3(edge_b_width, 0.025, 0.035), edge, Vector3(-edge_shift, 0.14, 0.32)))
+	root.add_child(VoxelFactory.cube("PebbleA", pebble_a_size, pebble, pebble_a_pos))
+	root.add_child(VoxelFactory.cube("PebbleB", pebble_b_size, pebble, pebble_b_pos))
 
 
 func _build_fence(root: Node3D) -> void:
