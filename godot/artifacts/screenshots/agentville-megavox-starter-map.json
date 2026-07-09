@@ -4,6 +4,7 @@
 		"size": 9.2
 	},
 	"display_server": "macOS",
+	"grid_visible": false,
 	"image_path": "res://artifacts/screenshots/agentville-megavox-starter-map.png",
 	"starter_decor": {
 		"cluster_count": 11,

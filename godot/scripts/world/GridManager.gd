@@ -82,7 +82,7 @@ const STARTER_DECOR_CLUSTERS := {
 @export var tile_size: float = 1.0
 
 var day: int = 1
-var show_grid: bool = true
+var show_grid: bool = false
 var tiles: Dictionary = {}
 
 var _origin_x: float

@@ -954,21 +954,12 @@ func _build_settings_panel() -> void:
 	progress.add_theme_stylebox_override("fill", _soft_box(Color("#f2c94c"), 7, 0))
 	stack.add_child(progress)
 
+	_build_view_controls(stack)
 	_build_inventory_strip(stack)
 	_build_craft_controls(stack)
 	_build_crafting_demand_controls(stack)
 	_build_work_order_controls(stack)
 	_build_skill_forge_controls(stack)
-
-	var mode_label := Label.new()
-	mode_label.text = "VIEW"
-	mode_label.add_theme_font_size_override("font_size", 12)
-	mode_label.add_theme_color_override("font_color", Color("#8a806f"))
-	stack.add_child(mode_label)
-
-	stack.add_child(_make_toggle("AO", true, ambient_occlusion_changed))
-	stack.add_child(_make_toggle("Grid", true, grid_visibility_changed))
-	stack.add_child(_make_toggle("Shadows", true, shadows_changed))
 
 	var end_day := Button.new()
 	end_day.text = "End Day"
@@ -982,6 +973,34 @@ func _build_settings_panel() -> void:
 	end_day.add_theme_stylebox_override("pressed", _big_button_style(true))
 	end_day.pressed.connect(func() -> void: advance_day_requested.emit())
 	stack.add_child(end_day)
+
+
+func _build_view_controls(parent: VBoxContainer) -> void:
+	var mode_label := Label.new()
+	mode_label.text = "VIEW"
+	mode_label.add_theme_font_size_override("font_size", 12)
+	mode_label.add_theme_color_override("font_color", Color("#8a806f"))
+	parent.add_child(mode_label)
+
+	var row := HBoxContainer.new()
+	row.name = "ViewToggleRow"
+	row.add_theme_constant_override("separation", 5)
+	parent.add_child(row)
+
+	var ao_toggle := _make_toggle("AO", true, ambient_occlusion_changed)
+	ao_toggle.name = "AmbientOcclusionToggle"
+	ao_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(ao_toggle)
+
+	var grid_toggle := _make_toggle("Grid", false, grid_visibility_changed)
+	grid_toggle.name = "GridToggle"
+	grid_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(grid_toggle)
+
+	var shadows_toggle := _make_toggle("Shadows", true, shadows_changed)
+	shadows_toggle.name = "ShadowsToggle"
+	shadows_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(shadows_toggle)
 
 
 func _build_inventory_strip(parent: VBoxContainer) -> void:

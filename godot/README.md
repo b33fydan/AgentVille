@@ -15,6 +15,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - If local licensed MEGAVOXPACK files exist in `assets/megavoxpack_local_preview/`, rock, alternate-rock, flower-patch, tall-grass, alternate-tall-grass, tree, and alternate-tree props use those GLBs; otherwise they fall back to the built-in cube art. The starter map now includes named homestead-edge, silo-garden-gap, north-field, north-homestead-gap, well-garden-gap, west-field-gap, west-meadow, lower-field-gap, south-meadow, south-grove-gap, and east-grove art-direction clusters using those same one-tile-safe props, with extra south/east edge accents and a southeast grove rock anchor for a stronger MEGAVOX silhouette. Starter fences stay procedural because the available local fence asset is a multi-tile rail piece. Keep the raw pack files out of git.
 - The starter farm includes alternate grass along the left edge, one alternate tree near the fields, and one alternate rock so the optional local art direction is visible on first load without oversized imported props.
 - Farm tiles render a visual-only 4x4 micro-detail layer with separate grass, road, bare-soil, corn-row, wheat-row, decor-grass, and structure-foundation surface personalities while clicks, work orders, crops, NPC targets, and catalog decor stay on the original one-tile gameplay grid. Dirt roads also vary their edge and pebble details per tile so long paths do not read as stamped repeats.
+- The macro tile grid starts off for a cleaner farm silhouette. Hover frames and placement ghosts still provide local targeting feedback, and the right-panel `Grid` toggle can reveal the full grid on demand.
 - Click farm tiles to apply the active tool.
 - Press `End Day` to grow planted crops by one stage.
 - Harvest full corn or wheat to earn coins.
@@ -177,7 +178,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_skill_forge_spec_validator.gd` exercises the first Skill Forge validator contract for manual task specs, allowlisted tools, templated receipts, and data-only Hallucination Drift signals.
 - `tools/smoke_skill_forge_templates.gd` exercises static Skill Forge starter templates for Tend Crops, Plant Seed, Clear Patch, Harvest Crops, and Build Fence, including validator-clean specs and compact preview data.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
-- `tools/smoke_visual_polish.gd` exercises the reason-badge backing plate, readable outline, and motive-change pop.
+- `tools/smoke_visual_polish.gd` exercises the reference contrast profile, opt-in macro grid, independent hover/placement feedback, manual grid toggle, and the reason-badge backing plate, readable outline, and motive-change pop.
 - `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, live crew-row motive signals, planning fallbacks, and preserved receipt context.
 - `tools/smoke_social_preference_work_orders.gd` exercises preference-driven demands preserving social context through NPC-authored work orders, assigned crew rows, receipts, and day summaries.
 - `tools/smoke_adversarial_reactions.gd` exercises local NPC irritation, sarcastic reactions, and crew UI expression state.

@@ -11,6 +11,9 @@ func _run() -> void:
 	await _test_reference_render_profile()
 	if _failed:
 		return
+	await _test_contextual_grid_hierarchy()
+	if _failed:
+		return
 	await _test_reason_badge_has_readable_plate()
 	if _failed:
 		return
@@ -63,6 +66,101 @@ func _test_reference_render_profile() -> void:
 
 	scene.queue_free()
 	await process_frame
+
+
+func _test_contextual_grid_hierarchy() -> void:
+	var scene: Node = load("res://scenes/Main.tscn").instantiate()
+	root.add_child(scene)
+	await process_frame
+	await process_frame
+
+	var grid = scene.get_node("FarmWorld/GridManager")
+	var placement_tool = scene.get_node("PlacementTool")
+	var game_ui = scene.get_node("GameUI")
+	var grid_toggle := game_ui.find_child("GridToggle", true, false) as Button
+	var tile = grid.get_tile(Vector2i(6, 6))
+	if tile == null:
+		_fail("Contextual grid check could not find its sample tile.")
+		return
+	if bool(grid.show_grid):
+		_fail("Macro grid should be opt-in on first load.")
+		return
+	if grid_toggle == null or grid_toggle.button_pressed or grid_toggle.text != "Grid  OFF":
+		_fail("Grid view toggle should start in the visible OFF state.")
+		return
+	var view_row := grid_toggle.get_parent() as HBoxContainer
+	if view_row == null or view_row.name != "ViewToggleRow" or view_row.get_child_count() != 3:
+		_fail("Grid view toggle should stay in the compact visible view-control row.")
+		return
+	if not _expect_macro_grid_visibility(grid, false, "first load"):
+		return
+
+	placement_tool.call("set_tool", "place")
+	placement_tool.call("set_selected_item", "flower_patch")
+	placement_tool.call("_set_hovered_tile", tile)
+	placement_tool.call("_update_preview_visibility")
+	var hover_frame := tile.get_node_or_null("HoverFrame") as Node3D
+	var placement_preview = placement_tool.get("_preview") as Node3D
+	if hover_frame == null or not hover_frame.visible:
+		_fail("Local hover frame should stay visible while the macro grid is off.")
+		return
+	if placement_preview == null or not placement_preview.visible:
+		_fail("Placement preview should stay visible while the macro grid is off.")
+		return
+	if tile.get_node("GridLines").visible:
+		_fail("Hovering a tile should not re-enable the full macro grid.")
+		return
+
+	grid_toggle.set_pressed_no_signal(true)
+	grid_toggle.toggled.emit(true)
+	await process_frame
+	if not bool(grid.show_grid) or grid_toggle.text != "Grid  ON":
+		_fail("Grid view toggle did not enable the macro grid.")
+		return
+	if not _expect_macro_grid_visibility(grid, true, "manual grid toggle on"):
+		return
+	if not hover_frame.visible:
+		_fail("Manual macro-grid visibility should not suppress local hover feedback.")
+		return
+
+	grid_toggle.set_pressed_no_signal(false)
+	grid_toggle.toggled.emit(false)
+	await process_frame
+	if bool(grid.show_grid) or grid_toggle.text != "Grid  OFF":
+		_fail("Grid view toggle did not restore the opt-in grid state.")
+		return
+	if not _expect_macro_grid_visibility(grid, false, "manual grid toggle off"):
+		return
+	if not hover_frame.visible:
+		_fail("Local hover feedback should remain after the macro grid is hidden again.")
+		return
+	if grid.get_tile_from_world(tile.global_position) != tile:
+		_fail("Grid presentation changes should not alter gameplay tile targeting.")
+		return
+
+	placement_tool.call("_set_hovered_tile", null)
+	placement_tool.call("_update_preview_visibility")
+	if hover_frame.visible or placement_preview.visible:
+		_fail("Clearing tile hover should hide both contextual feedback elements.")
+		return
+
+	scene.queue_free()
+	await process_frame
+
+
+func _expect_macro_grid_visibility(grid, expected_visible: bool, context: String) -> bool:
+	for tile in grid.tiles.values():
+		var grid_lines := tile.get_node_or_null("GridLines") as Node3D
+		if grid_lines == null:
+			_fail("%s tile is missing its macro grid frame." % context.capitalize())
+			return false
+		if grid_lines.visible != expected_visible:
+			_fail("%s should keep every macro grid frame %s." % [
+				context.capitalize(),
+				"visible" if expected_visible else "hidden"
+			])
+			return false
+	return true
 
 
 func _test_reason_badge_has_readable_plate() -> void:

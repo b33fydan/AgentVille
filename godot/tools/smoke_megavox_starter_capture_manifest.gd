@@ -24,6 +24,7 @@ func _run() -> void:
 	_expect_string_field(manifest, "image_path", IMAGE_PATH, "manifest")
 	_expect_number_array(manifest.get("viewport_size", []), EXPECTED_VIEWPORT_SIZE, "manifest.viewport_size")
 	_expect_bool_field(manifest, "ui_hidden", true, "manifest")
+	_expect_bool_field(manifest, "grid_visible", false, "manifest")
 	_expect_non_empty_string_field(manifest, "display_server", "manifest")
 	if _failed():
 		return

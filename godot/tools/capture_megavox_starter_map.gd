@@ -81,6 +81,7 @@ func _save_manifest(grid_manager: Node, ui_hidden: bool, camera_centered: bool, 
 		"viewport_size": [CAPTURE_SIZE.x, CAPTURE_SIZE.y],
 		"display_server": DisplayServer.get_name(),
 		"ui_hidden": ui_hidden,
+		"grid_visible": bool(grid_manager.show_grid),
 		"camera": {
 			"centered_on_farm": camera_centered,
 			"size": camera_size
