@@ -157,6 +157,7 @@ func plant_crop(crop_id: String) -> bool:
 	crop = CropScene.instantiate()
 	crop.setup(crop_id, 0)
 	_crop_root.add_child(crop)
+	refresh()
 	_pulse()
 	changed.emit(self)
 	return true
@@ -443,6 +444,14 @@ func _micro_cell_position(cell: Vector2i) -> Vector3:
 func _micro_cell_size(cell: Vector2i) -> Vector3:
 	var seed := _micro_cell_seed(cell)
 	match _micro_surface_id():
+		"corn_crop_soil":
+			var corn_row_width := 0.18 if cell.x % 2 == 0 else 0.08
+			var corn_row_depth := 0.070 + float(seed % 2) * 0.010
+			return Vector3(corn_row_width, 0.014, corn_row_depth)
+		"wheat_crop_soil":
+			var wheat_row_width := 0.11 + float(seed % 2) * 0.012
+			var wheat_row_depth := 0.15 if cell.y % 2 == 0 else 0.065
+			return Vector3(wheat_row_width, 0.014, wheat_row_depth)
 		"crop_soil":
 			var row_width := 0.18 if cell.x % 2 == 0 else 0.08
 			var row_depth := 0.070 + float(seed % 2) * 0.010
@@ -472,6 +481,12 @@ func _micro_cell_size(cell: Vector2i) -> Vector3:
 func _micro_cell_color(cell: Vector2i) -> Color:
 	var seed := _micro_cell_seed(cell)
 	match _micro_surface_id():
+		"corn_crop_soil":
+			var corn_soil_colors := [Color("#7c4b31"), Color("#9f6842"), Color("#6c422d"), Color("#b37a4a")]
+			return corn_soil_colors[seed % corn_soil_colors.size()]
+		"wheat_crop_soil":
+			var wheat_soil_colors := [Color("#8b5b34"), Color("#b47a45"), Color("#c69250"), Color("#755033")]
+			return wheat_soil_colors[seed % wheat_soil_colors.size()]
 		"crop_soil":
 			var crop_soil_colors := [Color("#7c4b31"), Color("#9f6842"), Color("#6c422d"), Color("#b37a4a")]
 			return crop_soil_colors[seed % crop_soil_colors.size()]
@@ -494,7 +509,7 @@ func _micro_cell_color(cell: Vector2i) -> Color:
 
 func _micro_cell_y() -> float:
 	match _micro_surface_id():
-		"crop_soil":
+		"corn_crop_soil", "wheat_crop_soil", "crop_soil":
 			return 0.136
 		"soil":
 			return 0.135
@@ -508,6 +523,11 @@ func _micro_cell_y() -> float:
 
 func _micro_surface_id() -> String:
 	if crop != null:
+		match str(crop.crop_id):
+			"corn":
+				return "corn_crop_soil"
+			"wheat":
+				return "wheat_crop_soil"
 		return "crop_soil"
 	if is_tilled:
 		return "soil"

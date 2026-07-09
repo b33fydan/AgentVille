@@ -53,7 +53,17 @@ func _run() -> void:
 		_fail("Adjacent dirt path tiles should vary their visual-only edge and pebble details.")
 		return
 	var crop_tile = grid_manager.get_tile(Vector2i(1, 5))
-	_expect_micro_surface(crop_tile, "crop_soil", "planted crop tile")
+	_expect_micro_surface(crop_tile, "corn_crop_soil", "planted corn tile")
+	if _has_failed:
+		return
+	_expect_micro_cell_size(crop_tile, Vector2i(0, 0), Vector3(0.18, 0.014, 0.070), "planted corn tile")
+	if _has_failed:
+		return
+	var wheat_tile = grid_manager.get_tile(Vector2i(1, 1))
+	_expect_micro_surface(wheat_tile, "wheat_crop_soil", "planted wheat tile")
+	if _has_failed:
+		return
+	_expect_micro_cell_size(wheat_tile, Vector2i(0, 0), Vector3(0.11, 0.014, 0.150), "planted wheat tile")
 	if _has_failed:
 		return
 	var decor_tile = grid_manager.get_tile(Vector2i(0, 6))
@@ -82,6 +92,18 @@ func _run() -> void:
 		return
 	_expect_micro_surface(tile, "soil", "freshly tilled gameplay tile")
 	if _has_failed:
+		return
+	if not tile.plant_wheat():
+		_fail("Could not plant wheat on the original gameplay tile after micro-detail rendering.")
+		return
+	_expect_micro_surface(tile, "wheat_crop_soil", "freshly planted gameplay tile")
+	if _has_failed:
+		return
+	_expect_micro_cell_size(tile, Vector2i(0, 0), Vector3(0.11, 0.014, 0.150), "freshly planted gameplay tile")
+	if _has_failed:
+		return
+	if not tile.erase():
+		_fail("Could not clear the freshly planted gameplay tile after micro-detail rendering.")
 		return
 	if not tile.place_item("flower_patch"):
 		_fail("Could not place decor on the original gameplay tile after micro-detail rendering.")
@@ -114,6 +136,33 @@ func _expect_micro_surface(tile, expected_surface: String, context: String) -> v
 	if detail_count != 16:
 		_fail("%s should keep 16 visual micro-detail cells, saw %s." % [context, detail_count])
 		return
+
+
+func _expect_micro_cell_size(tile, cell: Vector2i, expected_size: Vector3, context: String) -> void:
+	if tile == null:
+		_fail("Could not inspect %s micro detail cell." % context)
+		return
+	var detail = tile.get_node_or_null("TerrainDetails/MicroCells/MicroCell_%s_%s" % [cell.x, cell.y]) as MeshInstance3D
+	if detail == null:
+		_fail("%s should render MicroCell_%s_%s." % [context, cell.x, cell.y])
+		return
+	var box_mesh := detail.mesh as BoxMesh
+	if box_mesh == null:
+		_fail("%s should use a box mesh for MicroCell_%s_%s." % [context, cell.x, cell.y])
+		return
+	if not _vec3_close(box_mesh.size, expected_size):
+		_fail("%s should render MicroCell_%s_%s at %s, saw %s." % [
+			context,
+			cell.x,
+			cell.y,
+			str(expected_size),
+			str(box_mesh.size)
+		])
+		return
+
+
+func _vec3_close(left: Vector3, right: Vector3) -> bool:
+	return left.distance_to(right) < 0.001
 
 
 func _road_detail_signature(tile, context: String) -> String:
