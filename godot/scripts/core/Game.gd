@@ -123,7 +123,7 @@ var _hustle_hands_charges: int = 0
 
 
 func _ready() -> void:
-	RenderingServer.set_default_clear_color(Color("#fbfaf3"))
+	RenderingServer.set_default_clear_color(Color("#f6f3ec"))
 	_setup_environment()
 	_setup_ai_layer()
 	_connect_systems()
@@ -187,21 +187,21 @@ func _setup_environment() -> void:
 	world_environment.name = "WorldEnvironment"
 	_environment = Environment.new()
 	_environment.background_mode = Environment.BG_COLOR
-	_environment.background_color = Color("#fbfaf3")
+	_environment.background_color = Color("#f6f3ec")
 	_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	_environment.ambient_light_color = Color("#fff0cf")
-	_environment.ambient_light_energy = 0.86
+	_environment.ambient_light_color = Color("#eee6d9")
+	_environment.ambient_light_energy = 0.48
 	_environment.ssao_enabled = true
-	_environment.ssao_radius = 1.65
-	_environment.ssao_intensity = 0.92
-	_apply_16gami_atmosphere()
+	_environment.ssao_radius = 1.90
+	_environment.ssao_intensity = 1.35
+	_apply_reference_contrast_atmosphere()
 	world_environment.environment = _environment
 	add_child(world_environment)
 
 	_sun = DirectionalLight3D.new()
 	_sun.name = "WarmSun"
-	_sun.light_color = Color("#fff1c6")
-	_sun.light_energy = 2.15
+	_sun.light_color = Color("#fff1d8")
+	_sun.light_energy = 1.38
 	_sun.shadow_enabled = true
 	_sun.position = Vector3(-4.5, 7.5, -5.0)
 	add_child(_sun)
@@ -209,14 +209,11 @@ func _setup_environment() -> void:
 
 	var fill := OmniLight3D.new()
 	fill.name = "SoftFill"
-	fill.light_color = Color("#fff8e8")
-	fill.light_energy = 0.18
+	fill.light_color = Color("#dfe9f2")
+	fill.light_energy = 0.08
 	fill.omni_range = 12.0
 	fill.position = Vector3(3.0, 5.0, 4.0)
 	add_child(fill)
-
-	_setup_haze_wash()
-
 
 func _setup_ai_layer() -> void:
 	_event_log = Node.new()
@@ -233,44 +230,24 @@ func _setup_ai_layer() -> void:
 	farm_world.add_child(_agent_manager)
 
 
-func _apply_16gami_atmosphere() -> void:
+func _apply_reference_contrast_atmosphere() -> void:
 	_set_environment_property("tonemap_mode", 2)
-	_set_environment_property("tonemap_exposure", 1.02)
+	_set_environment_property("tonemap_exposure", 0.84)
 	_set_environment_property("tonemap_white", 1.25)
 	_set_environment_property("glow_enabled", true)
 	_set_environment_property("glow_normalized", true)
-	_set_environment_property("glow_intensity", 0.18)
-	_set_environment_property("glow_strength", 0.34)
-	_set_environment_property("glow_bloom", 0.12)
+	_set_environment_property("glow_intensity", 0.06)
+	_set_environment_property("glow_strength", 0.14)
+	_set_environment_property("glow_bloom", 0.03)
 	_set_environment_property("glow_blend_mode", 1)
-	_set_environment_property("glow_hdr_threshold", 0.74)
-	_set_environment_property("glow_hdr_scale", 1.20)
+	_set_environment_property("glow_hdr_threshold", 1.05)
+	_set_environment_property("glow_hdr_scale", 1.0)
 	_set_environment_property("glow_hdr_luminance_cap", 3.0)
 	_set_environment_property("adjustment_enabled", true)
-	_set_environment_property("adjustment_brightness", 1.02)
-	_set_environment_property("adjustment_contrast", 0.96)
-	_set_environment_property("adjustment_saturation", 1.06)
-	_set_environment_property("fog_enabled", true)
-	_set_environment_property("fog_light_color", Color("#fff2dc"))
-	_set_environment_property("fog_light_energy", 0.26)
-	_set_environment_property("fog_density", 0.004)
-	_set_environment_property("fog_aerial_perspective", 0.22)
-	_set_environment_property("fog_sun_scatter", 0.08)
-
-
-func _setup_haze_wash() -> void:
-	var layer := CanvasLayer.new()
-	layer.name = "WorldHazeWash"
-	layer.layer = 0
-	add_child(layer)
-
-	var wash := ColorRect.new()
-	wash.name = "WarmAirTint"
-	wash.anchor_right = 1.0
-	wash.anchor_bottom = 1.0
-	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wash.color = Color(1.0, 0.91, 0.74, 0.032)
-	layer.add_child(wash)
+	_set_environment_property("adjustment_brightness", 0.95)
+	_set_environment_property("adjustment_contrast", 1.14)
+	_set_environment_property("adjustment_saturation", 1.10)
+	_set_environment_property("fog_enabled", false)
 
 
 func _set_environment_property(property_name: StringName, value) -> void:
