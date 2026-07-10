@@ -7,6 +7,8 @@ const CropScene := preload("res://scenes/world/Crop.tscn")
 const VoxelFactory := preload("res://scripts/core/Voxel.gd")
 const LocalMegavoxAssets := preload("res://scripts/world/LocalMegavoxAssets.gd")
 const MICRO_GRID_SIZE := 4
+const TILE_TOP_SURFACE_Y := 0.09
+const MICRO_CELL_EMBED := 0.001
 
 var grid_pos: Vector2i
 var terrain: String = "grass"
@@ -344,7 +346,7 @@ func _build_static() -> void:
 	_top_mesh = VoxelFactory.cube("TileTop", Vector3(0.98, 0.10, 0.98), _top_color(), Vector3(0.0, 0.04, 0.0))
 	add_child(_top_mesh)
 
-	_soil_mesh = VoxelFactory.cube("TilledSoil", Vector3(0.78, 0.045, 0.78), Color("#845136"), Vector3(0.0, 0.105, 0.0))
+	_soil_mesh = VoxelFactory.cube("TilledSoil", Vector3(0.78, 0.018, 0.78), Color("#845136"), Vector3(0.0, 0.082, 0.0))
 	add_child(_soil_mesh)
 
 	_grid_root = Node3D.new()
@@ -424,62 +426,47 @@ func _build_micro_detail_layer(root: Node3D) -> void:
 	for x in range(MICRO_GRID_SIZE):
 		for z in range(MICRO_GRID_SIZE):
 			var cell := Vector2i(x, z)
+			var detail_size := _micro_cell_size(cell)
 			var detail := VoxelFactory.cube(
 				"MicroCell_%s_%s" % [x, z],
-				_micro_cell_size(cell),
+				detail_size,
 				_micro_cell_color(cell),
-				_micro_cell_position(cell)
+				_micro_cell_position(cell, detail_size)
 			)
 			detail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			micro_root.add_child(detail)
 
 
-func _micro_cell_position(cell: Vector2i) -> Vector3:
+func _micro_cell_position(cell: Vector2i, detail_size: Vector3) -> Vector3:
 	var cell_size := tile_size / float(MICRO_GRID_SIZE)
 	var x := -tile_size * 0.5 + cell_size * 0.5 + float(cell.x) * cell_size
 	var z := -tile_size * 0.5 + cell_size * 0.5 + float(cell.y) * cell_size
-	return Vector3(x, _micro_cell_y(), z)
+	var y := TILE_TOP_SURFACE_Y + detail_size.y * 0.5 - MICRO_CELL_EMBED
+	return Vector3(x, y, z)
 
 
 func _micro_cell_size(cell: Vector2i) -> Vector3:
-	var seed := _micro_cell_seed(cell)
 	match _micro_surface_id():
 		"corn_crop_soil":
-			var corn_row_width := 0.18 if cell.x % 2 == 0 else 0.08
-			var corn_row_depth := 0.070 + float(seed % 2) * 0.010
-			return Vector3(corn_row_width, 0.014, corn_row_depth)
+			return Vector3(0.230, 0.054, 0.200)
 		"wheat_crop_soil":
-			var wheat_row_width := 0.11 + float(seed % 2) * 0.012
-			var wheat_row_depth := 0.15 if cell.y % 2 == 0 else 0.065
-			return Vector3(wheat_row_width, 0.014, wheat_row_depth)
+			return Vector3(0.200, 0.054, 0.230)
 		"crop_soil":
-			var row_width := 0.18 if cell.x % 2 == 0 else 0.08
-			var row_depth := 0.070 + float(seed % 2) * 0.010
-			return Vector3(row_width, 0.014, row_depth)
+			return Vector3(0.230, 0.054, 0.200)
 		"soil":
-			var furrow_width := 0.15 + float(seed % 3) * 0.008
-			return Vector3(furrow_width, 0.014, 0.060)
+			return Vector3(0.200, 0.054, 0.230)
 		"dirt_path":
-			var path_width := 0.13 + float(seed % 4) * 0.012
-			var path_depth := 0.10 + float(int(seed / 3) % 3) * 0.012
-			return Vector3(path_width, 0.012, path_depth)
+			return Vector3(0.225, 0.040, 0.225)
 		"decor_grass":
-			var accent_width := 0.075 + float(seed % 3) * 0.010
-			var accent_depth := 0.075 + float(int(seed / 5) % 3) * 0.010
-			return Vector3(accent_width, 0.012, accent_depth)
+			return Vector3(0.230, 0.036, 0.230)
 		"foundation_grass":
-			var pad_width := 0.14 + float(seed % 2) * 0.014
-			var pad_depth := 0.12 + float(int(seed / 7) % 2) * 0.014
-			return Vector3(pad_width, 0.010, pad_depth)
+			return Vector3(0.230, 0.035, 0.230)
 		_:
-			var grass_width := 0.11 + float(seed % 4) * 0.014
-			var grass_depth := 0.10 + float(int(seed / 5) % 4) * 0.012
-			var grass_height := 0.012 + float(seed % 2) * 0.006
-			return Vector3(grass_width, grass_height, grass_depth)
+			return Vector3(0.230, 0.036, 0.230)
 
 
 func _micro_cell_color(cell: Vector2i) -> Color:
-	var seed := _micro_cell_seed(cell)
+	var seed := _micro_pattern_seed(cell)
 	match _micro_surface_id():
 		"corn_crop_soil":
 			var corn_soil_colors := [Color("#7c4b31"), Color("#9f6842"), Color("#6c422d"), Color("#b37a4a")]
@@ -507,18 +494,16 @@ func _micro_cell_color(cell: Vector2i) -> Color:
 			return grass_colors[seed % grass_colors.size()]
 
 
-func _micro_cell_y() -> float:
+func _micro_pattern_seed(cell: Vector2i) -> int:
+	var pattern_cell := cell
 	match _micro_surface_id():
-		"corn_crop_soil", "wheat_crop_soil", "crop_soil":
-			return 0.136
-		"soil":
-			return 0.135
-		"dirt_path":
-			return 0.122
-		"decor_grass", "foundation_grass":
-			return 0.119
-		_:
-			return 0.118
+		"soil", "wheat_crop_soil":
+			pattern_cell = Vector2i(cell.x, 0)
+		"corn_crop_soil", "crop_soil":
+			pattern_cell = Vector2i(0, cell.y)
+		"grass", "decor_grass", "foundation_grass":
+			pattern_cell = Vector2i(int(cell.x / 2), int(cell.y / 2))
+	return int(abs(grid_pos.x * 31 + grid_pos.y * 47 + pattern_cell.x * 13 + pattern_cell.y * 17))
 
 
 func _micro_surface_id() -> String:
@@ -540,10 +525,6 @@ func _micro_surface_id() -> String:
 	return "grass"
 
 
-func _micro_cell_seed(cell: Vector2i) -> int:
-	return int(abs(grid_pos.x * 31 + grid_pos.y * 47 + cell.x * 13 + cell.y * 17))
-
-
 func _road_detail_seed() -> int:
 	return int(abs(grid_pos.x * 19 + grid_pos.y * 23))
 
@@ -559,8 +540,8 @@ func _build_dirt_road_details(root: Node3D) -> void:
 	var edge_b_width := 0.72 + float(int(seed / 5) % 4) * 0.035
 	var pebble_a_size := Vector3(0.07 + float(seed % 3) * 0.012, 0.025, 0.05 + float(int(seed / 7) % 3) * 0.010)
 	var pebble_b_size := Vector3(0.05 + float(int(seed / 11) % 3) * 0.012, 0.025, 0.06 + float(int(seed / 13) % 3) * 0.010)
-	var pebble_a_pos := Vector3(-0.28 + float(seed % 6) * 0.045, 0.155, -0.12 + float(int(seed / 5) % 5) * 0.040)
-	var pebble_b_pos := Vector3(0.08 + float(int(seed / 7) % 6) * 0.040, 0.155, 0.03 + float(int(seed / 11) % 5) * 0.040)
+	var pebble_a_pos := Vector3(-0.28 + float(seed % 6) * 0.045, 0.1405, -0.12 + float(int(seed / 5) % 5) * 0.040)
+	var pebble_b_pos := Vector3(0.08 + float(int(seed / 7) % 6) * 0.040, 0.1405, 0.03 + float(int(seed / 11) % 5) * 0.040)
 	root.add_child(VoxelFactory.cube("RoadEdgeA", Vector3(edge_a_width, 0.025, 0.035), edge, Vector3(edge_shift, 0.14, -0.32)))
 	root.add_child(VoxelFactory.cube("RoadEdgeB", Vector3(edge_b_width, 0.025, 0.035), edge, Vector3(-edge_shift, 0.14, 0.32)))
 	root.add_child(VoxelFactory.cube("PebbleA", pebble_a_size, pebble, pebble_a_pos))
