@@ -192,18 +192,23 @@ func _setup_environment() -> void:
 	_environment.ambient_light_color = Color("#eee6d9")
 	_environment.ambient_light_energy = 0.48
 	_environment.ssao_enabled = true
-	_environment.ssao_radius = 1.90
-	_environment.ssao_intensity = 1.35
+	_environment.ssao_radius = 0.75
+	_environment.ssao_intensity = 1.52
+	_environment.ssao_power = 1.35
+	_environment.ssao_detail = 0.68
+	_environment.ssao_light_affect = 0.10
 	_apply_reference_contrast_atmosphere()
 	world_environment.environment = _environment
 	add_child(world_environment)
 
 	_sun = DirectionalLight3D.new()
 	_sun.name = "WarmSun"
-	_sun.light_color = Color("#fff1d8")
-	_sun.light_energy = 1.38
+	_sun.light_color = Color("#fff5e8")
+	_sun.light_energy = 1.20
 	_sun.shadow_enabled = true
-	_sun.position = Vector3(-4.5, 7.5, -5.0)
+	_sun.shadow_blur = 1.55
+	_sun.shadow_opacity = 0.80
+	_sun.position = Vector3(-4.0, 10.5, -4.5)
 	add_child(_sun)
 	_sun.look_at(Vector3.ZERO, Vector3.UP)
 
@@ -246,7 +251,7 @@ func _apply_reference_contrast_atmosphere() -> void:
 	_set_environment_property("adjustment_enabled", true)
 	_set_environment_property("adjustment_brightness", 0.95)
 	_set_environment_property("adjustment_contrast", 1.14)
-	_set_environment_property("adjustment_saturation", 1.10)
+	_set_environment_property("adjustment_saturation", 1.00)
 	_set_environment_property("fog_enabled", false)
 
 

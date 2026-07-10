@@ -178,7 +178,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_skill_forge_spec_validator.gd` exercises the first Skill Forge validator contract for manual task specs, allowlisted tools, templated receipts, and data-only Hallucination Drift signals.
 - `tools/smoke_skill_forge_templates.gd` exercises static Skill Forge starter templates for Tend Crops, Plant Seed, Clear Patch, Harvest Crops, and Build Fence, including validator-clean specs and compact preview data.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
-- `tools/smoke_visual_polish.gd` exercises the reference contrast profile, opt-in macro grid, independent hover/placement feedback, manual grid toggle, and the reason-badge backing plate, readable outline, and motive-change pop.
+- `tools/smoke_visual_polish.gd` exercises the reference contrast profile, including a raised soft-shadow sun, voxel-scale contact occlusion, restrained saturation, the opt-in macro grid, independent hover/placement feedback, manual grid toggle, and the reason-badge backing plate, readable outline, and motive-change pop.
 - `tools/smoke_agent_social_preferences.gd` exercises remembered-help and truce labels biasing autonomous NPC utility choices, live crew-row motive signals, planning fallbacks, and preserved receipt context.
 - `tools/smoke_social_preference_work_orders.gd` exercises preference-driven demands preserving social context through NPC-authored work orders, assigned crew rows, receipts, and day summaries.
 - `tools/smoke_adversarial_reactions.gd` exercises local NPC irritation, sarcastic reactions, and crew UI expression state.
