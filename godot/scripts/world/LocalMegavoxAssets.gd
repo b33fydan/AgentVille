@@ -40,6 +40,28 @@ const PROP_ASSETS := {
 	}
 }
 
+const UI_ICON_ASSETS := {
+	"icon_hammer": {
+		"path": "%s/Asset_Hamer.glb" % ASSET_ROOT,
+		"target_height": 0.82,
+		"yaw_degrees": -28.0
+	},
+	"icon_pickaxe": {
+		"path": "%s/Asset_PickAxe.glb" % ASSET_ROOT,
+		"target_height": 0.86,
+		"yaw_degrees": -26.0
+	},
+	"icon_fence": {
+		"path": "%s/Asset_Fence_01.glb" % ASSET_ROOT,
+		"target_height": 0.48,
+		"yaw_degrees": 18.0
+	},
+	"flower_patch": PROP_ASSETS["flower_patch"],
+	"tall_grass": PROP_ASSETS["tall_grass"],
+	"rock": PROP_ASSETS["rock"],
+	"tree": PROP_ASSETS["tree"]
+}
+
 
 static func has_prop(prop_id: String) -> bool:
 	var spec: Dictionary = PROP_ASSETS.get(prop_id, {})
@@ -57,6 +79,37 @@ static func add_prop(
 	yaw_degrees: float = 100000.0
 ) -> bool:
 	var spec: Dictionary = PROP_ASSETS.get(prop_id, {})
+	return _add_asset(root, spec, node_name, position, target_height, yaw_degrees, false)
+
+
+static func has_ui_icon(icon_id: String) -> bool:
+	var spec: Dictionary = UI_ICON_ASSETS.get(icon_id, {})
+	if spec.is_empty():
+		return false
+	return FileAccess.file_exists(ProjectSettings.globalize_path(str(spec.get("path", ""))))
+
+
+static func add_ui_icon(
+	root: Node3D,
+	icon_id: String,
+	node_name: String,
+	position: Vector3 = Vector3.ZERO,
+	target_height: float = -1.0,
+	yaw_degrees: float = 100000.0
+) -> bool:
+	var spec: Dictionary = UI_ICON_ASSETS.get(icon_id, {})
+	return _add_asset(root, spec, node_name, position, target_height, yaw_degrees, true)
+
+
+static func _add_asset(
+	root: Node3D,
+	spec: Dictionary,
+	node_name: String,
+	position: Vector3,
+	target_height: float,
+	yaw_degrees: float,
+	fit_longest_axis: bool
+) -> bool:
 	if spec.is_empty():
 		return false
 
@@ -78,9 +131,12 @@ static func add_prop(
 
 	var report := _measure_model(model_root)
 	var source_aabb: AABB = report["aabb"]
-	var source_height := maxf(source_aabb.size.y, 0.001)
-	var display_height := float(spec.get("target_height", 1.0)) if target_height <= 0.0 else target_height
-	var display_scale := display_height / source_height
+	var source_extent := source_aabb.size.y
+	if fit_longest_axis:
+		source_extent = maxf(source_aabb.size.x, maxf(source_aabb.size.y, source_aabb.size.z))
+	source_extent = maxf(source_extent, 0.001)
+	var display_extent := float(spec.get("target_height", 1.0)) if target_height <= 0.0 else target_height
+	var display_scale := display_extent / source_extent
 	var display_yaw := float(spec.get("yaw_degrees", 0.0)) if yaw_degrees > 99999.0 else yaw_degrees
 
 	scene.position = Vector3(

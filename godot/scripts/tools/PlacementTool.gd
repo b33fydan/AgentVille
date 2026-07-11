@@ -12,7 +12,7 @@ signal crew_order_targeted(action_id: String, grid_pos: Vector2i)
 enum Tool { PLACE, TILL, PLANT, HARVEST, ERASE, PAN, SELECT }
 
 var current_tool: Tool = Tool.TILL
-var selected_item_id: String = "corn_seed"
+var selected_item_id: String = "grass_block"
 var grid_manager
 var camera_controller
 var game_ui
@@ -101,6 +101,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_button := event as InputEventMouseButton
 		if mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
+			if game_ui != null and not game_ui.is_pointer_over_ui(mouse_button.position):
+				get_viewport().gui_release_focus()
 			_update_hover(mouse_button.position)
 			if _hovered_tile:
 				if _is_targeting_crew_order():

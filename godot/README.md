@@ -6,24 +6,26 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 
 - Open `project.godot` in Godot 4.
 - Run `scenes/Main.tscn`.
-- Use the left toolbar to till, plant, harvest, erase, place, or pan.
-- Use the bottom tray to pick terrain, crops, dirt roads, fences, signs, flowers, trees, the well, silo, or barn.
+- Use the left `FARM` command tab to till, plant, harvest, erase, place, or pan, and choose terrain, crops, roads, decor, structures, or tools from its embedded voxel catalog.
+- Use the left `CREW` command tab for marked jobs, Parley, supply crafting, live demand actions, and crew-order actions.
+- Use the left `AGENT` command tab for Skill Forge starter workflows, and the left `WORLD` tab for view controls and End Day.
+- The bottom Agent Workbench is an editable, syntax-highlighted teaching surface with compiler-style trace output. It is intentionally offline and does not mutate game state yet.
 - Palette selections attach a small item ghost to the cursor.
 - Hovering a selected palette item over the farm shows a hologram footprint before placement.
 - The Tools tab includes Pickaxe for breaking rocks/structures/roads and Sickle for cutting brush or harvesting ready crops.
 - Use the Crops and Nature tabs to add corn, wheat, tall grass, trees, and flowers.
-- If local licensed MEGAVOXPACK files exist in `assets/megavoxpack_local_preview/`, rock, alternate-rock, flower-patch, tall-grass, alternate-tall-grass, tree, and alternate-tree props use those GLBs; otherwise they fall back to the built-in cube art. The starter map now includes named homestead-edge, silo-garden-gap, north-field, north-homestead-gap, well-garden-gap, west-field-gap, west-meadow, lower-field-gap, south-meadow, south-grove-gap, and east-grove art-direction clusters using those same one-tile-safe props, with extra south/east edge accents and a southeast grove rock anchor for a stronger MEGAVOX silhouette. Starter fences stay procedural because the available local fence asset is a multi-tile rail piece. Keep the raw pack files out of git.
+- If local licensed MEGAVOXPACK files exist in `assets/megavoxpack_local_preview/`, rock, alternate-rock, flower-patch, tall-grass, alternate-tall-grass, tree, and alternate-tree props use those GLBs; otherwise they fall back to the built-in cube art. The same local-only loader can supply fitted hammer, pickaxe, fence, plant, rock, and tree UI icons, while every command still has a procedural fallback. The starter map now includes named homestead-edge, silo-garden-gap, north-field, north-homestead-gap, well-garden-gap, west-field-gap, west-meadow, lower-field-gap, south-meadow, south-grove-gap, and east-grove art-direction clusters using those same one-tile-safe props, with extra south/east edge accents and a southeast grove rock anchor for a stronger MEGAVOX silhouette. Starter fences stay procedural because the available local fence asset is a multi-tile rail piece. Keep the raw pack files and pack-derived review images out of git.
 - The starter farm includes alternate grass along the left edge, one alternate tree near the fields, and one alternate rock so the optional local art direction is visible on first load without oversized imported props.
 - Farm tiles render a packed, visual-only 4x4 micro-voxel surface with separate grass, road, bare-soil, corn-row, wheat-row, decor-grass, and structure-foundation personalities. Broad grass and path blocks form near-contiguous carpets, soil and crops form connected directional furrows, and every block sits on the tile support plane while clicks, work orders, crops, NPC targets, and catalog decor stay on the original one-tile gameplay grid. Dirt roads also vary their edge and pebble details per tile so long paths do not read as stamped repeats.
-- The macro tile grid starts off for a cleaner farm silhouette. Hover frames and placement ghosts still provide local targeting feedback, and the right-panel `Grid` toggle can reveal the full grid on demand.
+- The macro tile grid starts off for a cleaner farm silhouette. Hover frames and placement ghosts still provide local targeting feedback, and the left `WORLD` tab's `Grid` toggle can reveal the full grid on demand.
 - Click farm tiles to apply the active tool.
-- Press `End Day` to grow planted crops by one stage.
+- Press `End Day` in the left `WORLD` tab to grow planted crops by one stage.
 - Harvest full corn or wheat to earn coins.
 - The visible NPC crew now walks to small jobs: harvesting ready crops, clearing brush, and inspecting farm pieces.
 - Player and NPC work now feeds a tiny stash: brush gives Fiber, harvests give Grain, and rock breaking gives Stone.
-- The right panel has crafting recipes for Fence Kits, Seed Bundles, and Rush Kits.
+- The left `CREW` tab has crafting recipes for Fence Kits, Seed Bundles, and Rush Kits.
 - Placing fences now consumes Fence Kits.
-- The right panel's crew-order controls let the player mark a tile for Fence, Clear, or Harvest work.
+- The left `CREW` tab's voxel command cards let the player mark a tile for Fence, Clear, Harvest, Plant, or Tend work.
 - Marked crew jobs show small in-world order pins until the job is complete.
 - Completed, waiting, or blocked crew orders can be cleared from the compact order list.
 - Marked fence orders can use an existing kit, craft one from stash resources, or gather missing Fiber/Grain first.
@@ -38,7 +40,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Next-day remembered help can appear as non-spendable `Memory` context in Parley, without granting a favor button or patience bump.
 - Memory-backed Parley can mark that context as `Discussed` in the crew row after the encounter, then clear it the next morning.
 - Memory-backed Parley also writes a compact Field Log receipt when remembered context is discussed.
-- Clicking a `Discussed` crew-row memory signal replays that memory receipt in the Field Log and toast.
+- Clicking a `Discussed` card in the left `CREW SIGNALS` stack replays that memory receipt in the Field Log and toast; the right crew row remains a read-only mirror.
 - Discussed memory cannot be reused as fresh Parley `Memory` context again on the same day.
 - Discussed memory now rolls into a one-day `Truce` crew-row signal the next morning.
 - A fresh memory truce can delay one ignored NPC-authored order escalation, keeping same-day demand pressure low and recording the delay in the day summary.
@@ -64,7 +66,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Preference-selected missions now preserve readable source context like `Pressure` or `Momentum` in mission tracker chips, mission steps, and day-summary receipts.
 - Completed source-backed missions now carry that readable context into Field Log completion lines, vibe reasons, day summaries, and NPC verdicts.
 - Mission demand rows and crew rows now show compact step progress like `Step 1/2` and `Mission 1/2`, so active mini-arcs stay readable while they advance.
-- The crew panel now keeps a compact mission tracker with current step details and recent completion state.
+- The left `CREW` command tab keeps the actionable mission tracker with current-step details and recent completion state.
 - Clicking an active mission tracker row focuses the current mission target, and sends its linked drafted crew order when one exists.
 - Mission tracker rows now show linked order state, switching from `Step` to `Queued`, `Sent`, `Waiting`, or escalation states as the current step moves through crew assignment.
 - Remembered help and active truces now bias autonomous NPC utility choices toward related farm behavior, so social context can change what they decide to do next.
@@ -94,7 +96,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - The local vibe scorer now includes called Parley favors as named relationship reasons.
 - The local vibe scorer now includes remembered-help Parley context as named relationship work instead of scoring those quiet days as pure neglect.
 - The local vibe scorer now treats truce-delayed order days as careful relationship maintenance instead of pure neglect.
-- The crew panel's Parley button opens the first bounded grievance encounter with a patience meter and local menu responses.
+- The left `CREW` tab's Parley command opens the first bounded grievance encounter with a patience meter and local menu responses.
 - Repeated failed actions or chaotic day summaries can queue a crew grievance and pulse the Parley button.
 - Resolved grievances can grant a small coin/resource bonus and a short crew focus boost; lost patience can arm a small next-order crew tax.
 - Resolved Parley sessions now create compact crew crafting demands; crafting and delivering the requested supply, such as Bert's Fence Kit or Marigold's Seed Bundle, completes the contract and cools the NPC down.
@@ -105,16 +107,16 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Farm-work crew demands now pick real target tiles, show compact coordinates in the demand row, place distinct in-world demand markers, and only complete from work on the requested tile.
 - Completing field-work crew demands now gives that NPC same-day social credit, just like delivering a requested supply.
 - Crew rows now surface open NPC demands as `Wants` signals until help or spent-favor state takes priority.
-- Targeted crew-row `Wants` signals can be clicked to focus the camera on the requested farm tile.
+- Targeted `Wants` cards in the left `CREW SIGNALS` stack can be clicked to focus the camera on the requested farm tile.
 - Crew-row demand signals switch from `Wants` to `Queued` once the NPC drafts a linked work order.
-- Clicking queued crew-row demand signals now pulses the linked work-order pin on the farm.
-- Clicking queued crew-row demand signals also sends the linked work order through the normal crew assignment flow.
+- Clicking queued cards in the left `CREW SIGNALS` stack pulses the linked work-order pin on the farm.
+- Clicking those queued signal cards also sends the linked work order through the normal crew assignment flow.
 - Sent linked orders switch the crew-row demand signal from `Queued` to `Sent`.
 - Escalated NPC-authored orders surface their bargain bonus directly in the crew-row demand signal.
 - Aged targeted crew demands now let the NPC draft a linked work order for the same tile, so the player can send the crew to resolve the original social contract.
 - Ignored NPC-authored orders now escalate the next morning, adding author pressure and auto-sending the crew when someone is free.
 - Escalated NPC-authored orders now attach small bargain incentives, surface the resource offer in both demand and order rows, and pay it once the order is completed.
-- Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys.
+- Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys. Keyboard panning pauses while the Agent Workbench editor owns focus.
 - Zoom with the mouse wheel.
 
 ## Structure
@@ -127,8 +129,9 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `scripts/tools/PlacementTool.gd` owns pointer interaction and tool actions.
 - `scripts/tools/PlacementPreview.gd` owns selected-item holograms for tile hover previews.
 - `scripts/audio/SoundManager.gd` owns named sound stamps and temporary placeholder tones.
-- `scripts/ui/BuildPalette.gd` owns the bottom item tray.
-- `scripts/ui/GameUI.gd` owns the editor-style HUD panels, crew panel, stash/crafting controls, and compact Field Log.
+- `scripts/ui/BuildPalette.gd` owns the `FARM` command tab's embedded voxel catalog.
+- `scripts/ui/VoxelIcon.gd` renders pack-backed or procedural fallback voxel icons in isolated sub-viewports.
+- `scripts/ui/GameUI.gd` owns the four-tab command dock, editable Agent Workbench, crew/status panels, and compact Field Log.
 - `scripts/camera/CameraController.gd` owns the fixed isometric camera.
 - `scripts/ai/GameEventLog.gd` records structured player/agent events for future observer summaries.
 - `scripts/ai/AgentManager.gd` spawns the current NPC crew: Bert, Marigold, and Chuck.
@@ -143,7 +146,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_agent_daily_intentions.gd` exercises daily NPC plans biasing utility choices, surfacing in crew rows, and landing in receipts and day summaries.
 - `tools/smoke_crew_missions.gd` exercises resolved local Parley starting a two-step crew mission, linked mission-demand receipts, mission completion rewards, and mission day-summary callouts.
 - `tools/smoke_mission_ui.gd` exercises mission progress chips in demand rows and step-progress mission signals in crew rows.
-- `tools/smoke_mission_tracker.gd` exercises the crew-panel mission tracker as missions start, advance, and complete.
+- `tools/smoke_mission_tracker.gd` exercises the left-dock mission tracker as missions start, advance, and complete.
 - `tools/smoke_mission_tracker_actions.gd` exercises clicking mission tracker rows to focus current mission targets and send linked drafted orders.
 - `tools/smoke_mission_tracker_order_state.gd` exercises mission tracker status text following drafted and sent linked order states.
 - `tools/smoke_mission_variety.gd` exercises Bert's Boundary Run and Chuck's Cleanup Sprint as distinct multi-step mission arcs.
@@ -236,7 +239,8 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_local_megavox_prop_swaps.gd` exercises procedural starter-fence fallback plus optional MEGAVOX rock/alternate-rock/flower-patch/tall-grass/alternate-tall-grass/tree/alternate-tree swaps and the starter homestead-edge/silo-garden-gap/north-field/north-homestead-gap/well-garden-gap/west-field-gap/west-meadow/lower-field-gap/south-meadow/south-grove-gap/east-grove catalog, including authored cluster order, catalog-driven tile-scale bounds checks for local imports, procedural fallbacks when files are absent, reserved target-tile guards for work-order/Forge smokes, protected starter readability tiles for paths, crops, structures, and anchor decor, west-edge meadow, lower-field color, and southeast grove stone-anchor variety, plus density caps and zone coverage for the main starter-map readability bands.
 - `tools/smoke_megavox_starter_capture_manifest.gd` exercises the committed MEGAVOX starter-map review manifest staying in sync with the live starter decor catalog, authored cluster order, and capture metadata.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
-- `tools/smoke_ui_field_targeting.gd` exercises selecting a right-panel crew-order button and then clicking the farm field.
+- `tools/smoke_ui_field_targeting.gd` exercises opening the left `CREW` tab, selecting a crew-order command, and then clicking the farm field.
+- `tools/smoke_ui_overhaul.gd` exercises the four command tabs, voxel-icon/fallback contract, strict 1600x900 and 1280x720 layout, status-only right rail, editable offline workbench, camera-key isolation, and UI pointer blocking.
 - `tools/smoke_tile_micro_detail_grid.gd` exercises the packed visual-only 4x4 tile surface, terrain/content-specific coverage and row direction, support-plane contact, internal and cross-tile seams, coherent palette grouping, deterministic refreshes, varied dirt-road detail signatures, and original-grid gameplay targeting through till, plant, erase, and decor actions.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, harvest orders, tend orders, and plant orders.
 - `tools/capture_crafting.gd` captures `artifacts/screenshots/agentville-crafting.png`.
@@ -290,7 +294,7 @@ The Godot prototype follows the observer-agent pattern from the architecture not
 - Crew missions are the first deterministic mini-arc layer over demands: a resolved no-API Parley can produce ordered field-work steps, receipts, progress tracking, and completion consequences.
 - Mission variety stays local and deterministic too: personality-flavored mission hints now map to different ordered step templates without live API calls.
 - Mission progress now appears in the existing crew and demand UI surfaces, keeping the mini-arc layer readable without opening a new mission screen yet.
-- The crew-panel mission tracker gives active mini-arcs a persistent local home while still avoiding a full mission-management screen.
+- The left-dock mission tracker gives active mini-arcs a persistent local home while still avoiding a full mission-management screen.
 - Mission tracker rows now reuse the existing demand-focus and work-order send path, giving mini-arcs a small management affordance without new mission logic.
 - Mission tracker state text now reuses linked order state, keeping mission UI and crew-demand UI in sync as orders are drafted, assigned, or escalated.
 - Completed missions now feed the local memory-consequence loop, so deterministic mini-arcs can influence tomorrow's intention and ask without live API calls.

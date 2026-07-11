@@ -39,8 +39,21 @@ func _process(delta: float) -> void:
 		pan.y += 1.0
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
 		pan.y -= 1.0
-	if pan.length_squared() > 0.001:
-		_pan_screen_delta(pan.normalized() * keyboard_pan_speed * 70.0 * delta)
+	_apply_keyboard_pan(pan, delta)
+
+
+func _apply_keyboard_pan(pan: Vector2, delta: float) -> bool:
+	if _keyboard_pan_blocked() or pan.length_squared() <= 0.001:
+		return false
+	_pan_screen_delta(pan.normalized() * keyboard_pan_speed * 70.0 * delta)
+	return true
+
+
+func _keyboard_pan_blocked() -> bool:
+	var viewport := get_viewport()
+	if viewport == null:
+		return false
+	return viewport.gui_get_focus_owner() is TextEdit
 
 
 func _unhandled_input(event: InputEvent) -> void:

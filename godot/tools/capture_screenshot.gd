@@ -14,8 +14,17 @@ func _capture() -> void:
 
 	await process_frame
 	await process_frame
-	await create_timer(0.25).timeout
+	# Fallback-only runs construct more procedural voxel meshes than pack-backed runs.
+	# Give Metal several fully presented frames before reading the root viewport.
+	await create_timer(1.6).timeout
+	for frame in range(8):
+		await RenderingServer.frame_post_draw
+		await process_frame
 
 	var image := root.get_texture().get_image()
+	if image == null:
+		push_error("Screenshot capture could not read the rendered viewport texture.")
+		quit(1)
+		return
 	image.save_png(OUTPUT_PATH)
 	quit()

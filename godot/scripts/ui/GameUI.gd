@@ -21,6 +21,7 @@ signal skill_forge_review_requested(template_id: String)
 signal skill_forge_revision_requested(template_id: String)
 
 const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
+const VoxelIconScript := preload("res://scripts/ui/VoxelIcon.gd")
 
 var _root: Control
 var _tool_buttons: Dictionary = {}
@@ -30,7 +31,16 @@ var _money_label: Label
 var _toast_label: Label
 var _toast_tween: Tween
 var _palette
+var _command_dock: PanelContainer
+var _command_tab_buttons: Dictionary = {}
+var _command_tab_pages: Dictionary = {}
+var _active_command_tab: String = "farm"
+var _code_workbench: PanelContainer
+var _code_editor: CodeEdit
+var _compiler_output: RichTextLabel
+var _workbench_runtime_label: Label
 var _crew_rows: Dictionary = {}
+var _crew_signal_labels: Dictionary = {}
 var _field_log_stack: VBoxContainer
 var _field_log_entries: Array[String] = []
 var _cursor_ghost: PanelContainer
@@ -41,6 +51,7 @@ var _crafted_labels: Dictionary = {}
 var _craft_buttons: Dictionary = {}
 var _crafting_demand_rows: Dictionary = {}
 var _crafting_demand_list_stack: VBoxContainer
+var _demand_status_label: Label
 var _crew_mission_rows: Dictionary = {}
 var _crew_mission_list_stack: VBoxContainer
 var _crew_pending_demand_details: Dictionary = {}
@@ -52,11 +63,12 @@ var _crew_snapshots_by_id: Dictionary = {}
 var _work_order_rows: Dictionary = {}
 var _work_order_action_buttons: Dictionary = {}
 var _work_order_list_stack: VBoxContainer
+var _order_status_label: Label
 var _active_work_order_tool: String = ""
 var _skill_forge_template_buttons: Dictionary = {}
 var _skill_forge_template_previews: Dictionary = {}
 var _skill_forge_template_ids: Array[String] = []
-var _skill_forge_template_button_row: HBoxContainer
+var _skill_forge_template_button_row: GridContainer
 var _active_skill_forge_template_id: String = ""
 var _skill_forge_summary_label: Label
 var _skill_forge_lesson_label: Label
@@ -120,7 +132,7 @@ func set_selected_tool(tool_name: String) -> void:
 	for key in _tool_buttons.keys():
 		var button := _tool_buttons[key] as Button
 		var active: bool = str(key) == _active_tool
-		button.add_theme_color_override("font_color", Color("#2d3b1d") if active else Color("#4b4337"))
+		button.add_theme_color_override("font_color", Color("#fff8ea") if active else Color("#4b4337"))
 		button.add_theme_stylebox_override("normal", _tool_button_style(active))
 		button.add_theme_stylebox_override("hover", _tool_button_style(true))
 		button.add_theme_stylebox_override("pressed", _tool_button_style(true))
@@ -330,6 +342,12 @@ func set_work_order(order: Dictionary) -> void:
 
 
 func set_crafting_demands(demands: Array) -> void:
+	if _demand_status_label:
+		var open_count := 0
+		for demand in demands:
+			if typeof(demand) == TYPE_DICTIONARY and str(demand.get("status", "open")) == "open":
+				open_count += 1
+		_demand_status_label.text = "OPEN DEMANDS  %s" % open_count
 	if _crafting_demand_list_stack == null:
 		return
 
@@ -373,6 +391,8 @@ func set_crew_missions(missions: Array) -> void:
 
 
 func set_work_orders(orders: Array) -> void:
+	if _order_status_label:
+		_order_status_label.text = "CREW ORDERS  %s" % orders.size()
 	if _work_order_list_stack == null:
 		return
 
@@ -596,8 +616,8 @@ func _build_ui() -> void:
 	_build_title_card()
 	_build_toolbar()
 	_build_crew_panel()
-	_build_palette()
 	_build_settings_panel()
+	_build_code_workbench()
 	_build_adversarial_panel()
 	_build_toast()
 	_build_cursor_ghost()
@@ -606,10 +626,11 @@ func _build_ui() -> void:
 func _build_title_card() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "TitleCard"
-	panel.anchor_left = 0.022
+	panel.anchor_left = 0.018
 	panel.anchor_top = 0.026
-	panel.anchor_right = 0.295
+	panel.anchor_right = 0.195
 	panel.anchor_bottom = 0.118
+	panel.custom_minimum_size = Vector2(240, 0)
 	panel.add_theme_stylebox_override("panel", _panel_style(14, 1))
 	_root.add_child(panel)
 	_register_ui_hit_region(panel)
@@ -631,13 +652,16 @@ func _build_title_card() -> void:
 	icon_panel.add_theme_stylebox_override("panel", _soft_box(Color("#f4dda0"), 12, 1))
 	row.add_child(icon_panel)
 
-	var icon := Label.new()
-	icon.text = "AV"
-	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	icon.add_theme_font_size_override("font_size", 21)
-	icon.add_theme_color_override("font_color", Color("#332918"))
+	var icon = VoxelIconScript.new()
+	icon.name = "BrandVoxelIcon"
 	icon_panel.add_child(icon)
+	icon.configure("skill_tend_crop", 96)
+	icon.anchor_right = 1.0
+	icon.anchor_bottom = 1.0
+	icon.offset_left = 5.0
+	icon.offset_top = 4.0
+	icon.offset_right = -5.0
+	icon.offset_bottom = -4.0
 
 	var text_stack := VBoxContainer.new()
 	text_stack.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -658,50 +682,257 @@ func _build_title_card() -> void:
 
 
 func _build_toolbar() -> void:
-	var panel := PanelContainer.new()
-	panel.name = "Toolbar"
-	panel.anchor_left = 0.022
-	panel.anchor_top = 0.20
-	panel.anchor_right = 0.095
-	panel.anchor_bottom = 0.67
-	panel.add_theme_stylebox_override("panel", _panel_style(16, 1))
-	_root.add_child(panel)
-	_register_ui_hit_region(panel)
+	_command_dock = PanelContainer.new()
+	_command_dock.name = "CommandDock"
+	_command_dock.anchor_left = 0.018
+	_command_dock.anchor_top = 0.155
+	_command_dock.anchor_right = 0.195
+	_command_dock.anchor_bottom = 0.985
+	_command_dock.custom_minimum_size = Vector2(240, 0)
+	_command_dock.add_theme_stylebox_override("panel", _command_dock_style())
+	_root.add_child(_command_dock)
+	_register_ui_hit_region(_command_dock)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_top", 9)
-	margin.add_theme_constant_override("margin_bottom", 9)
-	panel.add_child(margin)
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	_command_dock.add_child(margin)
 
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 8)
+	stack.add_theme_constant_override("separation", 9)
 	margin.add_child(stack)
 
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	stack.add_child(header)
+
 	var rail_label := Label.new()
-	rail_label.text = "TOOLS"
-	rail_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	rail_label.add_theme_font_size_override("font_size", 12)
-	rail_label.add_theme_color_override("font_color", Color("#8a806f"))
-	stack.add_child(rail_label)
+	rail_label.text = "COMMAND DOCK"
+	rail_label.add_theme_font_size_override("font_size", 13)
+	rail_label.add_theme_color_override("font_color", Color("#5e422f"))
+	header.add_child(rail_label)
 
-	_add_tool_button(stack, "place", "BOX\nPlace", "Place the selected build item")
-	_add_tool_button(stack, "till", "SOIL\nTill", "Till soil")
-	_add_tool_button(stack, "plant", "CORN\nPlant", "Plant corn")
-	_add_tool_button(stack, "harvest", "CROP\nPick", "Harvest grown crops")
-	_add_tool_button(stack, "erase", "CLR\nErase", "Clear a tile")
-	_add_tool_button(stack, "pan", "PAN\nView", "Pan the camera")
+	var ready_chip := Label.new()
+	ready_chip.text = "READY"
+	ready_chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ready_chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ready_chip.add_theme_font_size_override("font_size", 10)
+	ready_chip.add_theme_color_override("font_color", Color("#67863b"))
+	header.add_child(ready_chip)
+
+	var tabs := GridContainer.new()
+	tabs.name = "CommandTabBar"
+	tabs.columns = 4
+	tabs.add_theme_constant_override("h_separation", 5)
+	stack.add_child(tabs)
+	_add_command_tab(tabs, "farm", "FARM", "grass_block")
+	_add_command_tab(tabs, "crew", "CREW", "order_build_fence")
+	_add_command_tab(tabs, "agent", "AGENT", "skill_tend_crop")
+	_add_command_tab(tabs, "world", "WORLD", "view_grid")
+
+	var scroll := ScrollContainer.new()
+	scroll.name = "CommandScroll"
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	stack.add_child(scroll)
+
+	var page_host := VBoxContainer.new()
+	page_host.name = "CommandPageHost"
+	page_host.custom_minimum_size = Vector2(214, 0)
+	scroll.add_child(page_host)
+
+	var farm_page := _new_command_page("farm", page_host)
+	var crew_page := _new_command_page("crew", page_host)
+	var agent_page := _new_command_page("agent", page_host)
+	var world_page := _new_command_page("world", page_host)
+	_build_farm_command_page(farm_page)
+	_build_crew_command_page(crew_page)
+	_build_agent_command_page(agent_page)
+	_build_world_command_page(world_page)
+	_select_command_tab("farm")
 
 
-func _add_tool_button(parent: VBoxContainer, tool_name: String, label: String, tooltip: String) -> void:
+func _add_command_tab(parent: GridContainer, tab_id: String, label: String, icon_id: String) -> void:
 	var button := Button.new()
-	button.text = label
+	button.name = "CommandTab_%s" % tab_id
+	button.text = "\n%s" % label
+	button.custom_minimum_size = Vector2(49, 48)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 9)
+	button.pressed.connect(_select_command_tab.bind(tab_id))
+	parent.add_child(button)
+	_command_tab_buttons[tab_id] = button
+	_attach_voxel_icon(button, icon_id, Vector2(25, 24), true, -1.0)
+
+
+func _new_command_page(page_id: String, parent: VBoxContainer) -> VBoxContainer:
+	var page := VBoxContainer.new()
+	page.name = "CommandPage_%s" % page_id
+	page.add_theme_constant_override("separation", 9)
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(page)
+	_command_tab_pages[page_id] = page
+	return page
+
+
+func _select_command_tab(tab_id: String) -> void:
+	_active_command_tab = tab_id
+	for key in _command_tab_pages.keys():
+		(_command_tab_pages[key] as Control).visible = str(key) == tab_id
+	for key in _command_tab_buttons.keys():
+		var button := _command_tab_buttons[key] as Button
+		var active := str(key) == tab_id
+		button.add_theme_color_override("font_color", Color("#fff8ea") if active else Color("#5b4737"))
+		button.add_theme_stylebox_override("normal", _command_tab_style(active))
+		button.add_theme_stylebox_override("hover", _command_tab_style(true))
+		button.add_theme_stylebox_override("pressed", _command_tab_style(true))
+
+
+func _build_farm_command_page(page: VBoxContainer) -> void:
+	page.add_child(_command_section_label("FIELD MODES", "Choose how the next farm click behaves"))
+	var mode_grid := GridContainer.new()
+	mode_grid.name = "FieldModeGrid"
+	mode_grid.columns = 3
+	mode_grid.add_theme_constant_override("h_separation", 6)
+	mode_grid.add_theme_constant_override("v_separation", 6)
+	page.add_child(mode_grid)
+	_add_tool_button(mode_grid, "place", "Place", "place", "Place the selected build item")
+	_add_tool_button(mode_grid, "till", "Till", "till", "Till soil")
+	_add_tool_button(mode_grid, "plant", "Plant", "plant", "Plant corn")
+	_add_tool_button(mode_grid, "harvest", "Pick", "harvest", "Harvest grown crops")
+	_add_tool_button(mode_grid, "erase", "Clear", "erase", "Clear a tile")
+	_add_tool_button(mode_grid, "pan", "View", "pan", "Pan the camera")
+	_build_palette(page)
+
+
+func _build_crew_command_page(page: VBoxContainer) -> void:
+	page.add_child(_command_section_label("CREW TARGETS", "Mark field work for the agent crew"))
+	var action_grid := GridContainer.new()
+	action_grid.name = "CrewTargetGrid"
+	action_grid.columns = 2
+	action_grid.add_theme_constant_override("h_separation", 7)
+	action_grid.add_theme_constant_override("v_separation", 7)
+	page.add_child(action_grid)
+	_add_work_order_action_button(action_grid, "build_fence", "\n\nFence", "Mark a tile for crew-built fence")
+	_add_work_order_action_button(action_grid, "clear_brush", "\n\nClear", "Mark brush for the crew to clear")
+	_add_work_order_action_button(action_grid, "harvest_crop", "\n\nHarvest", "Mark a ready crop for the crew to harvest")
+	_add_work_order_action_button(action_grid, "plant_seed", "\n\nPlant", "Mark an open tile for the crew to plant")
+	_add_work_order_action_button(action_grid, "tend_crop", "\n\nTend", "Mark a growing crop for the crew to tend")
+
+	page.add_child(_command_section_label("CREW RELATIONS", "Open a conversation with the crew"))
+	_build_parley_button(page)
+	page.add_child(_command_section_label("CREW SIGNALS", "Act on live requests, queued work, and discussed memories"))
+	_build_crew_signal_controls(page)
+
+	page.add_child(_command_section_label("SUPPLY BENCH", "Craft kits from the shared stash"))
+	_build_craft_controls(page)
+	page.add_child(_command_section_label("LIVE QUEUE", "Act on crew requests and marked jobs"))
+	_build_crafting_demand_controls(page)
+	_build_work_order_controls(page)
+	page.add_child(_command_section_label("MISSIONS", "Focus the current mission step or send its linked order"))
+	_crew_mission_list_stack = VBoxContainer.new()
+	_crew_mission_list_stack.name = "CrewMissionCommandList"
+	_crew_mission_list_stack.add_theme_constant_override("separation", 4)
+	page.add_child(_crew_mission_list_stack)
+	_add_empty_crew_mission_row(_crew_mission_list_stack)
+
+
+func _build_crew_signal_controls(parent: VBoxContainer) -> void:
+	var signal_stack := VBoxContainer.new()
+	signal_stack.name = "CrewSignalCommandList"
+	signal_stack.add_theme_constant_override("separation", 5)
+	parent.add_child(signal_stack)
+	_add_crew_signal_control(signal_stack, "bert", "Bert", "order_build_fence")
+	_add_crew_signal_control(signal_stack, "marigold", "Marigold", "order_tend_crop")
+	_add_crew_signal_control(signal_stack, "chuck", "Chuck", "order_clear_brush")
+
+
+func _add_crew_signal_control(parent: VBoxContainer, agent_id: String, agent_name: String, icon_id: String) -> void:
+	var card := PanelContainer.new()
+	card.name = "CrewSignal_%s" % agent_id
+	card.custom_minimum_size = Vector2(0, 42)
+	card.tooltip_text = "%s's live crew signal" % agent_name
+	card.add_theme_stylebox_override("panel", _soft_box(Color("#f4f7e7"), 8, 1))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_top", 4)
+	margin.add_theme_constant_override("margin_bottom", 4)
+	card.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 7)
+	margin.add_child(row)
+
+	var icon = VoxelIconScript.new()
+	row.add_child(icon)
+	icon.configure(icon_id)
+	icon.custom_minimum_size = Vector2(30, 29)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var text_stack := VBoxContainer.new()
+	text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_stack.add_theme_constant_override("separation", 0)
+	row.add_child(text_stack)
+
+	var name_label := Label.new()
+	name_label.text = agent_name.to_upper()
+	name_label.add_theme_font_size_override("font_size", 9)
+	name_label.add_theme_color_override("font_color", Color("#84654a"))
+	text_stack.add_child(name_label)
+
+	var social_label := Label.new()
+	social_label.name = "CrewSignalAction_%s" % agent_id
+	social_label.text = "No active request"
+	social_label.visible = false
+	social_label.clip_text = true
+	social_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	social_label.add_theme_font_size_override("font_size", 10)
+	social_label.add_theme_color_override("font_color", Color("#5f7f39"))
+	social_label.gui_input.connect(func(event: InputEvent) -> void:
+		_on_crew_social_signal_input(agent_id, event)
+	)
+	text_stack.add_child(social_label)
+	_crew_signal_labels[agent_id] = social_label
+
+
+func _build_agent_command_page(page: VBoxContainer) -> void:
+	page.add_child(_command_section_label("AGENT RECIPES", "Load, run, check, and revise a starter workflow"))
+	_build_skill_forge_controls(page)
+
+
+func _build_world_command_page(page: VBoxContainer) -> void:
+	page.add_child(_command_section_label("WORLD VIEW", "Presentation controls do not change farm state"))
+	_build_view_controls(page)
+	page.add_child(_command_section_label("DAY CYCLE", "Advance crops and close the current workday"))
+	_build_end_day_button(page)
+
+
+func _command_section_label(text: String, tooltip: String = "") -> Label:
+	var label := Label.new()
+	label.text = text
+	label.tooltip_text = tooltip
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color("#84654a"))
+	return label
+
+
+func _add_tool_button(parent: Container, tool_name: String, label: String, icon_id: String, tooltip: String) -> void:
+	var button := Button.new()
+	button.name = "Tool_%s" % tool_name
+	button.text = "\n\n%s" % label
 	button.tooltip_text = tooltip
-	button.custom_minimum_size = Vector2(86, 54)
+	button.custom_minimum_size = Vector2(68, 75)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.focus_mode = Control.FOCUS_NONE
 	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_font_size_override("font_size", 12)
 	button.add_theme_color_override("font_color", Color("#3c352b"))
 	button.add_theme_stylebox_override("normal", _tool_button_style(false))
 	button.add_theme_stylebox_override("hover", _tool_button_style(true))
@@ -709,24 +940,82 @@ func _add_tool_button(parent: VBoxContainer, tool_name: String, label: String, t
 	button.pressed.connect(_on_tool_button_pressed.bind(tool_name))
 	parent.add_child(button)
 	_tool_buttons[tool_name] = button
+	_attach_voxel_icon(button, icon_id, Vector2(42, 40), true, 2.0)
 
 
-func _build_palette() -> void:
+func _build_palette(parent: VBoxContainer) -> void:
 	_palette = BuildPaletteScene.instantiate()
 	_palette.name = "BuildPalette"
-	_palette.anchor_left = 0.20
-	_palette.anchor_top = 0.795
-	_palette.anchor_right = 0.71
-	_palette.anchor_bottom = 0.975
+	_palette.custom_minimum_size = Vector2(0, 286)
+	_palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_palette.item_selected.connect(_on_item_selected)
-	_root.add_child(_palette)
-	_register_ui_hit_region(_palette)
+	parent.add_child(_palette)
+
+
+func _build_end_day_button(parent: VBoxContainer) -> void:
+	var end_day := Button.new()
+	end_day.name = "EndDayButton"
+	end_day.text = "       END DAY"
+	end_day.custom_minimum_size = Vector2(0, 50)
+	end_day.focus_mode = Control.FOCUS_NONE
+	end_day.tooltip_text = "Advance crop growth"
+	end_day.add_theme_font_size_override("font_size", 15)
+	end_day.add_theme_color_override("font_color", Color("#2c2619"))
+	end_day.add_theme_stylebox_override("normal", _big_button_style(false))
+	end_day.add_theme_stylebox_override("hover", _big_button_style(true))
+	end_day.add_theme_stylebox_override("pressed", _big_button_style(true))
+	end_day.pressed.connect(func() -> void: advance_day_requested.emit())
+	parent.add_child(end_day)
+	_attach_voxel_icon(end_day, "end_day", Vector2(42, 40), false)
+
+
+func _build_parley_button(parent: VBoxContainer) -> void:
+	_parley_button = Button.new()
+	_parley_button.name = "ParleyButton"
+	_parley_button.text = "       PARLEY"
+	_parley_button.tooltip_text = "Open the crew grievance meter"
+	_parley_button.custom_minimum_size = Vector2(0, 44)
+	_parley_button.focus_mode = Control.FOCUS_NONE
+	_parley_button.add_theme_font_size_override("font_size", 12)
+	_parley_button.add_theme_color_override("font_color", Color("#4b4337"))
+	_parley_button.add_theme_stylebox_override("normal", _parley_button_style(false, false))
+	_parley_button.add_theme_stylebox_override("hover", _parley_button_style(false, true))
+	_parley_button.add_theme_stylebox_override("pressed", _parley_button_style(false, true))
+	_parley_button.pressed.connect(func() -> void:
+		sound_requested.emit("ui_click")
+		adversarial_encounter_requested.emit("")
+	)
+	parent.add_child(_parley_button)
+	_attach_voxel_icon(_parley_button, "parley", Vector2(35, 33), false)
+
+
+func _attach_voxel_icon(button: Button, icon_id: String, icon_size: Vector2, centered: bool, top_offset: float = 0.0) -> void:
+	var icon = VoxelIconScript.new()
+	button.add_child(icon)
+	icon.configure(icon_id)
+	icon.custom_minimum_size = icon_size
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if centered:
+		icon.anchor_left = 0.5
+		icon.anchor_right = 0.5
+		icon.anchor_top = 0.0
+		icon.offset_left = -icon_size.x * 0.5
+		icon.offset_right = icon_size.x * 0.5
+		icon.offset_top = top_offset
+		icon.offset_bottom = top_offset + icon_size.y
+	else:
+		icon.anchor_left = 0.0
+		icon.anchor_top = 0.5
+		icon.offset_left = 5.0
+		icon.offset_right = 5.0 + icon_size.x
+		icon.offset_top = -icon_size.y * 0.5
+		icon.offset_bottom = icon_size.y * 0.5
 
 
 func _build_crew_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.name = "CrewPanel"
-	panel.anchor_left = 0.79
+	panel.anchor_left = 0.775
 	panel.anchor_top = 0.075
 	panel.anchor_right = 0.98
 	panel.anchor_bottom = 0.505
@@ -741,9 +1030,16 @@ func _build_crew_panel() -> void:
 	margin.add_theme_constant_override("margin_bottom", 12)
 	panel.add_child(margin)
 
+	var scroll := ScrollContainer.new()
+	scroll.name = "CrewStatusScroll"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	margin.add_child(scroll)
+
 	var stack := VBoxContainer.new()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 8)
-	margin.add_child(stack)
+	scroll.add_child(stack)
 
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 8)
@@ -754,22 +1050,6 @@ func _build_crew_panel() -> void:
 	title.add_theme_font_size_override("font_size", 12)
 	title.add_theme_color_override("font_color", Color("#8a806f"))
 	header.add_child(title)
-
-	_parley_button = Button.new()
-	_parley_button.text = "Parley"
-	_parley_button.tooltip_text = "Open the crew grievance meter"
-	_parley_button.custom_minimum_size = Vector2(58, 22)
-	_parley_button.focus_mode = Control.FOCUS_NONE
-	_parley_button.add_theme_font_size_override("font_size", 11)
-	_parley_button.add_theme_color_override("font_color", Color("#4b4337"))
-	_parley_button.add_theme_stylebox_override("normal", _parley_button_style(false, false))
-	_parley_button.add_theme_stylebox_override("hover", _parley_button_style(false, true))
-	_parley_button.add_theme_stylebox_override("pressed", _parley_button_style(false, true))
-	_parley_button.pressed.connect(func() -> void:
-		sound_requested.emit("ui_click")
-		adversarial_encounter_requested.emit("")
-	)
-	header.add_child(_parley_button)
 
 	_crew_status_label = Label.new()
 	_crew_status_label.text = "watching"
@@ -782,17 +1062,6 @@ func _build_crew_panel() -> void:
 	_add_crew_row(stack, "bert", "Bert", "grizzled", Color("#5c7f9f"))
 	_add_crew_row(stack, "marigold", "Marigold", "hopeful", Color("#7faf62"))
 	_add_crew_row(stack, "chuck", "Chuck", "chaotic", Color("#9b6fb6"))
-
-	var mission_label := Label.new()
-	mission_label.text = "MISSIONS"
-	mission_label.add_theme_font_size_override("font_size", 12)
-	mission_label.add_theme_color_override("font_color", Color("#8a806f"))
-	stack.add_child(mission_label)
-
-	_crew_mission_list_stack = VBoxContainer.new()
-	_crew_mission_list_stack.add_theme_constant_override("separation", 3)
-	stack.add_child(_crew_mission_list_stack)
-	_add_empty_crew_mission_row(_crew_mission_list_stack)
 
 	var log_label := Label.new()
 	log_label.text = "FIELD LOG"
@@ -852,16 +1121,15 @@ func _add_crew_row(parent: VBoxContainer, agent_id: String, agent_name: String, 
 	action_label.add_theme_color_override("font_color", Color("#5e5548"))
 	stack.add_child(action_label)
 
-	var social_label := Label.new()
-	social_label.text = ""
-	social_label.visible = false
-	social_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	social_label.add_theme_font_size_override("font_size", 10)
-	social_label.add_theme_color_override("font_color", Color("#5f7f39"))
-	social_label.gui_input.connect(func(event: InputEvent) -> void:
-		_on_crew_social_signal_input(agent_id, event)
-	)
-	stack.add_child(social_label)
+	var social_status_label := Label.new()
+	social_status_label.name = "CrewSignalStatus_%s" % agent_id
+	social_status_label.text = ""
+	social_status_label.visible = false
+	social_status_label.clip_text = true
+	social_status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	social_status_label.add_theme_font_size_override("font_size", 10)
+	social_status_label.add_theme_color_override("font_color", Color("#5f7f39"))
+	stack.add_child(social_status_label)
 
 	var bars := HBoxContainer.new()
 	bars.add_theme_constant_override("separation", 6)
@@ -886,7 +1154,8 @@ func _add_crew_row(parent: VBoxContainer, agent_id: String, agent_name: String, 
 		"mood": mood_bar,
 		"energy": energy_bar,
 		"action": action_label,
-		"social": social_label,
+		"social": _crew_signal_labels.get(agent_id, null),
+		"social_status": social_status_label,
 		"mood_value": mood_value
 	}
 
@@ -906,8 +1175,8 @@ func _make_tiny_bar(fill_color: Color) -> ProgressBar:
 
 func _build_settings_panel() -> void:
 	var panel := PanelContainer.new()
-	panel.name = "SettingsPanel"
-	panel.anchor_left = 0.79
+	panel.name = "StatusPanel"
+	panel.anchor_left = 0.775
 	panel.anchor_top = 0.515
 	panel.anchor_right = 0.98
 	panel.anchor_bottom = 0.99
@@ -923,8 +1192,14 @@ func _build_settings_panel() -> void:
 	panel.add_child(margin)
 
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 2)
+	stack.add_theme_constant_override("separation", 7)
 	margin.add_child(stack)
+
+	var desk_label := Label.new()
+	desk_label.text = "FIELD DESK  ·  STATUS ONLY"
+	desk_label.add_theme_font_size_override("font_size", 11)
+	desk_label.add_theme_color_override("font_color", Color("#84654a"))
+	stack.add_child(desk_label)
 
 	var top_row := HBoxContainer.new()
 	top_row.add_theme_constant_override("separation", 8)
@@ -954,25 +1229,126 @@ func _build_settings_panel() -> void:
 	progress.add_theme_stylebox_override("fill", _soft_box(Color("#f2c94c"), 7, 0))
 	stack.add_child(progress)
 
-	_build_view_controls(stack)
 	_build_inventory_strip(stack)
-	_build_craft_controls(stack)
-	_build_crafting_demand_controls(stack)
-	_build_work_order_controls(stack)
-	_build_skill_forge_controls(stack)
+	_build_status_queue_summary(stack)
 
-	var end_day := Button.new()
-	end_day.text = "End Day"
-	end_day.custom_minimum_size = Vector2(0, 28)
-	end_day.focus_mode = Control.FOCUS_NONE
-	end_day.tooltip_text = "Advance crop growth"
-	end_day.add_theme_font_size_override("font_size", 16)
-	end_day.add_theme_color_override("font_color", Color("#2c2619"))
-	end_day.add_theme_stylebox_override("normal", _big_button_style(false))
-	end_day.add_theme_stylebox_override("hover", _big_button_style(true))
-	end_day.add_theme_stylebox_override("pressed", _big_button_style(true))
-	end_day.pressed.connect(func() -> void: advance_day_requested.emit())
-	stack.add_child(end_day)
+
+func _build_code_workbench() -> void:
+	_code_workbench = PanelContainer.new()
+	_code_workbench.name = "CodeWorkbench"
+	_code_workbench.anchor_left = 0.21
+	_code_workbench.anchor_top = 0.735
+	_code_workbench.anchor_right = 0.765
+	_code_workbench.anchor_bottom = 0.985
+	_code_workbench.custom_minimum_size = Vector2(620, 176)
+	_code_workbench.add_theme_stylebox_override("panel", _workbench_style())
+	_root.add_child(_code_workbench)
+	_register_ui_hit_region(_code_workbench)
+
+	var outer_margin := MarginContainer.new()
+	outer_margin.add_theme_constant_override("margin_left", 12)
+	outer_margin.add_theme_constant_override("margin_right", 12)
+	outer_margin.add_theme_constant_override("margin_top", 9)
+	outer_margin.add_theme_constant_override("margin_bottom", 11)
+	_code_workbench.add_child(outer_margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 7)
+	outer_margin.add_child(stack)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 9)
+	stack.add_child(header)
+
+	var title := Label.new()
+	title.text = "AGENT WORKBENCH"
+	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_color_override("font_color", Color("#f0e6c9"))
+	header.add_child(title)
+
+	var filename := Label.new()
+	filename.text = "  tend_crops.agent  "
+	filename.add_theme_font_size_override("font_size", 11)
+	filename.add_theme_color_override("font_color", Color("#9ac76e"))
+	filename.add_theme_stylebox_override("normal", _workbench_chip_style(Color("#2f4635")))
+	header.add_child(filename)
+
+	_workbench_runtime_label = Label.new()
+	_workbench_runtime_label.name = "WorkbenchRuntimeStatus"
+	_workbench_runtime_label.text = "DRAFT  ·  TUTOR RUNTIME OFFLINE"
+	_workbench_runtime_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_workbench_runtime_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_workbench_runtime_label.add_theme_font_size_override("font_size", 10)
+	_workbench_runtime_label.add_theme_color_override("font_color", Color("#e4ae35"))
+	header.add_child(_workbench_runtime_label)
+
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 8)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stack.add_child(body)
+
+	_code_editor = CodeEdit.new()
+	_code_editor.name = "AgentCodeEditor"
+	_code_editor.text = "agent \"Marigold\" {\n  observe selected_tile\n  when crop.ready {\n    use harvest_crop(selected_tile)\n  }\n  verify inventory_delta\n  receipt \"Harvest Crops run\"\n}"
+	_code_editor.placeholder_text = "Write an agent workflow..."
+	_code_editor.custom_minimum_size = Vector2(360, 138)
+	_code_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_code_editor.size_flags_stretch_ratio = 1.75
+	_code_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_code_editor.gutters_draw_line_numbers = true
+	_code_editor.highlight_current_line = true
+	_code_editor.minimap_draw = false
+	_code_editor.wrap_mode = TextEdit.LINE_WRAPPING_NONE
+	_code_editor.add_theme_font_size_override("font_size", 13)
+	_code_editor.add_theme_color_override("font_color", Color("#f0e6c9"))
+	_code_editor.add_theme_color_override("font_readonly_color", Color("#d7cbb0"))
+	_code_editor.add_theme_color_override("font_placeholder_color", Color("#748272"))
+	_code_editor.add_theme_color_override("caret_color", Color("#e4ae35"))
+	_code_editor.add_theme_color_override("current_line_color", Color("#26372c"))
+	_code_editor.add_theme_color_override("line_number_color", Color("#70816f"))
+	_code_editor.add_theme_stylebox_override("normal", _code_editor_style())
+	_code_editor.text_changed.connect(_on_workbench_text_changed)
+	body.add_child(_code_editor)
+
+	var highlighter := CodeHighlighter.new()
+	highlighter.number_color = Color("#e4ae35")
+	highlighter.symbol_color = Color("#d7b27b")
+	highlighter.function_color = Color("#75b9c8")
+	highlighter.member_variable_color = Color("#c4d894")
+	for keyword in ["agent", "observe", "when", "use", "verify", "receipt"]:
+		highlighter.add_keyword_color(keyword, Color("#e7785b"))
+	_code_editor.syntax_highlighter = highlighter
+
+	var output_panel := PanelContainer.new()
+	output_panel.name = "CompilerOutputPanel"
+	output_panel.custom_minimum_size = Vector2(220, 138)
+	output_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	output_panel.size_flags_stretch_ratio = 0.85
+	output_panel.add_theme_stylebox_override("panel", _compiler_panel_style())
+	body.add_child(output_panel)
+
+	var output_margin := MarginContainer.new()
+	output_margin.add_theme_constant_override("margin_left", 10)
+	output_margin.add_theme_constant_override("margin_right", 10)
+	output_margin.add_theme_constant_override("margin_top", 8)
+	output_margin.add_theme_constant_override("margin_bottom", 8)
+	output_panel.add_child(output_margin)
+
+	_compiler_output = RichTextLabel.new()
+	_compiler_output.name = "CompilerOutput"
+	_compiler_output.bbcode_enabled = true
+	_compiler_output.fit_content = false
+	_compiler_output.scroll_active = true
+	_compiler_output.text = "[color=#9ac76e]COMPILER TRACE[/color]\n[color=#70816f]runtime[/color]  tutor bridge offline\n[color=#70816f]target[/color]   selected_tile\n[color=#70816f]tools[/color]    inspect_tile → harvest_crop\n[color=#70816f]check[/color]    inventory_delta\n[color=#70816f]receipt[/color]  Harvest Crops run\n\n[color=#e4ae35]Draft freely. Game state is disconnected.[/color]"
+	_compiler_output.add_theme_font_size_override("normal_font_size", 11)
+	_compiler_output.add_theme_color_override("default_color", Color("#d7cbb0"))
+	output_margin.add_child(_compiler_output)
+
+
+func _on_workbench_text_changed() -> void:
+	if _workbench_runtime_label:
+		_workbench_runtime_label.text = "UNSAVED  ·  TUTOR RUNTIME OFFLINE"
+		_workbench_runtime_label.add_theme_color_override("font_color", Color("#e7785b"))
 
 
 func _build_view_controls(parent: VBoxContainer) -> void:
@@ -991,16 +1367,19 @@ func _build_view_controls(parent: VBoxContainer) -> void:
 	ao_toggle.name = "AmbientOcclusionToggle"
 	ao_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(ao_toggle)
+	_attach_voxel_icon(ao_toggle, "view_ao", Vector2(20, 18), true, 0.0)
 
 	var grid_toggle := _make_toggle("Grid", false, grid_visibility_changed)
 	grid_toggle.name = "GridToggle"
 	grid_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(grid_toggle)
+	_attach_voxel_icon(grid_toggle, "view_grid", Vector2(20, 18), true, 0.0)
 
 	var shadows_toggle := _make_toggle("Shadows", true, shadows_changed)
 	shadows_toggle.name = "ShadowsToggle"
 	shadows_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(shadows_toggle)
+	_attach_voxel_icon(shadows_toggle, "view_shadows", Vector2(20, 18), true, 0.0)
 
 
 func _build_inventory_strip(parent: VBoxContainer) -> void:
@@ -1022,6 +1401,36 @@ func _build_inventory_strip(parent: VBoxContainer) -> void:
 	row.add_child(_make_inventory_pill("rush_kit", "RSH 0", Color("#f0e5ff"), true))
 
 
+func _build_status_queue_summary(parent: VBoxContainer) -> void:
+	var label := Label.new()
+	label.text = "LIVE QUEUE"
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color("#8a806f"))
+	parent.add_child(label)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	parent.add_child(row)
+
+	_demand_status_label = Label.new()
+	_demand_status_label.text = "OPEN DEMANDS  0"
+	_demand_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_demand_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_demand_status_label.add_theme_font_size_override("font_size", 10)
+	_demand_status_label.add_theme_color_override("font_color", Color("#7f6335"))
+	_demand_status_label.add_theme_stylebox_override("normal", _workbench_chip_style(Color("#fff4e8")))
+	row.add_child(_demand_status_label)
+
+	_order_status_label = Label.new()
+	_order_status_label.text = "CREW ORDERS  0"
+	_order_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_order_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_order_status_label.add_theme_font_size_override("font_size", 10)
+	_order_status_label.add_theme_color_override("font_color", Color("#5f7f39"))
+	_order_status_label.add_theme_stylebox_override("normal", _workbench_chip_style(Color("#fff7df")))
+	row.add_child(_order_status_label)
+
+
 func _build_craft_controls(parent: VBoxContainer) -> void:
 	_add_craft_button(parent, "fence_kit", "Fence Kit  2 FBR + 1 GRN", "Crafts one fence kit from gathered fiber and grain")
 	_add_craft_button(parent, "seed_bundle", "Seed Bundle  2 GRN", "Crafts one seed bundle for crew supply demands")
@@ -1030,9 +1439,10 @@ func _build_craft_controls(parent: VBoxContainer) -> void:
 
 func _add_craft_button(parent: VBoxContainer, recipe_id: String, label: String, tooltip: String) -> void:
 	var button := Button.new()
-	button.text = label
+	button.name = "Craft_%s" % recipe_id
+	button.text = "       %s" % label
 	button.tooltip_text = tooltip
-	button.custom_minimum_size = Vector2(0, 20)
+	button.custom_minimum_size = Vector2(0, 42)
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", 11)
 	button.add_theme_color_override("font_color", Color("#998e7d"))
@@ -1046,6 +1456,7 @@ func _add_craft_button(parent: VBoxContainer, recipe_id: String, label: String, 
 	)
 	parent.add_child(button)
 	_craft_buttons[recipe_id] = button
+	_attach_voxel_icon(button, "craft_%s" % recipe_id, Vector2(35, 34), false)
 
 
 func _set_craft_button_state(recipe_id: String, can_craft: bool) -> void:
@@ -1092,7 +1503,7 @@ func _build_crafting_demand_controls(parent: VBoxContainer) -> void:
 
 func _build_work_order_controls(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 92)
+	card.custom_minimum_size = Vector2(0, 118)
 	card.add_theme_stylebox_override("panel", _soft_box(Color("#fff7df"), 10, 1))
 	parent.add_child(card)
 
@@ -1112,16 +1523,6 @@ func _build_work_order_controls(parent: VBoxContainer) -> void:
 	title.add_theme_font_size_override("font_size", 10)
 	title.add_theme_color_override("font_color", Color("#8a806f"))
 	stack.add_child(title)
-
-	var action_row := HBoxContainer.new()
-	action_row.add_theme_constant_override("separation", 5)
-	stack.add_child(action_row)
-
-	_add_work_order_action_button(action_row, "build_fence", "FNC\nFence", "Mark a tile for crew-built fence")
-	_add_work_order_action_button(action_row, "clear_brush", "CLR\nClear", "Mark brush for the crew to clear")
-	_add_work_order_action_button(action_row, "harvest_crop", "HRV\nPick", "Mark a ready crop for the crew to harvest")
-	_add_work_order_action_button(action_row, "plant_seed", "PLT\nSeed", "Mark an open tile for the crew to plant")
-	_add_work_order_action_button(action_row, "tend_crop", "TND\nCrop", "Mark a growing crop for the crew to tend")
 
 	_work_order_list_stack = VBoxContainer.new()
 	_work_order_list_stack.add_theme_constant_override("separation", 2)
@@ -1165,8 +1566,11 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_result_label.add_theme_color_override("font_color", Color("#5f7f39"))
 	header.add_child(_skill_forge_result_label)
 
-	_skill_forge_template_button_row = HBoxContainer.new()
-	_skill_forge_template_button_row.add_theme_constant_override("separation", 5)
+	_skill_forge_template_button_row = GridContainer.new()
+	_skill_forge_template_button_row.name = "AgentRecipeGrid"
+	_skill_forge_template_button_row.columns = 2
+	_skill_forge_template_button_row.add_theme_constant_override("h_separation", 6)
+	_skill_forge_template_button_row.add_theme_constant_override("v_separation", 6)
 	stack.add_child(_skill_forge_template_button_row)
 
 	_skill_forge_summary_label = Label.new()
@@ -1177,17 +1581,16 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_summary_label.add_theme_color_override("font_color", Color("#3f4a37"))
 	stack.add_child(_skill_forge_summary_label)
 
-	var bottom := HBoxContainer.new()
-	bottom.add_theme_constant_override("separation", 6)
-	stack.add_child(bottom)
-
 	_skill_forge_meta_label = Label.new()
 	_skill_forge_meta_label.text = "Manual | 0 steps | check"
 	_skill_forge_meta_label.clip_text = true
-	_skill_forge_meta_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_skill_forge_meta_label.add_theme_font_size_override("font_size", 9)
 	_skill_forge_meta_label.add_theme_color_override("font_color", Color("#6f8568"))
-	bottom.add_child(_skill_forge_meta_label)
+	stack.add_child(_skill_forge_meta_label)
+
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 6)
+	stack.add_child(bottom)
 
 	_skill_forge_lesson_label = Label.new()
 	_skill_forge_lesson_label.text = ""
@@ -1270,7 +1673,9 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 
 	_skill_forge_run_button = Button.new()
 	_skill_forge_run_button.text = "Run"
-	_skill_forge_run_button.custom_minimum_size = Vector2(56, 19)
+	_skill_forge_run_button.custom_minimum_size = Vector2(56, 36)
+	_skill_forge_run_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_forge_run_button.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_skill_forge_run_button.focus_mode = Control.FOCUS_NONE
 	_skill_forge_run_button.add_theme_font_size_override("font_size", 10)
 	_skill_forge_run_button.add_theme_color_override("font_color", Color("#2d3b1d"))
@@ -1279,10 +1684,13 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_run_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
 	_skill_forge_run_button.pressed.connect(_on_skill_forge_run_pressed)
 	bottom.add_child(_skill_forge_run_button)
+	_attach_voxel_icon(_skill_forge_run_button, "end_day", Vector2(18, 17), false)
 
 	_skill_forge_review_button = Button.new()
 	_skill_forge_review_button.text = "Check"
-	_skill_forge_review_button.custom_minimum_size = Vector2(52, 19)
+	_skill_forge_review_button.custom_minimum_size = Vector2(52, 36)
+	_skill_forge_review_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_forge_review_button.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_skill_forge_review_button.focus_mode = Control.FOCUS_NONE
 	_skill_forge_review_button.add_theme_font_size_override("font_size", 10)
 	_skill_forge_review_button.add_theme_color_override("font_color", Color("#4b4337"))
@@ -1291,10 +1699,13 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_review_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
 	_skill_forge_review_button.pressed.connect(_on_skill_forge_review_pressed)
 	bottom.add_child(_skill_forge_review_button)
+	_attach_voxel_icon(_skill_forge_review_button, "view_grid", Vector2(18, 17), false)
 
 	_skill_forge_revision_button = Button.new()
 	_skill_forge_revision_button.text = "Fix"
-	_skill_forge_revision_button.custom_minimum_size = Vector2(42, 19)
+	_skill_forge_revision_button.custom_minimum_size = Vector2(42, 36)
+	_skill_forge_revision_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_forge_revision_button.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_skill_forge_revision_button.focus_mode = Control.FOCUS_NONE
 	_skill_forge_revision_button.disabled = true
 	_skill_forge_revision_button.add_theme_font_size_override("font_size", 10)
@@ -1305,6 +1716,7 @@ func _build_skill_forge_controls(parent: VBoxContainer) -> void:
 	_skill_forge_revision_button.add_theme_stylebox_override("pressed", _craft_button_style(true))
 	_skill_forge_revision_button.pressed.connect(_on_skill_forge_revision_pressed)
 	bottom.add_child(_skill_forge_revision_button)
+	_attach_voxel_icon(_skill_forge_revision_button, "erase", Vector2(18, 17), false)
 
 	_refresh_skill_forge_panel()
 
@@ -1324,13 +1736,29 @@ func _rebuild_skill_forge_template_buttons() -> void:
 		var button := Button.new()
 		button.text = _skill_forge_button_text(preview)
 		button.tooltip_text = _skill_forge_template_tooltip(preview)
-		button.custom_minimum_size = Vector2(0, 22)
+		button.custom_minimum_size = Vector2(105, 72)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_NONE
 		button.add_theme_font_size_override("font_size", 10)
 		button.pressed.connect(_on_skill_forge_template_pressed.bind(str(template_id)))
 		_skill_forge_template_button_row.add_child(button)
 		_skill_forge_template_buttons[template_id] = button
+		_attach_voxel_icon(button, _skill_forge_icon_id(preview), Vector2(38, 36), true, 2.0)
+
+
+func _skill_forge_icon_id(preview: Dictionary) -> String:
+	match str(preview.get("name", "")):
+		"Tend Crops":
+			return "skill_tend_crop"
+		"Plant Seed":
+			return "skill_plant_seed"
+		"Clear Patch":
+			return "skill_clear_patch"
+		"Harvest Crops":
+			return "skill_harvest_crop"
+		"Build Fence":
+			return "skill_build_fence"
+	return "place"
 
 
 func _refresh_skill_forge_panel(show_preview_header: bool = true) -> void:
@@ -2519,11 +2947,12 @@ func _skill_forge_chronological_history_entries() -> Array[String]:
 	return entries
 
 
-func _add_work_order_action_button(parent: HBoxContainer, action_id: String, label: String, tooltip: String) -> void:
+func _add_work_order_action_button(parent: Container, action_id: String, label: String, tooltip: String) -> void:
 	var button := Button.new()
+	button.name = "CrewCommand_%s" % action_id
 	button.text = label
 	button.tooltip_text = tooltip
-	button.custom_minimum_size = Vector2(0, 30)
+	button.custom_minimum_size = Vector2(105, 78)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.focus_mode = Control.FOCUS_NONE
 	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -2538,6 +2967,7 @@ func _add_work_order_action_button(parent: HBoxContainer, action_id: String, lab
 	)
 	parent.add_child(button)
 	_work_order_action_buttons[action_id] = button
+	_attach_voxel_icon(button, "order_%s" % action_id, Vector2(43, 41), true, 2.0)
 
 
 func _add_empty_work_order_row(parent: VBoxContainer) -> void:
@@ -2585,9 +3015,20 @@ func _add_crew_mission_row(parent: VBoxContainer, mission: Dictionary) -> void:
 	margin.add_theme_constant_override("margin_bottom", 5)
 	row_panel.add_child(margin)
 
+	var content := HBoxContainer.new()
+	content.add_theme_constant_override("separation", 7)
+	margin.add_child(content)
+
+	var icon = VoxelIconScript.new()
+	content.add_child(icon)
+	icon.configure("order_tend_crop")
+	icon.custom_minimum_size = Vector2(30, 29)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	var stack := VBoxContainer.new()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 1)
-	margin.add_child(stack)
+	content.add_child(stack)
 
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 6)
@@ -2666,60 +3107,77 @@ func _configure_crew_mission_row_target(row_panel: PanelContainer, demand_id: St
 
 func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void:
 	var demand_id := str(demand.get("id", ""))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 5)
-	parent.add_child(row)
+	var card := PanelContainer.new()
+	card.name = "DemandAction_%s" % demand_id
+	card.custom_minimum_size = Vector2(0, 66)
+	card.add_theme_stylebox_override("panel", _soft_box(Color("#fffaf0"), 8, 1))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	card.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 4)
+	margin.add_child(stack)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 5)
+	stack.add_child(top)
 
 	var label := Label.new()
 	label.text = str(demand.get("label", "Crew Demand"))
-	label.custom_minimum_size = Vector2(88, 0)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_font_size_override("font_size", 11)
 	label.add_theme_color_override("font_color", Color("#3f372d"))
-	row.add_child(label)
+	top.add_child(label)
 
 	var status := Label.new()
 	status.text = str(demand.get("status_text", "Needs kit"))
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status.add_theme_font_size_override("font_size", 10)
 	status.add_theme_color_override("font_color", Color("#746b5f"))
-	row.add_child(status)
+	top.add_child(status)
+
+	var context := HBoxContainer.new()
+	context.add_theme_constant_override("separation", 5)
+	stack.add_child(context)
 
 	var preference := Label.new()
 	preference.text = _demand_preference_context_text(demand)
 	preference.visible = preference.text != ""
-	preference.custom_minimum_size = Vector2(44, 0)
-	preference.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	preference.add_theme_font_size_override("font_size", 9)
 	preference.add_theme_color_override("font_color", Color("#7b5aa6") if str(demand.get("preference_source", "")) == "truce" else Color("#5f7f39"))
 	preference.tooltip_text = _demand_preference_tooltip(demand)
-	row.add_child(preference)
+	context.add_child(preference)
 
 	var mission := Label.new()
 	mission.text = _demand_mission_context_text(demand)
 	mission.visible = mission.text != ""
-	mission.custom_minimum_size = Vector2(52, 0)
-	mission.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	mission.add_theme_font_size_override("font_size", 9)
 	mission.add_theme_color_override("font_color", Color("#6b6aa8"))
 	mission.tooltip_text = _demand_mission_tooltip(demand)
-	row.add_child(mission)
+	context.add_child(mission)
 
 	var reward := Label.new()
 	reward.text = str(demand.get("reward_text", ""))
 	reward.visible = reward.text != ""
-	reward.custom_minimum_size = Vector2(70, 0)
 	reward.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	reward.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward.add_theme_font_size_override("font_size", 9)
 	reward.add_theme_color_override("font_color", Color("#5f7f39"))
-	row.add_child(reward)
+	context.add_child(reward)
 
 	var action_button: Button = null
+	var action_icon := "craft_fence_kit"
 	if typeof(demand.get("target_tile", null)) == TYPE_VECTOR2I:
 		action_button = Button.new()
 		action_button.text = "Go"
 		action_button.tooltip_text = "Focus demand target"
-		action_button.custom_minimum_size = Vector2(36, 19)
+		action_button.custom_minimum_size = Vector2(0, 32)
 		action_button.focus_mode = Control.FOCUS_NONE
 		action_button.add_theme_font_size_override("font_size", 10)
 		action_button.add_theme_color_override("font_color", Color("#5d4938"))
@@ -2730,7 +3188,8 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 			sound_requested.emit("ui_click")
 			crafting_demand_target_requested.emit(demand_id)
 		)
-		row.add_child(action_button)
+		stack.add_child(action_button)
+		action_icon = "pan"
 	elif str(demand.get("kind", "deliver_item")) == "deliver_item":
 		var demand_status := str(demand.get("status", "open"))
 		var can_give := bool(demand.get("has_required_item", false))
@@ -2751,7 +3210,7 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 			action_button.text = "Wait"
 			action_button.tooltip_text = "Needs %s" % missing_text if missing_text != "" else "Missing supply ingredients"
 			status.tooltip_text = action_button.tooltip_text
-		action_button.custom_minimum_size = Vector2(44, 19)
+		action_button.custom_minimum_size = Vector2(0, 32)
 		action_button.focus_mode = Control.FOCUS_NONE
 		action_button.disabled = not can_act
 		action_button.add_theme_font_size_override("font_size", 10)
@@ -2764,7 +3223,12 @@ func _add_crafting_demand_row(parent: VBoxContainer, demand: Dictionary) -> void
 			sound_requested.emit("ui_click")
 			crafting_demand_requested.emit(demand_id)
 		)
-		row.add_child(action_button)
+		stack.add_child(action_button)
+		action_icon = "craft_%s" % str(demand.get("required_item", "fence_kit"))
+
+	if action_button != null:
+		action_button.name = "DemandCommand_%s" % demand_id
+		_attach_voxel_icon(action_button, action_icon, Vector2(25, 24), false)
 
 	_crafting_demand_rows[demand_id] = {
 		"label": label,
@@ -3124,37 +3588,53 @@ func _work_order_preference_label(order: Dictionary) -> String:
 
 func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
 	var order_id := str(order.get("id", ""))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 5)
-	parent.add_child(row)
+	var card := PanelContainer.new()
+	card.name = "WorkOrderAction_%s" % order_id
+	card.custom_minimum_size = Vector2(0, 68)
+	card.add_theme_stylebox_override("panel", _soft_box(Color("#fffaf0"), 8, 1))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	card.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 4)
+	margin.add_child(stack)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 5)
+	stack.add_child(top)
 
 	var label := Label.new()
 	label.text = str(order.get("label", "Work Order"))
-	label.custom_minimum_size = Vector2(82, 0)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.add_theme_font_size_override("font_size", 11)
 	label.add_theme_color_override("font_color", Color("#3f372d"))
-	row.add_child(label)
+	top.add_child(label)
 
 	var status := Label.new()
 	status.text = "Needs mats"
-	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	status.add_theme_font_size_override("font_size", 10)
 	status.add_theme_color_override("font_color", Color("#746b5f"))
-	row.add_child(status)
+	top.add_child(status)
 
 	var preference := Label.new()
 	preference.text = _work_order_preference_context_text(order)
 	preference.visible = preference.text != ""
-	preference.custom_minimum_size = Vector2(54, 0)
-	preference.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	preference.add_theme_font_size_override("font_size", 9)
 	preference.add_theme_color_override("font_color", _work_order_preference_color(order))
 	preference.tooltip_text = _work_order_preference_tooltip(order)
-	row.add_child(preference)
+	stack.add_child(preference)
 
 	var button := Button.new()
+	button.name = "WorkOrderCommand_%s" % order_id
 	button.text = "Ask"
-	button.custom_minimum_size = Vector2(56, 19)
+	button.custom_minimum_size = Vector2(0, 32)
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_font_size_override("font_size", 10)
 	button.add_theme_color_override("font_color", Color("#8c8274"))
@@ -3166,7 +3646,8 @@ func _add_work_order_row(parent: VBoxContainer, order: Dictionary) -> void:
 		sound_requested.emit("ui_click")
 		_on_work_order_row_button_pressed(order_id)
 	)
-	row.add_child(button)
+	stack.add_child(button)
+	_attach_voxel_icon(button, "order_%s" % str(order.get("action", "build_fence")), Vector2(25, 24), false)
 
 	_work_order_rows[order_id] = {
 		"label": label,
@@ -3310,10 +3791,10 @@ func _make_inventory_pill(id: String, text: String, color: Color, is_crafted: bo
 func _build_toast() -> void:
 	var toast_panel := PanelContainer.new()
 	toast_panel.name = "ToastPanel"
-	toast_panel.anchor_left = 0.38
-	toast_panel.anchor_top = 0.705
-	toast_panel.anchor_right = 0.64
-	toast_panel.anchor_bottom = 0.752
+	toast_panel.anchor_left = 0.36
+	toast_panel.anchor_top = 0.665
+	toast_panel.anchor_right = 0.65
+	toast_panel.anchor_bottom = 0.715
 	toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast_panel.add_theme_stylebox_override("panel", _soft_box(Color("#fffdf8"), 13, 1))
 	_root.add_child(toast_panel)
@@ -3336,9 +3817,9 @@ func _make_toggle(label: String, default_value: bool, signal_ref: Signal) -> But
 	var button := Button.new()
 	button.toggle_mode = true
 	button.button_pressed = default_value
-	button.custom_minimum_size = Vector2(0, 24)
+	button.custom_minimum_size = Vector2(0, 46)
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_font_size_override("font_size", 10)
 	button.add_theme_color_override("font_color", Color("#373127"))
 	button.add_theme_color_override("font_hover_color", Color("#2d3b1d"))
 	button.add_theme_color_override("font_pressed_color", Color("#2d3b1d"))
@@ -3788,6 +4269,19 @@ func _apply_crew_social_signal(row: Dictionary, snapshot: Dictionary) -> void:
 		social_label.visible = false
 		social_label.text = ""
 		_configure_crew_social_target(social_label, "", "")
+	_mirror_crew_social_status(row)
+
+
+func _mirror_crew_social_status(row: Dictionary) -> void:
+	var action_label := row.get("social", null) as Label
+	var status_label := row.get("social_status", null) as Label
+	if action_label == null or status_label == null:
+		return
+	status_label.visible = action_label.visible
+	status_label.text = action_label.text
+	status_label.tooltip_text = ""
+	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_label.add_theme_color_override("font_color", action_label.get_theme_color("font_color"))
 
 
 func _configure_crew_social_target(social_label: Label, demand_id: String, order_id: String = "", memory_agent_id: String = "", memory_label: String = "") -> void:
@@ -4056,10 +4550,77 @@ func _item_short_name(item_id: String) -> String:
 	return item_id.replace("_", " ").capitalize()
 
 
+func _command_dock_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#fff8ea")
+	style.border_color = Color("#c9b28e")
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(14)
+	style.shadow_color = Color(0.16, 0.09, 0.04, 0.22)
+	style.shadow_size = 12
+	style.shadow_offset = Vector2(0, 7)
+	return style
+
+
+func _command_tab_style(active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#b84332") if active else Color("#f0dfc3")
+	style.border_color = Color("#843025") if active else Color("#c9b28e")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(7)
+	style.shadow_color = Color(0.18, 0.09, 0.04, 0.22)
+	style.shadow_size = 2
+	style.shadow_offset = Vector2(0, 2)
+	return style
+
+
+func _workbench_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#202a23")
+	style.border_color = Color("#8a5735")
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(12)
+	style.shadow_color = Color(0.05, 0.03, 0.02, 0.34)
+	style.shadow_size = 14
+	style.shadow_offset = Vector2(0, 8)
+	return style
+
+
+func _workbench_chip_style(color: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.border_color = Color("#48614d")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	return style
+
+
+func _code_editor_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#172019")
+	style.border_color = Color("#48614d")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(7)
+	style.content_margin_left = 8.0
+	style.content_margin_right = 8.0
+	style.content_margin_top = 7.0
+	style.content_margin_bottom = 7.0
+	return style
+
+
+func _compiler_panel_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#243128")
+	style.border_color = Color("#48614d")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(7)
+	return style
+
+
 func _panel_style(radius: int, border: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1.0, 0.992, 0.965, 0.94)
-	style.border_color = Color("#6e5b3e")
+	style.bg_color = Color(1.0, 0.973, 0.918, 0.96)
+	style.border_color = Color("#c9b28e")
 	style.set_border_width_all(border)
 	style.set_corner_radius_all(radius)
 	style.shadow_color = Color(0, 0, 0, 0.15)
@@ -4107,10 +4668,13 @@ func _cursor_ghost_style() -> StyleBoxFlat:
 
 func _tool_button_style(active: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#eef4e4") if active else Color(1, 1, 1, 0)
-	style.border_color = Color("#7b914d") if active else Color(0, 0, 0, 0)
-	style.set_border_width_all(1 if active else 0)
-	style.set_corner_radius_all(12)
+	style.bg_color = Color("#b84332") if active else Color("#fff0d3")
+	style.border_color = Color("#843025") if active else Color("#c9aa7b")
+	style.set_border_width_all(2 if active else 1)
+	style.set_corner_radius_all(9)
+	style.shadow_color = Color(0.18, 0.09, 0.04, 0.22)
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(0, 3)
 	return style
 
 
@@ -4146,10 +4710,13 @@ func _remove_button_style(active: bool) -> StyleBoxFlat:
 
 func _crew_order_button_style(active: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#e2f1d8") if active else Color("#fffaf0")
-	style.border_color = Color("#769352") if active else Color("#d1bea0")
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(9)
+	style.bg_color = Color("#67863b") if active else Color("#fff0d3")
+	style.border_color = Color("#405c27") if active else Color("#c9aa7b")
+	style.set_border_width_all(2 if active else 1)
+	style.set_corner_radius_all(8)
+	style.shadow_color = Color(0.18, 0.09, 0.04, 0.18)
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(0, 3)
 	return style
 
 
@@ -4189,8 +4756,8 @@ func _parley_button_style(prompted: bool, active: bool) -> StyleBoxFlat:
 
 func _toggle_style(active: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#eef5e5") if active else Color("#f4efe5")
-	style.border_color = Color("#94a96b") if active else Color("#c9bca6")
+	style.bg_color = Color("#dfecc7") if active else Color("#f1e4cf")
+	style.border_color = Color("#67863b") if active else Color("#c9b28e")
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(10)
 	return style

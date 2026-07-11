@@ -16,6 +16,18 @@ func _run() -> void:
 	var placement_tool = scene.get_node("PlacementTool")
 	var game_ui = scene.get_node("GameUI")
 	var camera = scene.get_node("CameraController").camera
+	var command_tabs: Dictionary = game_ui.get("_command_tab_buttons")
+	if not command_tabs.has("crew"):
+		_fail("Crew command tab was not registered.")
+		return
+	var crew_tab := command_tabs["crew"] as Button
+	var crew_tab_position := crew_tab.get_global_rect().get_center()
+	_move_mouse(crew_tab_position)
+	_click(crew_tab_position)
+	await process_frame
+	if str(game_ui.get("_active_command_tab")) != "crew":
+		_fail("Clicking the Crew command tab did not reveal crew targeting controls.")
+		return
 
 	var action_buttons: Dictionary = game_ui.get("_work_order_action_buttons")
 	if not action_buttons.has("build_fence"):
