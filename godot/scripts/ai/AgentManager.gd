@@ -119,6 +119,16 @@ func get_agent_snapshots() -> Array:
 	return snapshots
 
 
+func is_grid_pos_occupied(grid_pos: Vector2i) -> bool:
+	if grid_manager == null:
+		return false
+	for agent in agents:
+		var occupied_tile = grid_manager.get_tile_from_world(agent.position)
+		if occupied_tile != null and occupied_tile.grid_pos == grid_pos:
+			return true
+	return false
+
+
 func apply_adversarial_result(result: Dictionary) -> void:
 	var target_id := str(result.get("agent_id", ""))
 	if target_id == "":

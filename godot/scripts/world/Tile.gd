@@ -412,6 +412,19 @@ func micro_detail_surface_id() -> String:
 	return _micro_surface_id()
 
 
+func blocks_agent_movement() -> bool:
+	return structure_id != "" or decor_id in ["rock", "fence", "tree", "wooden_sign"]
+
+
+func item_blocks_agent_movement(item_id: String) -> bool:
+	return item_id in ["barn", "silo", "well", "rock", "fence", "tree", "wooden_sign"]
+
+
+func agent_walk_surface_y() -> float:
+	var detail_size := _micro_cell_size(Vector2i.ZERO)
+	return TILE_TOP_SURFACE_Y + detail_size.y - MICRO_CELL_EMBED
+
+
 func _build_frame(root: Node3D, color: Color, thickness: float, y: float) -> void:
 	root.add_child(VoxelFactory.cube("North", Vector3(0.98, thickness, thickness), color, Vector3(0.0, y, -0.49)))
 	root.add_child(VoxelFactory.cube("South", Vector3(0.98, thickness, thickness), color, Vector3(0.0, y, 0.49)))

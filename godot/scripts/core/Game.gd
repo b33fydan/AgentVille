@@ -149,6 +149,7 @@ func _connect_systems() -> void:
 	placement_tool.configure(grid_manager, camera_controller, game_ui)
 	placement_tool.set_item_availability_checker(Callable(self, "_can_place_palette_item"))
 	placement_tool.set_crew_order_target_checker(Callable(self, "_can_target_crew_order"))
+	placement_tool.set_agent_occupancy_checker(Callable(_agent_manager, "is_grid_pos_occupied"))
 	placement_tool.action_performed.connect(game_ui.show_message)
 	placement_tool.harvest_collected.connect(_on_harvest_collected)
 	placement_tool.sound_requested.connect(sound_manager.play_stamp)
@@ -1588,7 +1589,7 @@ func _try_use_fence_hands() -> bool:
 		return false
 
 	var target_tile = _find_fence_hands_tile()
-	if target_tile == null or not target_tile.place_item("fence"):
+	if target_tile == null or _is_agent_tile_occupied(target_tile.grid_pos) or not target_tile.place_item("fence"):
 		return false
 
 	_fence_hands_charges -= 1
@@ -1651,6 +1652,8 @@ func _find_fence_hands_tile():
 			if tile == null:
 				continue
 			if str(tile.terrain) == "dirt_path" or str(tile.decor_id) != "" or str(tile.structure_id) != "" or tile.crop != null:
+				continue
+			if _is_agent_tile_occupied(tile.grid_pos):
 				continue
 			if tile.can_apply_item("fence"):
 				return tile
@@ -2800,8 +2803,7 @@ func _scaled_recipe_cost(recipe_id: String, count: int) -> Dictionary:
 
 func _can_build_order_target(order: Dictionary) -> bool:
 	var target_tile: Vector2i = order.get("target_tile", Vector2i.ZERO)
-	var tile = grid_manager.get_tile(target_tile)
-	return tile != null and tile.can_apply_item("fence")
+	return _can_target_crew_order("build_fence", target_tile)
 
 
 func _can_order_target(order: Dictionary) -> bool:
@@ -2815,7 +2817,7 @@ func _can_target_crew_order(action_id: String, grid_pos: Vector2i) -> bool:
 
 	match action_id:
 		"build_fence":
-			return tile.can_apply_item("fence")
+			return tile.can_apply_item("fence") and not _is_agent_tile_occupied(grid_pos)
 		"clear_brush":
 			return str(tile.decor_id) in ["tall_grass", "flower_patch"]
 		"harvest_crop":
@@ -2825,6 +2827,10 @@ func _can_target_crew_order(action_id: String, grid_pos: Vector2i) -> bool:
 		"tend_crop":
 			return tile.crop != null and not tile.crop.is_ready()
 	return false
+
+
+func _is_agent_tile_occupied(grid_pos: Vector2i) -> bool:
+	return _agent_manager != null and bool(_agent_manager.call("is_grid_pos_occupied", grid_pos))
 
 
 func _targeting_error_message(action_id: String) -> String:

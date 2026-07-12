@@ -5,6 +5,12 @@ signal day_advanced(day: int)
 
 const TileScene := preload("res://scenes/world/Tile.tscn")
 const VoxelFactory := preload("res://scripts/core/Voxel.gd")
+const AGENT_CARDINAL_OFFSETS := [
+	Vector2i(0, -1),
+	Vector2i(1, 0),
+	Vector2i(0, 1),
+	Vector2i(-1, 0)
+]
 const STARTER_DECOR_CLUSTER_ORDER := [
 	"homestead_edge",
 	"silo_garden_gap",
@@ -129,6 +135,79 @@ func get_tile_from_world(world_position: Vector3):
 	if gx < 0 or gz < 0 or gx >= width or gz >= height:
 		return null
 	return get_tile(Vector2i(gx, gz))
+
+
+func is_in_bounds(grid_pos: Vector2i) -> bool:
+	return grid_pos.x >= 0 and grid_pos.y >= 0 and grid_pos.x < width and grid_pos.y < height
+
+
+func is_agent_walkable(grid_pos: Vector2i) -> bool:
+	if not is_in_bounds(grid_pos):
+		return false
+	var tile = get_tile(grid_pos)
+	return tile != null and not bool(tile.call("blocks_agent_movement"))
+
+
+func agent_walkable_neighbors(grid_pos: Vector2i) -> Array[Vector2i]:
+	var neighbors: Array[Vector2i] = []
+	for offset in AGENT_CARDINAL_OFFSETS:
+		var candidate: Vector2i = grid_pos + offset
+		if is_agent_walkable(candidate):
+			neighbors.append(candidate)
+	return neighbors
+
+
+func agent_walk_surface_y(grid_pos: Vector2i) -> float:
+	var tile = get_tile(grid_pos)
+	if tile == null:
+		return 0.0
+	return float(tile.call("agent_walk_surface_y"))
+
+
+func find_agent_path(start: Vector2i, action_target: Vector2i, stop_adjacent: bool = false) -> Array[Vector2i]:
+	var empty_path: Array[Vector2i] = []
+	if not is_in_bounds(start) or not is_in_bounds(action_target):
+		return empty_path
+
+	var destinations: Array[Vector2i] = []
+	if not stop_adjacent and is_agent_walkable(action_target):
+		destinations.append(action_target)
+	if stop_adjacent or destinations.is_empty():
+		for neighbor in agent_walkable_neighbors(action_target):
+			destinations.append(neighbor)
+	if destinations.is_empty():
+		return empty_path
+	if destinations.has(start):
+		return [start]
+
+	var frontier: Array[Vector2i] = [start]
+	var came_from: Dictionary = {start: start}
+	var frontier_index := 0
+	var reached := Vector2i(-1, -1)
+	while frontier_index < frontier.size() and reached == Vector2i(-1, -1):
+		var current: Vector2i = frontier[frontier_index]
+		frontier_index += 1
+		for neighbor in agent_walkable_neighbors(current):
+			if stop_adjacent and neighbor == action_target:
+				continue
+			if came_from.has(neighbor):
+				continue
+			came_from[neighbor] = current
+			frontier.append(neighbor)
+			if destinations.has(neighbor):
+				reached = neighbor
+				break
+
+	if reached == Vector2i(-1, -1):
+		return empty_path
+
+	var reversed_path: Array[Vector2i] = [reached]
+	var cursor := reached
+	while cursor != start:
+		cursor = came_from[cursor]
+		reversed_path.append(cursor)
+	reversed_path.reverse()
+	return reversed_path
 
 
 func starter_decor_clusters() -> Dictionary:

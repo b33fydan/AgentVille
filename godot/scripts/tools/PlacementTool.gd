@@ -18,6 +18,7 @@ var camera_controller
 var game_ui
 var item_availability_checker: Callable
 var crew_order_target_checker: Callable
+var agent_occupancy_checker: Callable
 
 var _hovered_tile
 var _preview
@@ -70,6 +71,11 @@ func set_item_availability_checker(checker: Callable) -> void:
 
 func set_crew_order_target_checker(checker: Callable) -> void:
 	crew_order_target_checker = checker
+	_update_preview_visibility()
+
+
+func set_agent_occupancy_checker(checker: Callable) -> void:
+	agent_occupancy_checker = checker
 	_update_preview_visibility()
 
 
@@ -243,7 +249,11 @@ func _update_preview_visibility() -> void:
 
 	var is_valid := false
 	if _hovered_tile.has_method("can_apply_item"):
-		is_valid = _hovered_tile.can_apply_item(selected_item_id) and _has_required_inventory(selected_item_id)
+		is_valid = (
+			_hovered_tile.can_apply_item(selected_item_id)
+			and _has_required_inventory(selected_item_id)
+			and not _solid_item_conflicts_with_agent(_hovered_tile, selected_item_id)
+		)
 	_preview.call("set_item", selected_item_id)
 	_preview.call("show_preview", _hovered_tile.position, is_valid)
 
@@ -296,6 +306,15 @@ func _apply_selected_item(tile) -> Dictionary:
 				"stamps": ["harvest_chime", "coin_burst", "plant_pop"] if value > 0 else (["plant_pop"] if success else ["error_soft"])
 			}
 		_:
+			if _solid_item_conflicts_with_agent(tile, selected_item_id):
+				return {
+					"success": false,
+					"message": "A crew member is standing there.",
+					"value": 0,
+					"resources": {},
+					"crafted_cost": {},
+					"stamps": ["error_soft"]
+				}
 			if not _has_required_inventory(selected_item_id):
 				return {
 					"success": false,
@@ -328,6 +347,14 @@ func _has_required_inventory(item_id: String) -> bool:
 	if not item_availability_checker.is_valid():
 		return true
 	return bool(item_availability_checker.call(item_id))
+
+
+func _solid_item_conflicts_with_agent(tile, item_id: String) -> bool:
+	if tile == null or not agent_occupancy_checker.is_valid():
+		return false
+	if not tile.has_method("item_blocks_agent_movement") or not bool(tile.call("item_blocks_agent_movement", item_id)):
+		return false
+	return bool(agent_occupancy_checker.call(tile.grid_pos))
 
 
 func _crafted_cost_for_item(item_id: String) -> Dictionary:

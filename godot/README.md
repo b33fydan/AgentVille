@@ -21,7 +21,9 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Click farm tiles to apply the active tool.
 - Press `End Day` in the left `WORLD` tab to grow planted crops by one stage.
 - Harvest full corn or wheat to earn coins.
-- The visible NPC crew now walks to small jobs: harvesting ready crops, clearing brush, and inspecting farm pieces.
+- The visible NPC crew now walks to small jobs on bounded cardinal routes: harvesting ready crops, clearing brush, and inspecting farm pieces without crossing barns, silos, wells, fences, trees, rocks, or signs.
+- NPC feet follow each packed tile's actual surface height, the normal pace is a grounded `1.35` tiles per second, and an `angry` expression raises movement speed by exactly 50% without accelerating work timers. A small opposing arm/leg gait replaces the old upward-only skating bob while they move.
+- Solid placement previews and actions reject any tile currently occupied by a crew member; obstacles added ahead of a moving NPC trigger a bounded replan without snapping the character back to a tile center.
 - Player and NPC work now feeds a tiny stash: brush gives Fiber, harvests give Grain, and rock breaking gives Stone.
 - The left `CREW` tab has crafting recipes for Fence Kits, Seed Bundles, and Rush Kits.
 - Placing fences now consumes Fence Kits.
@@ -121,8 +123,8 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 
 ## Structure
 
-- `scripts/world/GridManager.gd` owns the farm grid and day growth.
-- `scripts/world/Tile.gd` owns each tile's visual state and contents.
+- `scripts/world/GridManager.gd` owns the farm grid, day growth, walkability bounds, and deterministic four-neighbor NPC pathfinding.
+- `scripts/world/Tile.gd` owns each tile's visual state, contents, solid-agent boundary state, and packed walk-surface height.
 - `scripts/world/LocalMegavoxAssets.gd` optionally loads local licensed MEGAVOXPACK GLBs for curated prop swaps while preserving procedural fallbacks.
 - `scripts/world/Crop.gd` owns crop growth stages.
 - Vegetation has subtle procedural wind sway for crops and tall grass.
@@ -143,6 +145,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `scripts/ai/UtilityAgentDecisionModel.gd` is the deterministic decision layer that an LSTM can later replace or assist.
 - `tools/smoke_receipts.gd` exercises player-action receipts, agent reactions, and day summaries.
 - `tools/smoke_agents.gd` exercises NPC harvesting, coin updates, and brush clearing.
+- `tools/smoke_agent_movement_physics.gd` exercises bounded structure-safe routes, adjacent interaction and fence-building standoffs, dynamic obstacle replanning, packed-surface foot contact, exact angry-speed travel, work-speed isolation, and the prototype opposing-limb gait.
 - `tools/smoke_agent_daily_intentions.gd` exercises daily NPC plans biasing utility choices, surfacing in crew rows, and landing in receipts and day summaries.
 - `tools/smoke_crew_missions.gd` exercises resolved local Parley starting a two-step crew mission, linked mission-demand receipts, mission completion rewards, and mission day-summary callouts.
 - `tools/smoke_mission_ui.gd` exercises mission progress chips in demand rows and step-progress mission signals in crew rows.

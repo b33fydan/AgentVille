@@ -12,6 +12,18 @@ const AgentReactionModelScript := preload("res://scripts/ai/AgentReactionModel.g
 const AgentDialogueLibraryScript := preload("res://scripts/ai/AgentDialogueLibrary.gd")
 const ARRIVAL_DISTANCE := 0.04
 const WORK_SECONDS := 0.58
+const FEET_LOCAL_BOTTOM := 0.02
+const ANGRY_SPEED_MULTIPLIER := 1.5
+const APPROACH_ACTIONS := [
+	"harvest_crop",
+	"clear_brush",
+	"plant_seed",
+	"tend_crop",
+	"inspect_structure",
+	"inspect_ready_crop",
+	"inspect_soil",
+	"build_fence_order"
+]
 
 var agent_id: String = "agent"
 var display_name: String = "Agent"
@@ -24,7 +36,7 @@ var memory = AgentMemoryScript.new()
 var decision_model = UtilityAgentDecisionModelScript.new()
 var reaction_model = AgentReactionModelScript.new()
 var dialogue_library = AgentDialogueLibraryScript.new()
-var move_speed: float = 1.85
+var move_speed: float = 1.35
 
 var grid_manager
 var event_log
@@ -34,6 +46,10 @@ var _accent_color := Color("#f2cf6b")
 var _skin_color := Color("#ffd8aa")
 var _visual_root: Node3D
 var _head: MeshInstance3D
+var _leg_a: MeshInstance3D
+var _leg_b: MeshInstance3D
+var _arm_a: MeshInstance3D
+var _arm_b: MeshInstance3D
 var _mood_pip: MeshInstance3D
 var _face_label: Label3D
 var _reason_badge: Label3D
@@ -41,6 +57,10 @@ var _reason_badge_plate: MeshInstance3D
 var _reason_badge_last_text: String = ""
 var _reason_badge_pulse: float = 0.0
 var _target_position := Vector3.ZERO
+var _movement_path: Array[Vector2i] = []
+var _route_requires_adjacent: bool = false
+var _route_reachable: bool = true
+var _movement_active: bool = false
 var _decision_timer: float = 1.5
 var _pending_focus_event: Dictionary = {}
 var _walk_phase: float = 0.0
@@ -248,12 +268,12 @@ func _start_decision(decision: Dictionary) -> void:
 	state["current_action"] = action
 	_apply_action_state_change(action)
 	memory.remember_action(action, reason, score)
-	_set_target_grid(target_tile)
+	_set_target_grid(target_tile, _action_requires_approach(action))
 	_active_decision = decision.duplicate(true)
 	_set_active_social_preference(decision)
 	_arrival_action_done = false
 	_work_timer = 0.0
-	_set_phase("working" if _is_at_target() else "walking")
+	_set_phase("blocked" if not _route_reachable else ("working" if _is_at_target() else "walking"))
 
 	if event_log:
 		var action_event := {
@@ -324,7 +344,9 @@ func get_snapshot() -> Dictionary:
 		"action": str(state.get("current_action", "idle")),
 		"phase": str(state.get("current_phase", "idle")),
 		"grid_pos": current_grid_pos,
-		"target_grid_pos": target_grid_pos
+		"target_grid_pos": target_grid_pos,
+		"movement_speed_multiplier": _current_movement_speed_multiplier(),
+		"route_reachable": _route_reachable
 	}
 
 
@@ -641,9 +663,27 @@ func _validated_tile(value) -> Vector2i:
 	return value
 
 
-func _set_target_grid(tile_pos: Vector2i) -> void:
+func _set_target_grid(tile_pos: Vector2i, stop_adjacent: bool = false) -> void:
 	target_grid_pos = tile_pos
-	_target_position = _world_for(tile_pos)
+	_route_requires_adjacent = stop_adjacent
+	_movement_path.clear()
+	if grid_manager == null or not grid_manager.has_method("find_agent_path"):
+		_route_reachable = true
+		_movement_path.append(tile_pos)
+		_target_position = _world_for(tile_pos)
+		return
+
+	var path: Array = grid_manager.call("find_agent_path", current_grid_pos, tile_pos, stop_adjacent)
+	_route_reachable = not path.is_empty()
+	if not _route_reachable:
+		_target_position = position
+		return
+	for index in range(1, path.size()):
+		_movement_path.append(path[index])
+	if _movement_path.is_empty():
+		_target_position = _world_for(current_grid_pos)
+	else:
+		_target_position = _world_for(_movement_path[0])
 
 
 func _reset_position() -> void:
@@ -651,29 +691,58 @@ func _reset_position() -> void:
 	current_grid_pos = home_tile
 	target_grid_pos = home_tile
 	_target_position = position
+	_movement_path.clear()
+	_route_reachable = true
 
 
 func _world_for(tile_pos: Vector2i) -> Vector3:
 	if grid_manager == null:
 		return Vector3.ZERO
 	var world: Vector3 = grid_manager.grid_to_world(tile_pos)
-	world.y = 0.20
+	if grid_manager.has_method("agent_walk_surface_y"):
+		world.y = float(grid_manager.call("agent_walk_surface_y", tile_pos)) - FEET_LOCAL_BOTTOM
+	else:
+		world.y = 0.09
 	return world
 
 
 func _update_movement(delta: float) -> void:
+	_movement_active = false
+	if not _route_reachable:
+		return
+	if not _movement_path.is_empty() and grid_manager != null and grid_manager.has_method("is_agent_walkable"):
+		var next_grid_pos: Vector2i = _movement_path[0]
+		if not bool(grid_manager.call("is_agent_walkable", next_grid_pos)):
+			_set_target_grid(target_grid_pos, _route_requires_adjacent)
+			if not _route_reachable:
+				return
+
 	var before: Vector3 = position
-	position = position.move_toward(_target_position, move_speed * _current_speed_multiplier() * delta)
-	if _is_at_target():
-		current_grid_pos = target_grid_pos
+	var planar_target := Vector3(_target_position.x, position.y, _target_position.z)
+	position = position.move_toward(planar_target, move_speed * _current_movement_speed_multiplier() * delta)
+	_snap_to_walk_surface()
 	var movement: Vector3 = position - before
-	if movement.length_squared() > 0.0001:
+	var planar_movement := Vector2(movement.x, movement.z)
+	_movement_active = planar_movement.length_squared() > 0.000001
+	if _movement_active:
 		rotation.y = atan2(movement.x, movement.z)
+
+	if _planar_distance_to_target() <= ARRIVAL_DISTANCE and not _movement_path.is_empty():
+		position.x = _target_position.x
+		position.z = _target_position.z
+		_snap_to_walk_surface()
+		current_grid_pos = _movement_path.pop_front()
+		if not _movement_path.is_empty():
+			_target_position = _world_for(_movement_path[0])
 
 
 func _update_active_decision(delta: float) -> void:
+	if not _route_reachable:
+		_complete_active_decision()
+		return
+
 	if _work_timer > 0.0:
-		_work_timer -= delta * _current_speed_multiplier()
+		_work_timer -= delta * _current_work_speed_multiplier()
 		if _work_timer <= 0.0:
 			_complete_active_decision()
 		return
@@ -682,7 +751,6 @@ func _update_active_decision(delta: float) -> void:
 		_set_phase("walking")
 		return
 
-	current_grid_pos = target_grid_pos
 	if not _arrival_action_done:
 		_arrival_action_done = true
 		_set_phase("working")
@@ -726,7 +794,20 @@ func _complete_active_decision() -> void:
 
 
 func _is_at_target() -> bool:
-	return position.distance_to(_target_position) <= ARRIVAL_DISTANCE
+	return _route_reachable and _movement_path.is_empty() and _planar_distance_to_target() <= ARRIVAL_DISTANCE
+
+
+func _planar_distance_to_target() -> float:
+	return Vector2(position.x - _target_position.x, position.z - _target_position.z).length()
+
+
+func _snap_to_walk_surface() -> void:
+	if grid_manager == null or not grid_manager.has_method("get_tile_from_world"):
+		return
+	var supporting_tile = grid_manager.call("get_tile_from_world", position)
+	if supporting_tile == null or not supporting_tile.has_method("agent_walk_surface_y"):
+		return
+	position.y = float(supporting_tile.call("agent_walk_surface_y")) - FEET_LOCAL_BOTTOM
 
 
 func _update_morale_boost(delta: float) -> void:
@@ -740,7 +821,19 @@ func _update_morale_boost(delta: float) -> void:
 
 
 func _current_speed_multiplier() -> float:
+	return _current_movement_speed_multiplier()
+
+
+func _current_movement_speed_multiplier() -> float:
+	return _current_work_speed_multiplier() * (ANGRY_SPEED_MULTIPLIER if str(state.get("expression", "neutral")) == "angry" else 1.0)
+
+
+func _current_work_speed_multiplier() -> float:
 	return _morale_speed_multiplier if _morale_boost_timer > 0.0 else 1.0
+
+
+func _action_requires_approach(action: String) -> bool:
+	return action in APPROACH_ACTIONS
 
 
 func _set_phase(new_phase: String) -> void:
@@ -838,7 +931,9 @@ func _inspect_soil_at(tile_pos: Vector2i) -> void:
 
 func _build_fence_order_at(tile_pos: Vector2i, order: Dictionary) -> void:
 	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
-	var success: bool = tile != null and tile.can_apply_item("fence")
+	var agent_manager = get_parent()
+	var occupied: bool = agent_manager != null and agent_manager.has_method("is_grid_pos_occupied") and bool(agent_manager.call("is_grid_pos_occupied", tile_pos))
+	var success: bool = tile != null and tile.can_apply_item("fence") and not occupied
 	if success:
 		success = tile.place_item("fence")
 
@@ -1120,8 +1215,20 @@ func _update_visual_motion(delta: float) -> void:
 	if _visual_root == null:
 		return
 
-	_walk_phase += delta * (7.0 if position.distance_to(_target_position) > 0.02 else 2.0)
-	var bob: float = abs(sin(_walk_phase)) * (0.035 if position.distance_to(_target_position) > 0.02 else 0.012)
+	if _movement_active:
+		_walk_phase += delta * 7.0 * _current_movement_speed_multiplier()
+	var stride := sin(_walk_phase)
+	var stride_angle := stride * 0.48 if _movement_active else 0.0
+	var pose_blend := minf(1.0, delta * 12.0)
+	if _leg_a:
+		_leg_a.rotation.x = lerpf(_leg_a.rotation.x, stride_angle, pose_blend)
+	if _leg_b:
+		_leg_b.rotation.x = lerpf(_leg_b.rotation.x, -stride_angle, pose_blend)
+	if _arm_a:
+		_arm_a.rotation.x = lerpf(_arm_a.rotation.x, -stride_angle * 0.78, pose_blend)
+	if _arm_b:
+		_arm_b.rotation.x = lerpf(_arm_b.rotation.x, stride_angle * 0.78, pose_blend)
+	var bob: float = abs(stride) * 0.008 if _movement_active else 0.0
 	var intensity := float(state.get("reaction_intensity", 0.0))
 	var shake := 0.0
 	if intensity > 0.05 and str(state.get("expression", "neutral")) in ["side_eye", "annoyed", "angry"]:
@@ -1143,10 +1250,14 @@ func _build_visual() -> void:
 	_head = VoxelFactory.cube("Head", Vector3(0.20, 0.20, 0.20), _skin_color, Vector3(0.0, 0.64, 0.0))
 	_visual_root.add_child(_head)
 	_visual_root.add_child(VoxelFactory.cube("HairHat", Vector3(0.23, 0.08, 0.23), _accent_color, Vector3(0.0, 0.78, 0.0)))
-	_visual_root.add_child(VoxelFactory.cube("LegA", Vector3(0.08, 0.22, 0.08), Color("#4f4138"), Vector3(-0.06, 0.13, 0.0)))
-	_visual_root.add_child(VoxelFactory.cube("LegB", Vector3(0.08, 0.22, 0.08), Color("#4f4138"), Vector3(0.06, 0.13, 0.0)))
-	_visual_root.add_child(VoxelFactory.cube("ArmA", Vector3(0.07, 0.25, 0.07), _skin_color, Vector3(-0.18, 0.36, 0.0)))
-	_visual_root.add_child(VoxelFactory.cube("ArmB", Vector3(0.07, 0.25, 0.07), _skin_color, Vector3(0.18, 0.36, 0.0)))
+	_leg_a = VoxelFactory.cube("LegA", Vector3(0.08, 0.22, 0.08), Color("#4f4138"), Vector3(-0.06, 0.13, 0.0))
+	_leg_b = VoxelFactory.cube("LegB", Vector3(0.08, 0.22, 0.08), Color("#4f4138"), Vector3(0.06, 0.13, 0.0))
+	_arm_a = VoxelFactory.cube("ArmA", Vector3(0.07, 0.25, 0.07), _skin_color, Vector3(-0.18, 0.36, 0.0))
+	_arm_b = VoxelFactory.cube("ArmB", Vector3(0.07, 0.25, 0.07), _skin_color, Vector3(0.18, 0.36, 0.0))
+	_visual_root.add_child(_leg_a)
+	_visual_root.add_child(_leg_b)
+	_visual_root.add_child(_arm_a)
+	_visual_root.add_child(_arm_b)
 	_mood_pip = VoxelFactory.cube("MoodPip", Vector3(0.10, 0.10, 0.10), _accent_color, Vector3(0.0, 0.98, 0.0))
 	_visual_root.add_child(_mood_pip)
 
@@ -1323,7 +1434,7 @@ func _face_text(expression: String) -> String:
 func _face_camera_if_judging() -> void:
 	if str(state.get("expression", "neutral")) not in ["annoyed", "angry"]:
 		return
-	if position.distance_to(_target_position) > 0.03:
+	if _movement_active:
 		return
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
