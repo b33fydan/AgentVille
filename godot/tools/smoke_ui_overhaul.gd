@@ -195,6 +195,9 @@ func _assert_command_and_icon_contract(scene: Node, game_ui, dock: Control, crew
 		[dock.find_child("AmbientOcclusionToggle", true, false), "view_ao", "AO"],
 		[dock.find_child("GridToggle", true, false), "view_grid", "Grid"],
 		[dock.find_child("ShadowsToggle", true, false), "view_shadows", "Shadows"],
+		[dock.find_child("CameraZoomIn", true, false), "zoom_in", "Zoom In"],
+		[dock.find_child("CameraZoomOut", true, false), "zoom_out", "Zoom Out"],
+		[dock.find_child("CameraRecenter", true, false), "recenter", "Center Camera"],
 		[dock.find_child("EndDayButton", true, false), "end_day", "End Day"]
 	]
 	for entry in single_buttons:

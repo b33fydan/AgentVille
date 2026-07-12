@@ -156,6 +156,12 @@ func _build_model() -> void:
 		"view_shadows":
 			_add_tree()
 			_add_cube("Shadow", Vector3(0.58, 0.025, 0.34), Color("#5c5147"), Vector3(0.18, 0.10, 0.18))
+		"zoom_in":
+			_add_magnifier(true)
+		"zoom_out":
+			_add_magnifier(false)
+		"recenter":
+			_add_recenter_target()
 		"parley":
 			_add_speech_bubbles()
 		"end_day":
@@ -277,6 +283,24 @@ func _add_pan_arrows() -> void:
 	_add_cube("PanCenter", Vector3(0.24, 0.24, 0.24), WATER, Vector3(0.0, 0.36, 0.0))
 	for direction in [Vector3(0.34, 0.0, 0.0), Vector3(-0.34, 0.0, 0.0), Vector3(0.0, 0.0, 0.34), Vector3(0.0, 0.0, -0.34)]:
 		_add_cube("Arrow%s" % str(direction), Vector3(0.30 if direction.x != 0 else 0.10, 0.10, 0.30 if direction.z != 0 else 0.10), WATER, Vector3(direction.x, 0.36, direction.z))
+
+
+func _add_magnifier(show_plus: bool) -> void:
+	_add_cube("LensTop", Vector3(0.52, 0.08, 0.10), WATER, Vector3(-0.08, 0.73, 0.0))
+	_add_cube("LensBottom", Vector3(0.52, 0.08, 0.10), WATER, Vector3(-0.08, 0.29, 0.0))
+	_add_cube("LensLeft", Vector3(0.08, 0.52, 0.10), WATER, Vector3(-0.30, 0.51, 0.0))
+	_add_cube("LensRight", Vector3(0.08, 0.52, 0.10), WATER, Vector3(0.14, 0.51, 0.0))
+	var handle := _add_cube("LensHandle", Vector3(0.10, 0.48, 0.10), WOOD, Vector3(0.29, 0.24, 0.0))
+	handle.rotation.z = deg_to_rad(-42.0)
+	_add_cube("ZoomHorizontal", Vector3(0.28, 0.07, 0.07), CREAM, Vector3(-0.08, 0.51, -0.07))
+	if show_plus:
+		_add_cube("ZoomVertical", Vector3(0.07, 0.28, 0.07), CREAM, Vector3(-0.08, 0.51, -0.07))
+
+
+func _add_recenter_target() -> void:
+	_add_cube("TargetOuter", Vector3(0.76, 0.10, 0.76), WATER, Vector3(0.0, 0.16, 0.0))
+	_add_cube("TargetInner", Vector3(0.50, 0.12, 0.50), CREAM, Vector3(0.0, 0.23, 0.0))
+	_add_cube("TargetCenter", Vector3(0.22, 0.14, 0.22), BARN_RED, Vector3(0.0, 0.31, 0.0))
 
 
 func _add_cross(color: Color, offset: Vector3) -> void:

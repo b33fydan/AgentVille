@@ -8,7 +8,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Run `scenes/Main.tscn`.
 - Use the left `FARM` command tab to till, plant, harvest, erase, place, or pan, and choose terrain, crops, roads, decor, structures, or tools from its embedded voxel catalog.
 - Use the left `CREW` command tab for marked jobs, Parley, supply crafting, live demand actions, and crew-order actions.
-- Use the left `AGENT` command tab for Skill Forge starter workflows, and the left `WORLD` tab for view controls and End Day.
+- Use the left `AGENT` command tab for Skill Forge starter workflows, and the left `WORLD` tab for view controls, camera zoom/recenter, and End Day.
 - The bottom Agent Workbench is an editable, syntax-highlighted teaching surface with compiler-style trace output. It is intentionally offline and does not mutate game state yet.
 - Palette selections attach a small item ghost to the cursor.
 - Hovering a selected palette item over the farm shows a hologram footprint before placement.
@@ -116,8 +116,8 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Aged targeted crew demands now let the NPC draft a linked work order for the same tile, so the player can send the crew to resolve the original social contract.
 - Ignored NPC-authored orders now escalate the next morning, adding author pressure and auto-sending the crew when someone is free.
 - Escalated NPC-authored orders now attach small bargain incentives, surface the resource offer in both demand and order rows, and pay it once the order is completed.
-- Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys. Keyboard panning pauses while the Agent Workbench editor owns focus.
-- Zoom with the mouse wheel.
+- Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys. The expanded pan range lets either farm edge move out from behind the side rails or bottom workbench. Keyboard panning pauses while the Agent Workbench editor owns focus.
+- Zoom with the mouse wheel or the `Zoom +` / `Zoom -` voxel commands in the left `WORLD` tab; `Center` restores the default farm view.
 
 ## Structure
 
@@ -241,6 +241,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises opening the left `CREW` tab, selecting a crew-order command, and then clicking the farm field.
 - `tools/smoke_ui_overhaul.gd` exercises the four command tabs, voxel-icon/fallback contract, strict 1600x900 and 1280x720 layout, status-only right rail, editable offline workbench, camera-key isolation, and UI pointer blocking.
+- `tools/smoke_camera_navigation.gd` exercises expanded zoom/pan bounds, wheel zoom, left-dock camera commands, voxel icons, and default-view recentering.
 - `tools/smoke_tile_micro_detail_grid.gd` exercises the packed visual-only 4x4 tile surface, terrain/content-specific coverage and row direction, support-plane contact, internal and cross-tile seams, coherent palette grouping, deterministic refreshes, varied dirt-road detail signatures, and original-grid gameplay targeting through till, plant, erase, and decor actions.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, harvest orders, tend orders, and plant orders.
 - `tools/capture_crafting.gd` captures `artifacts/screenshots/agentville-crafting.png`.

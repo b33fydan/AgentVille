@@ -7,6 +7,8 @@ signal advance_day_requested
 signal grid_visibility_changed(is_visible: bool)
 signal shadows_changed(is_enabled: bool)
 signal ambient_occlusion_changed(is_enabled: bool)
+signal camera_zoom_requested(step_direction: int)
+signal camera_recenter_requested
 signal sound_requested(stamp_name: String)
 signal craft_requested(recipe_id: String)
 signal work_order_requested(order_id: String)
@@ -910,8 +912,49 @@ func _build_agent_command_page(page: VBoxContainer) -> void:
 func _build_world_command_page(page: VBoxContainer) -> void:
 	page.add_child(_command_section_label("WORLD VIEW", "Presentation controls do not change farm state"))
 	_build_view_controls(page)
+	page.add_child(_command_section_label("CAMERA", "Move hidden farm edges into the clear center view"))
+	_build_camera_controls(page)
 	page.add_child(_command_section_label("DAY CYCLE", "Advance crops and close the current workday"))
 	_build_end_day_button(page)
+
+
+func _build_camera_controls(parent: VBoxContainer) -> void:
+	var hint := Label.new()
+	hint.text = "Wheel · WASD/arrows · right/middle drag"
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 9)
+	hint.add_theme_color_override("font_color", Color("#756f64"))
+	parent.add_child(hint)
+
+	var row := GridContainer.new()
+	row.name = "CameraControlGrid"
+	row.columns = 3
+	row.add_theme_constant_override("h_separation", 6)
+	parent.add_child(row)
+	_add_camera_button(row, "CameraZoomIn", "Zoom +", "zoom_in", "Zoom closer", func() -> void: camera_zoom_requested.emit(-1))
+	_add_camera_button(row, "CameraZoomOut", "Zoom -", "zoom_out", "Zoom farther out", func() -> void: camera_zoom_requested.emit(1))
+	_add_camera_button(row, "CameraRecenter", "Center", "recenter", "Return to the default farm view", func() -> void: camera_recenter_requested.emit())
+
+
+func _add_camera_button(parent: GridContainer, node_name: String, label: String, icon_id: String, tooltip: String, action: Callable) -> void:
+	var button := Button.new()
+	button.name = node_name
+	button.text = "\n\n%s" % label
+	button.tooltip_text = tooltip
+	button.custom_minimum_size = Vector2(68, 64)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 10)
+	button.add_theme_color_override("font_color", Color("#4b4337"))
+	button.add_theme_stylebox_override("normal", _tool_button_style(false))
+	button.add_theme_stylebox_override("hover", _tool_button_style(true))
+	button.add_theme_stylebox_override("pressed", _tool_button_style(true))
+	button.pressed.connect(func() -> void:
+		sound_requested.emit("ui_click")
+		action.call()
+	)
+	parent.add_child(button)
+	_attach_voxel_icon(button, icon_id, Vector2(34, 32), true, 1.0)
 
 
 func _command_section_label(text: String, tooltip: String = "") -> Label:

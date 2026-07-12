@@ -161,6 +161,8 @@ func _connect_systems() -> void:
 	game_ui.grid_visibility_changed.connect(grid_manager.set_grid_visible)
 	game_ui.shadows_changed.connect(_set_shadows_enabled)
 	game_ui.ambient_occlusion_changed.connect(_set_ambient_occlusion_enabled)
+	game_ui.camera_zoom_requested.connect(camera_controller.adjust_zoom)
+	game_ui.camera_recenter_requested.connect(camera_controller.center_on_farm)
 	game_ui.sound_requested.connect(sound_manager.play_stamp)
 	game_ui.craft_requested.connect(_on_craft_requested)
 	game_ui.work_order_requested.connect(_on_work_order_requested)

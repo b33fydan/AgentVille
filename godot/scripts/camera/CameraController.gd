@@ -3,10 +3,13 @@ extends Node3D
 
 @export var target_position: Vector3 = Vector3.ZERO
 @export var camera_offset: Vector3 = Vector3(6.8, 5.4, 6.8)
-@export var min_zoom: float = 5.6
-@export var max_zoom: float = 10.8
-@export var zoom_step: float = 0.55
+@export var default_zoom: float = 7.6
+@export var min_zoom: float = 4.4
+@export var max_zoom: float = 15.0
+@export var zoom_step: float = 0.75
 @export var keyboard_pan_speed: float = 4.8
+@export var pan_limit_x: float = 6.0
+@export var pan_limit_z: float = 5.5
 
 var camera: Camera3D
 var pan_tool_active: bool = false
@@ -20,7 +23,7 @@ func _ready() -> void:
 	camera = Camera3D.new()
 	camera.name = "IsoCamera"
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 7.6
+	camera.size = default_zoom
 	camera.near = 0.05
 	camera.far = 80.0
 	camera.current = true
@@ -60,10 +63,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_button := event as InputEventMouseButton
 		if mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_button.pressed:
-			camera.size = max(min_zoom, camera.size - zoom_step)
+			adjust_zoom(-1)
 			get_viewport().set_input_as_handled()
 		elif mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_button.pressed:
-			camera.size = min(max_zoom, camera.size + zoom_step)
+			adjust_zoom(1)
 			get_viewport().set_input_as_handled()
 		elif mouse_button.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT] or (pan_tool_active and mouse_button.button_index == MOUSE_BUTTON_LEFT):
 			_dragging = mouse_button.pressed
@@ -84,15 +87,21 @@ func set_pan_tool_active(is_active: bool) -> void:
 
 func center_on_farm() -> void:
 	target_position = Vector3(0.0, 0.0, 0.0)
-	camera.size = 7.6
+	camera.size = default_zoom
 	_apply_transform()
+
+
+func adjust_zoom(step_direction: int) -> void:
+	if camera == null or step_direction == 0:
+		return
+	camera.size = clampf(camera.size + zoom_step * float(step_direction), min_zoom, max_zoom)
 
 
 func focus_world_position(world_position: Vector3, zoom_size: float = -1.0) -> void:
 	target_position = Vector3(
-		clampf(world_position.x, -2.2, 2.2),
+		clampf(world_position.x, -pan_limit_x, pan_limit_x),
 		0.0,
-		clampf(world_position.z, -2.0, 2.0)
+		clampf(world_position.z, -pan_limit_z, pan_limit_z)
 	)
 	if zoom_size > 0.0:
 		camera.size = clampf(zoom_size, min_zoom, max_zoom)
@@ -110,8 +119,8 @@ func _pan_screen_delta(delta_pixels: Vector2) -> void:
 	forward = forward.normalized()
 
 	target_position += (-right * delta_pixels.x + forward * delta_pixels.y) * world_per_pixel
-	target_position.x = clampf(target_position.x, -2.2, 2.2)
-	target_position.z = clampf(target_position.z, -2.0, 2.0)
+	target_position.x = clampf(target_position.x, -pan_limit_x, pan_limit_x)
+	target_position.z = clampf(target_position.z, -pan_limit_z, pan_limit_z)
 	_apply_transform()
 
 
