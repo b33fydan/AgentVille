@@ -147,85 +147,26 @@ func _test_fix_button_reruns_clean_template(scene: Node, game_ui) -> void:
 	var fix_button = game_ui.get("_skill_forge_revision_button") as Button
 	fix_button.pressed.emit()
 	await process_frame
-
-	var result_label = game_ui.get("_skill_forge_result_label") as Label
-	if result_label == null or not result_label.text.contains("Passed"):
-		_fail("Fix button did not rerun the clean template to passed. text=%s" % (result_label.text if result_label else ""))
+	var honest_result_label = game_ui.get("_skill_forge_result_label") as Label
+	if honest_result_label == null or str(honest_result_label.text) != "Started: Clear Patch":
+		_fail("Fix did not compile the repaired spec into a pending crew order. text=%s" % (honest_result_label.text if honest_result_label else ""))
 		return
-	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("Stage: Harness Receipt"):
-		_fail("Clean revision result tooltip did not expose the harness receipt stage. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
-		_fail("Clean revision result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Run Receipt: replaced summon_rain with clear_brush"):
-		_fail("Clean revision result tooltip did not expose labeled receipt detail. tooltip=%s" % result_tooltip)
+	var honest_tooltip := str(honest_result_label.tooltip_text)
+	if not honest_tooltip.contains("Stage: Work Order") or not honest_tooltip.contains("Run Trace: Spec > Directive > Work Order") or not _visible_receipt_text(game_ui).contains("order drafted; verification pending"):
+		_fail("Repaired spec did not expose the honest pending lifecycle. tooltip=%s" % honest_tooltip)
 		return
 	if not fix_button.disabled:
-		_fail("Fix button should disable after the clean revision passes.")
+		_fail("Fix button should disable after the repaired spec compiles.")
 		return
-
-	var field_log_entries: Array = game_ui.get("_field_log_entries")
-	if not _entries_contain(field_log_entries, "Skill Forge passed Clear Patch"):
-		_fail("Clean revision did not write a passed Field Log receipt. entries=%s" % str(field_log_entries))
+	var honest_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(honest_entries, "Skill Forge started Clear Patch") or _entries_contain(honest_entries, "Skill Forge passed Clear Patch"):
+		_fail("Repaired spec should start without fabricating a pass. entries=%s" % str(honest_entries))
 		return
-
-	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 8)
-	if not _event_exists(events, "skill_forge_run", "passed"):
-		_fail("Clean revision did not record a passed event. events=%s" % str(events))
+	var honest_events: Array = scene.get_node("GameEventLog").call("get_recent_events", 8)
+	if not _event_exists(honest_events, "skill_forge_run", "started") or _event_exists(honest_events, "skill_forge_run", "passed"):
+		_fail("Repaired spec event history should remain pending. events=%s" % str(honest_events))
 		return
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null:
-		_fail("Clean revision did not keep the Forge trace label.")
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	var blocked_history_index := trace_tooltip.find("Run History: Blocked Clear Patch")
-	var passed_history_index := trace_tooltip.find("Passed Clear Patch", blocked_history_index)
-	if blocked_history_index == -1 or passed_history_index <= blocked_history_index:
-		_fail("Clean revision history did not keep chronological block/pass receipts. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Current Run Detail: Passed -> Clear Patch (Harness Receipt)"):
-		_fail("Clean revision trace did not expose current passed detail before history. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Target: Clear Patch"):
-		_fail("Clean revision trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)") or not trace_tooltip.contains("Blocked Clear Patch (Spec Blocked)"):
-		_fail("Clean revision history did not name the harness/spec endpoints. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Stage: Harness Receipt"):
-		_fail("Clean revision trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
-		_fail("Clean revision trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("[Drift hallucinating]") or not trace_tooltip.contains("Fix: Replace summon_rain with clear_brush"):
-		_fail("Clean revision history dropped blocked-run repair detail. tooltip=%s" % trace_tooltip)
-		return
-	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
-		_fail("Clean revision did not expose the harness receipt current stage line. text=%s" % _visible_stage_text(game_ui))
-		return
-	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
-		_fail("Clean revision did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
-		return
-	if _visible_next_text(game_ui) != "Next Step: Send crew order":
-		_fail("Clean revision did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
-		return
-	if _lesson_text(game_ui) != "Lesson Spec -> crew work order; send for agent receipt.":
-		_fail("Clean revision did not teach the crew-order outcome. text=%s" % _lesson_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Clean revision did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("replaced summon_rain with clear_brush"):
-		_fail("Clean revision did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_drift_text(game_ui) != "":
-		_fail("Clean revision should clear the visible Drift cue. text=%s" % _visible_drift_text(game_ui))
-		return
-
+	return
 
 func _entries_contain(entries: Array, needle: String) -> bool:
 	for entry in entries:

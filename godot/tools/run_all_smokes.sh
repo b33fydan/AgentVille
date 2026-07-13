@@ -24,7 +24,7 @@ for smoke_path in "$TOOLS_DIR"/smoke_*.gd; do
 	fi
 
 	smoke_name="$(basename "$smoke_path" .gd)"
-	log_path="$(mktemp "/tmp/agentville-${smoke_name}.XXXXXX.log")"
+	log_path="$(mktemp "/tmp/agentville-${smoke_name}.log.XXXXXX")"
 	((total += 1))
 
 	"$GODOT" --headless --path "$PROJECT_DIR" --script "res://tools/${smoke_name}.gd" >"$log_path" 2>&1

@@ -21,10 +21,10 @@ func _run() -> void:
 	_test_template_selection_updates_preview(game_ui)
 	if _failed:
 		return
-	await _test_run_button_records_receipts(scene, game_ui)
+	await _test_run_button_stays_pending(scene, game_ui)
 	if _failed:
 		return
-	await _test_failed_harness_receipt_keeps_repair_hint(scene, game_ui)
+	await _test_failed_world_check_keeps_repair_hint(scene, game_ui)
 	if _failed:
 		return
 
@@ -78,7 +78,7 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 	if run_button.disabled:
 		_fail("Skill Forge run button should be enabled for the default valid starter template.")
 		return
-	if not str(run_button.tooltip_text).contains("Stage: Spec Preview -> Harness Receipt"):
+	if not str(run_button.tooltip_text).contains("Stage: Spec Preview -> Crew Order -> World Check"):
 		_fail("Skill Forge run button did not expose its teaching stage path. tooltip=%s" % str(run_button.tooltip_text))
 		return
 
@@ -333,214 +333,37 @@ func _test_template_selection_updates_preview(game_ui) -> void:
 	clear_button.pressed.emit()
 
 
-func _test_run_button_records_receipts(scene: Node, game_ui) -> void:
+func _test_run_button_stays_pending(scene: Node, game_ui) -> void:
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
 	if run_button == null:
 		_fail("Skill Forge run button missing before run.")
 		return
 	run_button.pressed.emit()
 	await process_frame
+	var honest_entries: Array = game_ui.get("_field_log_entries")
+	if not _entries_contain(honest_entries, "Skill Forge started Clear Patch") or not _entries_contain(honest_entries, "Forge order drafted: Clear Patch"):
+		_fail("Skill Forge Run did not draft an honest pending crew order. entries=%s" % str(honest_entries))
+		return
+	if _entries_contain(honest_entries, "Skill Forge passed Clear Patch"):
+		_fail("Skill Forge Run fabricated a pass before world verification. entries=%s" % str(honest_entries))
+		return
+	if _result_text(game_ui) != "Started: Clear Patch":
+		_fail("Pending Forge run did not remain Started. text=%s" % _result_text(game_ui))
+		return
+	if _visible_stage_text(game_ui) != "Stage: Work Order | Clear Patch" or _visible_next_text(game_ui) != "Next Step: Send crew order":
+		_fail("Pending Forge run did not expose the Work Order -> Send lifecycle. stage=%s next=%s" % [_visible_stage_text(game_ui), _visible_next_text(game_ui)])
+		return
+	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order" or not _visible_receipt_text(game_ui).contains("verification pending"):
+		_fail("Pending Forge run did not expose its truthful route/receipt. route=%s receipt=%s" % [_visible_route_text(game_ui), _visible_receipt_text(game_ui)])
+		return
+	var pending_events: Array = scene.get_node("GameEventLog").call("get_recent_events", 6)
+	if not _event_exists(pending_events, "skill_forge_run", "started") or _event_exists(pending_events, "skill_forge_run", "passed"):
+		_fail("Pending Forge run event history was not start-only. events=%s" % str(pending_events))
+		return
+	return
 
-	var field_log_entries: Array = game_ui.get("_field_log_entries")
-	if not _entries_contain(field_log_entries, "Skill Forge started Clear Patch"):
-		_fail("Skill Forge UI run did not add a start Field Log receipt. entries=%s" % str(field_log_entries))
-		return
-	if not _entries_contain(field_log_entries, "Skill Forge passed Clear Patch"):
-		_fail("Skill Forge UI run did not add a completion Field Log receipt. entries=%s" % str(field_log_entries))
-		return
-
-	var result_label = game_ui.get("_skill_forge_result_label") as Label
-	if result_label == null or not result_label.text.contains("Passed"):
-		_fail("Skill Forge result label did not show the completed run status. text=%s" % (result_label.text if result_label else ""))
-		return
-	if _result_text(game_ui) != "Passed: Clear Patch":
-		_fail("Skill Forge run header should stay on the harness result. text=%s" % _result_text(game_ui))
-		return
-	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("Run Ref: run forge_run_") or not result_tooltip.contains("order order_"):
-		_fail("Skill Forge result tooltip did not expose compact run/order identity. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Stage: Harness Receipt"):
-		_fail("Skill Forge result tooltip did not expose the harness receipt stage. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Run Route: Spec > Crew Order > Harness Receipt"):
-		_fail("Skill Forge result tooltip did not expose the harness route. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
-		_fail("Skill Forge result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Trace Scan: Spec checked | Crew order drafted | Next send order"):
-		_fail("Skill Forge result tooltip did not expose the crew-order trace scan. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Next Step: Send crew order"):
-		_fail("Skill Forge result tooltip did not expose the next lifecycle step. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Lesson: Spec -> crew work order; send for agent receipt."):
-		_fail("Skill Forge result tooltip did not expose the crew-order lesson cue. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Run Receipt: manual harness receipt confirmed clear-patch checks"):
-		_fail("Skill Forge result tooltip did not expose labeled receipt detail. tooltip=%s" % result_tooltip)
-		return
-	if result_tooltip.contains("Drift: steady"):
-		_fail("Skill Forge result tooltip should keep steady Drift hidden. tooltip=%s" % result_tooltip)
-		return
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Harness Receipt":
-		_fail("Skill Forge run did not show the spec-to-order trace. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Run History: Passed Clear Patch"):
-		_fail("Skill Forge run history did not remember the passed harness receipt. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Target: Clear Patch"):
-		_fail("Skill Forge run trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
-		_fail("Skill Forge run history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Receipt: manual harness receipt confirmed clear-patch checks"):
-		_fail("Skill Forge run trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Stage: Harness Receipt"):
-		_fail("Skill Forge run trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Route: Spec > Crew Order > Harness Receipt"):
-		_fail("Skill Forge run trace did not expose the harness route. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
-		_fail("Skill Forge run trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Trace Scan: Spec checked | Crew order drafted | Next send order"):
-		_fail("Skill Forge run trace did not expose the crew-order trace scan. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Directive: work_order_directive") or not trace_tooltip.contains("Tool: clear_brush"):
-		_fail("Skill Forge run trace did not expose labeled directive/tool detail. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Crew Work Order: Clear Patch: Clear"):
-		_fail("Skill Forge run trace did not label the drafted crew work order. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Next Step: Send crew order"):
-		_fail("Skill Forge run trace did not expose the next lifecycle step. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Lesson: Spec -> crew work order; send for agent receipt."):
-		_fail("Skill Forge run trace did not expose the crew-order lesson cue. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
-		_fail("Skill Forge run trace did not preserve agent/target/source context. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Ref: run forge_run_") or not trace_tooltip.contains("order order_"):
-		_fail("Skill Forge run trace did not expose compact run/order identity. tooltip=%s" % trace_tooltip)
-		return
-	var history_text := _visible_history_text(game_ui)
-	if history_text != "Run Trail: Clear Patch | Passed (Harness Receipt) [current]":
-		_fail("Skill Forge visible Run Trail did not summarize the harness receipt. text=%s" % history_text)
-		return
-	var history_tooltip := _history_tooltip(game_ui)
-	if history_tooltip.contains("Run Trail:") or not history_tooltip.contains("Current Run Detail: Passed -> Clear Patch (Harness Receipt)") or not history_tooltip.contains("manual harness receipt confirmed clear-patch checks"):
-		_fail("Skill Forge history tooltip did not keep current detail and full receipt history. tooltip=%s" % history_tooltip)
-		return
-	if not history_tooltip.contains("Trace Scan: Spec checked | Crew order drafted | Next send order"):
-		_fail("Skill Forge history tooltip did not keep the current crew-order trace scan. tooltip=%s" % history_tooltip)
-		return
-	if not history_tooltip.contains("Next Step: Send crew order"):
-		_fail("Skill Forge history tooltip did not keep the current crew-order next step. tooltip=%s" % history_tooltip)
-		return
-	if not history_tooltip.contains("Run Receipt: manual harness receipt confirmed clear-patch checks"):
-		_fail("Skill Forge history tooltip did not label the current harness receipt. tooltip=%s" % history_tooltip)
-		return
-	if not history_tooltip.contains("Lesson: Spec -> crew work order; send for agent receipt."):
-		_fail("Skill Forge history tooltip did not keep the current crew-order lesson. tooltip=%s" % history_tooltip)
-		return
-	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
-		_fail("Skill Forge run did not expose the harness receipt as the current stage. text=%s" % _visible_stage_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Harness Receipt":
-		_fail("Skill Forge run did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
-		_fail("Skill Forge run did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
-		return
-	if not _stage_tooltip(game_ui).contains("Stage: Harness Receipt") or not _stage_tooltip(game_ui).contains("run forge_run_"):
-		_fail("Skill Forge current-stage tooltip did not keep harness trace identity. tooltip=%s" % _stage_tooltip(game_ui))
-		return
-	if _visible_next_text(game_ui) != "Next Step: Send crew order":
-		_fail("Skill Forge run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
-		return
-	if _lesson_text(game_ui) != "Lesson Spec -> crew work order; send for agent receipt.":
-		_fail("Skill Forge run did not teach the crew-order outcome. text=%s" % _lesson_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Skill Forge run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
-		_fail("Skill Forge run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_drift_text(game_ui) != "":
-		_fail("Skill Forge steady run should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
-		return
-
-	var events: Array = scene.get_node("GameEventLog").call("get_recent_events", 6)
-	if not _event_exists(events, "skill_forge_run", "started"):
-		_fail("Skill Forge UI run did not record a started event. events=%s" % str(events))
-		return
-	if not _event_exists(events, "skill_forge_run", "passed"):
-		_fail("Skill Forge UI run did not record a passed event. events=%s" % str(events))
-		return
-
-	var buttons: Dictionary = game_ui.get("_skill_forge_template_buttons")
-	var tend_button = buttons.get("tend_crops_starter", null) as Button
-	if tend_button == null:
-		_fail("Tend Crops template button missing after run.")
-		return
-	tend_button.pressed.emit()
-
-	if str(trace_label.text) != "Run Trace: Spec > tend_crop > Crew Order":
-		_fail("Switching templates did not restore Tend Crops preview trace. text=%s" % str(trace_label.text))
-		return
-	var preview_tooltip := str(trace_label.tooltip_text)
-	if not preview_tooltip.contains("Run Target: Tend Crops") or not preview_tooltip.contains("Run History: Passed Clear Patch"):
-		_fail("Forge preview tooltip did not keep recent run history after template switch. tooltip=%s" % preview_tooltip)
-		return
-	if not preview_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
-		_fail("Forge preview tooltip did not keep the harness endpoint in recent run history. tooltip=%s" % preview_tooltip)
-		return
-	if not preview_tooltip.contains("Stage: Spec Preview"):
-		_fail("Forge preview tooltip did not restore the spec-preview stage after template switch. tooltip=%s" % preview_tooltip)
-		return
-	if _visible_history_text(game_ui) != "Run Trail: Clear Patch | Passed (Harness Receipt) [current]":
-		_fail("Forge visible Run Trail did not survive template switch. text=%s" % _visible_history_text(game_ui))
-		return
-	if _result_text(game_ui) != "Spec Preview: Tend Crops":
-		_fail("Forge preview switch should restore the active starter header. text=%s" % _result_text(game_ui))
-		return
-	if not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order") or not _result_tooltip(game_ui).contains("Run History: Passed Clear Patch"):
-		_fail("Forge preview switch header tooltip did not keep preview and history detail. tooltip=%s" % _result_tooltip(game_ui))
-		return
-	if _visible_stage_text(game_ui) != "Stage: Spec Preview | Tend Crops":
-		_fail("Forge current-stage line did not restore the Tend Crops preview. text=%s" % _visible_stage_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order":
-		_fail("Forge preview switch did not restore the compact route line. text=%s" % _visible_route_text(game_ui))
-		return
-	if _visible_ref_text(game_ui) != "":
-		_fail("Forge preview switch should hide concrete run refs. text=%s" % _visible_ref_text(game_ui))
-		return
-	if _visible_next_text(game_ui) != "Next Step: Run to Tend Crops order or Check":
-		_fail("Forge next-step line did not restore the Tend Crops preview action. text=%s" % _visible_next_text(game_ui))
-		return
-	if _visible_detail_text(game_ui) != "":
-		_fail("Forge preview should hide run detail after template switch. text=%s" % _visible_detail_text(game_ui))
-		return
-	if _visible_receipt_text(game_ui) != "":
-		_fail("Forge preview should hide receipt detail after template switch. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_drift_text(game_ui) != "":
-		_fail("Forge preview should hide Drift after template switch. text=%s" % _visible_drift_text(game_ui))
-		return
-
-
-func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> void:
+func _test_failed_world_check_keeps_repair_hint(scene: Node, game_ui) -> void:
+	scene.call("_cancel_pending_skill_forge_run", "order never completed; panel smoke moved to failure coverage", true)
 	var buttons_value = game_ui.get("_skill_forge_template_buttons")
 	if typeof(buttons_value) != TYPE_DICTIONARY:
 		_fail("Skill Forge panel did not expose template buttons before failed receipt smoke.")
@@ -568,124 +391,21 @@ func _test_failed_harness_receipt_keeps_repair_hint(scene: Node, game_ui) -> voi
 	})
 	scene.call("_apply_skill_forge_result", failed_result)
 	await process_frame
-
-	var result_label = game_ui.get("_skill_forge_result_label") as Label
-	if result_label == null or not str(result_label.text).contains("Failed"):
-		_fail("Failed Forge receipt did not update the result label. text=%s" % (result_label.text if result_label else ""))
+	var honest_result_label = game_ui.get("_skill_forge_result_label") as Label
+	if honest_result_label == null or str(honest_result_label.text) != "Failed: Clear Patch":
+		_fail("Failed world check did not update the result label. text=%s" % (honest_result_label.text if honest_result_label else ""))
 		return
-	if _result_text(game_ui) != "Failed: Clear Patch":
-		_fail("Failed Forge receipt header should stay on the harness result. text=%s" % _result_text(game_ui))
+	var honest_tooltip := str(honest_result_label.tooltip_text)
+	if not honest_tooltip.contains("Stage: World Check") or not honest_tooltip.contains("Run Receipt: selected tile had no brush") or not honest_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
+		_fail("Failed world check did not preserve its stage, observation, and repair hint. tooltip=%s" % honest_tooltip)
 		return
-	var result_tooltip := str(result_label.tooltip_text)
-	if not result_tooltip.contains("Run Receipt: selected tile had no brush") or not result_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
-		_fail("Failed Forge result tooltip did not keep receipt detail and repair hint. tooltip=%s" % result_tooltip)
+	if _visible_stage_text(game_ui) != "Stage: World Check | Clear Patch" or _visible_next_text(game_ui) != "Next Step: Revise and rerun":
+		_fail("Failed world check did not expose the repair lifecycle. stage=%s next=%s" % [_visible_stage_text(game_ui), _visible_next_text(game_ui)])
 		return
-	if not result_tooltip.contains("run forge_run_") or not result_tooltip.contains("order order_"):
-		_fail("Failed Forge result tooltip did not expose compact run/order identity. tooltip=%s" % result_tooltip)
+	if not _entries_contain(game_ui.get("_field_log_entries"), "Skill Forge failed Clear Patch"):
+		_fail("Failed world check did not leave a Field Log receipt.")
 		return
-	if not result_tooltip.contains("Stage: Harness Receipt"):
-		_fail("Failed Forge result tooltip did not expose the harness receipt stage. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
-		_fail("Failed Forge result tooltip did not expose the full harness trace path. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Trace Scan: Spec checked | Harness failed | Next revise"):
-		_fail("Failed Forge result tooltip did not expose the repair trace scan. tooltip=%s" % result_tooltip)
-		return
-	if not result_tooltip.contains("Lesson: Spec -> failed receipt; revise and rerun."):
-		_fail("Failed Forge result tooltip did not expose the failed-receipt lesson cue. tooltip=%s" % result_tooltip)
-		return
-	if result_tooltip.contains("Drift: steady"):
-		_fail("Failed Forge result tooltip should keep steady Drift hidden. tooltip=%s" % result_tooltip)
-		return
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Harness Receipt":
-		_fail("Failed Forge receipt did not keep the harness trace. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Run Receipt: selected tile had no brush"):
-		_fail("Failed Forge trace did not keep the harness receipt detail. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Target: Clear Patch"):
-		_fail("Failed Forge trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
-		return
-	var passed_history_index := trace_tooltip.find("Run History: Passed Clear Patch")
-	var failed_history_index := trace_tooltip.find("Failed Clear Patch", passed_history_index)
-	if passed_history_index == -1 or failed_history_index <= passed_history_index or not trace_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
-		_fail("Failed Forge trace history did not keep chronological receipts and repair hint. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Current Run Detail: Failed -> Clear Patch (Harness Receipt)"):
-		_fail("Failed Forge trace did not expose current repair detail before history. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Failed Clear Patch (Harness Receipt)"):
-		_fail("Failed Forge trace history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Stage: Harness Receipt"):
-		_fail("Failed Forge trace did not expose the harness receipt stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Harness Receipt"):
-		_fail("Failed Forge trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Trace Scan: Spec checked | Harness failed | Next revise"):
-		_fail("Failed Forge trace did not expose the repair trace scan. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Lesson: Spec -> failed receipt; revise and rerun."):
-		_fail("Failed Forge trace did not expose the failed-receipt lesson cue. tooltip=%s" % trace_tooltip)
-		return
-	var failed_history_text := _visible_history_text(game_ui)
-	if failed_history_text != "Run Trail: Clear Patch | Passed (Harness Receipt) > Failed (Harness Receipt) [current]" or failed_history_text.contains("selected tile had no brush"):
-		_fail("Failed Forge visible Run Trail was not compact. text=%s" % failed_history_text)
-		return
-	var failed_history_tooltip := _history_tooltip(game_ui)
-	if not failed_history_tooltip.contains("Current Run Detail: Failed -> Clear Patch (Harness Receipt)") or not failed_history_tooltip.contains("selected tile had no brush") or not failed_history_tooltip.contains("Fix: Pick a brush tile or revise the condition."):
-		_fail("Failed Forge history tooltip did not keep current repair detail. tooltip=%s" % failed_history_tooltip)
-		return
-	if not failed_history_tooltip.contains("Trace Scan: Spec checked | Harness failed | Next revise"):
-		_fail("Failed Forge history tooltip did not keep the current repair trace scan. tooltip=%s" % failed_history_tooltip)
-		return
-	if not failed_history_tooltip.contains("Next Step: Revise and rerun"):
-		_fail("Failed Forge history tooltip did not keep the current repair next step. tooltip=%s" % failed_history_tooltip)
-		return
-	if not failed_history_tooltip.contains("Run Receipt: selected tile had no brush"):
-		_fail("Failed Forge history tooltip did not label the current repair receipt. tooltip=%s" % failed_history_tooltip)
-		return
-	if not failed_history_tooltip.contains("Lesson: Spec -> failed receipt; revise and rerun."):
-		_fail("Failed Forge history tooltip did not keep the current repair lesson. tooltip=%s" % failed_history_tooltip)
-		return
-	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Clear Patch":
-		_fail("Failed Forge receipt did not keep the harness receipt as the current stage. text=%s" % _visible_stage_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Harness Receipt":
-		_fail("Failed Forge receipt did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_ref_text(game_ui).begins_with("Run Ref: run forge_run_") or not _visible_ref_text(game_ui).contains("| order order_"):
-		_fail("Failed Forge receipt did not expose compact run/order refs. text=%s" % _visible_ref_text(game_ui))
-		return
-	if not _stage_tooltip(game_ui).contains("selected tile had no brush"):
-		_fail("Failed Forge current-stage tooltip did not keep receipt detail. tooltip=%s" % _stage_tooltip(game_ui))
-		return
-	if _visible_next_text(game_ui) != "Next Step: Revise and rerun":
-		_fail("Failed Forge receipt did not expose the repair next step. text=%s" % _visible_next_text(game_ui))
-		return
-	if _lesson_text(game_ui) != "Lesson Spec -> failed receipt; revise and rerun.":
-		_fail("Failed Forge receipt did not teach the repair outcome. text=%s" % _lesson_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Failed Forge receipt did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("selected tile had no brush"):
-		_fail("Failed Forge receipt did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_drift_text(game_ui) != "":
-		_fail("Failed steady Forge receipt should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
-		return
-
-	var field_log_entries: Array = game_ui.get("_field_log_entries")
-	if not _entries_contain(field_log_entries, "Skill Forge failed Clear Patch") or not _entries_contain(field_log_entries, "Pick a brush tile or revise the condition."):
-		_fail("Failed Forge receipt did not leave readable Field Log copy. entries=%s" % str(field_log_entries))
-		return
-
+	return
 
 func _entries_contain(entries: Array, needle: String) -> bool:
 	for entry in entries:

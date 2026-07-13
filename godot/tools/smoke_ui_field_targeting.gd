@@ -85,6 +85,9 @@ func _run() -> void:
 	if order.get("target_tile") != target_tile.grid_pos:
 		_fail("Field click created an order for the wrong tile.")
 		return
+	if placement_tool.call("has_selected_tile"):
+		_fail("Crew-order targeting overwrote the persistent Workbench tile selection.")
+		return
 	if not target_tile.get_node("OrderMarker").visible:
 		_fail("Field click did not show the in-world order marker.")
 		return

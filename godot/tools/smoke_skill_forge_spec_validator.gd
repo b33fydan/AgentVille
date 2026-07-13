@@ -12,6 +12,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_tend_crop_spec_passes()
 	_test_unknown_tools_are_blocked()
+	_test_unknown_conditions_are_blocked()
 	_test_safe_warnings_create_drift_state()
 	_test_missing_receipts_are_blocked()
 	if not _failed:
@@ -59,6 +60,26 @@ func _test_unknown_tools_are_blocked() -> void:
 		return
 
 
+func _test_unknown_conditions_are_blocked() -> void:
+	var validator = SkillSpecValidatorScript.new()
+	var spec := _valid_tend_crop_spec()
+	spec["steps"][1]["when"] = "maybe_if_the_agent_feels_like_it"
+	var result: Dictionary = validator.validate(spec)
+
+	if not bool(result.get("hard_blocked", false)):
+		_fail("Unknown condition did not hard block the spec. result=%s" % str(result))
+		return
+	if bool(result.get("can_run", true)):
+		_fail("Unknown condition still allowed the spec to run. result=%s" % str(result))
+		return
+	if not _issue_code_exists(result.get("errors", []), "unsupported_condition"):
+		_fail("Unknown condition did not emit an unsupported_condition error. result=%s" % str(result))
+		return
+	if not _drift_level_is(result, "hallucinating"):
+		_fail("Unknown condition did not raise hallucination drift. result=%s" % str(result))
+		return
+
+
 func _test_safe_warnings_create_drift_state() -> void:
 	var validator = SkillSpecValidatorScript.new()
 	var spec := _valid_tend_crop_spec()
@@ -67,7 +88,7 @@ func _test_safe_warnings_create_drift_state() -> void:
 		"id": "extra_check",
 		"tool": "inspect_tile",
 		"target": "context.target",
-		"when": "maybe_if_the_agent_feels_like_it"
+		"when": "always"
 	})
 	spec["failure_handling"]["suggestion"] = "try again"
 	var result: Dictionary = validator.validate(spec)

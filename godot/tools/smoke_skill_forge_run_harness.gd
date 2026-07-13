@@ -18,6 +18,7 @@ func _run() -> void:
 	_test_plant_seed_builds_work_order_directive()
 	_test_tend_crops_builds_work_order_directive()
 	_test_invalid_spec_blocks_with_drift_receipt()
+	_test_runtime_guard_block_receipt()
 	_test_pass_and_fail_completion_receipts()
 	if not _failed:
 		quit()
@@ -283,6 +284,32 @@ func _test_pass_and_fail_completion_receipts() -> void:
 		return
 	if str(recent_events[0].get("type", "")) != "skill_forge_run" or str(recent_events[1].get("status", "")) != "passed":
 		_fail("Forge run events did not preserve type/status. events=%s" % str(recent_events))
+		return
+
+
+func _test_runtime_guard_block_receipt() -> void:
+	var library = SkillForgeTemplateLibraryScript.new()
+	var harness = SkillForgeRunHarnessScript.new()
+	var start: Dictionary = harness.start_manual_run(library.get_template_spec("harvest_crops_starter"), {
+		"agent_name": "Marigold",
+		"target_tile": Vector2i(4, 2),
+		"day": 9
+	})
+	var blocked: Dictionary = harness.block_run(start, {
+		"result_detail": "Guard crop.ready blocked at tile (4,2): expected a ready crop, observed an empty tile.",
+		"day": 10
+	})
+	if str(blocked.get("status", "")) != "blocked":
+		_fail("Runtime guard result did not mark blocked. result=%s" % str(blocked))
+		return
+	if int(blocked.get("run", {}).get("day", 0)) != 10:
+		_fail("Runtime guard result did not preserve completion day. result=%s" % str(blocked))
+		return
+	if not _field_log_contains(blocked, "Guard crop.ready blocked at tile (4,2)"):
+		_fail("Runtime guard result did not expose the observed reason. result=%s" % str(blocked))
+		return
+	if not _event_exists(blocked, "skill_forge_run", "blocked"):
+		_fail("Runtime guard result did not emit blocked event. result=%s" % str(blocked))
 		return
 
 

@@ -329,14 +329,18 @@ func _assert_palette_contract(scene: Node, game_ui) -> void:
 func _assert_editor_contract(scene: Node, game_ui, editor: CodeEdit) -> void:
 	var runtime_label := game_ui.get("_workbench_runtime_label") as Label
 	var compiler_output := game_ui.get("_compiler_output") as RichTextLabel
+	var compile_button := game_ui.get("_workbench_compile_button") as Button
 	if editor == null or not editor.editable or not editor.gutters_draw_line_numbers or editor.syntax_highlighter == null:
 		_fail("Agent workbench editor is not an editable, line-numbered, highlighted CodeEdit.")
 		return
-	if runtime_label == null or not runtime_label.text.contains("DRAFT") or not runtime_label.text.contains("TUTOR RUNTIME OFFLINE"):
-		_fail("Agent workbench did not disclose its offline draft state.")
+	if runtime_label == null or not runtime_label.text.contains("READY") or not runtime_label.text.contains("LOCAL COMPILER"):
+		_fail("Agent workbench did not expose its live local compiler state.")
 		return
-	if compiler_output == null or not compiler_output.text.contains("COMPILER TRACE") or not compiler_output.text.contains("Game state is disconnected"):
-		_fail("Agent workbench compiler output lost its trace or disconnected-state disclosure.")
+	if compile_button == null or compile_button.text != "COMPILE" or not compile_button.tooltip_text.contains("Cmd/Ctrl+Enter"):
+		_fail("Agent workbench did not expose its compile control and shortcut.")
+		return
+	if compiler_output == null or not compiler_output.text.contains("COMPILER TRACE") or not compiler_output.text.contains("local deterministic compiler ready"):
+		_fail("Agent workbench compiler output lost its live pipeline trace.")
 		return
 
 	var placement_tool = scene.get_node("PlacementTool")
@@ -363,8 +367,8 @@ func _assert_editor_contract(scene: Node, game_ui, editor: CodeEdit) -> void:
 	editor.set_caret_column(editor.get_line(editor.get_line_count() - 1).length())
 	editor.insert_text_at_caret("\n# tutor draft only")
 	await process_frame
-	if runtime_label.text != "UNSAVED  ·  TUTOR RUNTIME OFFLINE":
-		_fail("Editing the agent draft did not switch the workbench to UNSAVED offline state.")
+	if runtime_label.text != "UNSAVED  ·  READY TO COMPILE":
+		_fail("Editing the agent draft did not switch the workbench to its ready-to-compile state.")
 		return
 	if not _game_state_matches_snapshot(scene, game_ui, placement_tool, snapshot):
 		_fail("Editing the disconnected workbench mutated live game state.")

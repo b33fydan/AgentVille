@@ -8,19 +8,19 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	await _test_forge_order_completion_keeps_skill_context()
+	await _test_clear_patch_completion_reaches_world_check()
 	if _failed:
 		return
-	await _test_harvest_crops_completion_reaches_agent_receipt()
+	await _test_harvest_crops_completion_reaches_world_check()
 	if _failed:
 		return
-	await _test_plant_seed_completion_reaches_agent_receipt()
+	await _test_plant_seed_completion_reaches_world_check()
 	if _failed:
 		return
-	await _test_tend_crops_completion_reaches_agent_receipt()
+	await _test_tend_crops_completion_reaches_world_check()
 	if _failed:
 		return
-	await _test_build_fence_completion_reaches_agent_receipt()
+	await _test_build_fence_completion_reaches_world_check()
 	if _failed:
 		return
 	await _test_forge_waiting_order_traces_busy_crew()
@@ -28,7 +28,7 @@ func _run() -> void:
 		quit()
 
 
-func _test_forge_order_completion_keeps_skill_context() -> void:
+func _test_clear_patch_completion_reaches_world_check() -> void:
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	root.size = Vector2i(1600, 900)
@@ -42,14 +42,14 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
 	if run_button == null:
-		_fail("Skill Forge run button missing before work receipt smoke.")
+		_fail("Skill Forge run button missing before Clear Patch world-check smoke.")
 		return
 	run_button.pressed.emit()
 	await process_frame
 
 	var order_id := _latest_forge_order_id(scene, "clear_patch_starter")
 	if order_id == "" or not scene.work_orders.has(order_id):
-		_fail("Clear Patch did not draft a Forge work order for receipt smoke.")
+		_fail("Clear Patch did not draft a Forge work order for world-check smoke.")
 		return
 	var order: Dictionary = scene.work_orders[order_id]
 	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
@@ -57,315 +57,14 @@ func _test_forge_order_completion_keeps_skill_context() -> void:
 	if tile == null:
 		_fail("Forge work-order target tile was missing.")
 		return
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Harness Receipt":
-		_fail("Forge panel did not trace the drafted work order. text=%s" % (trace_label.text if trace_label else ""))
+	if not await _assert_world_check_completion(scene, game_ui, order_id, "Clear Patch", "Expected no decor"):
 		return
-
-	var agent_manager = scene.get_node("FarmWorld/AgentManager")
-	for agent in agent_manager.agents:
-		agent.move_speed = 42.0
-
-	scene.call("_on_work_order_requested", order_id)
-	await process_frame
-	await process_frame
-
-	var queued_field_log_entries: Array = game_ui.get("_field_log_entries")
-	if not _entries_contain(queued_field_log_entries, "Work order queued:") or not _entries_contain(queued_field_log_entries, "[Forge: Clear Patch]"):
-		_fail("Field Log did not include Forge context when the work order was queued. entries=%s" % str(queued_field_log_entries))
-		return
-
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Queued":
-		_fail("Forge panel did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var queued_trace_tooltip := str(trace_label.tooltip_text)
-	if not queued_trace_tooltip.contains("Forge order queued; awaiting agent receipt") or not queued_trace_tooltip.contains("Run Target: Clear Patch") or not queued_trace_tooltip.contains("Run Context: agent Chuck | target ") or not queued_trace_tooltip.contains("| source Starter Lab"):
-		_fail("Forge queued-work trace did not preserve readable work context. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("agent Chuck"):
-		_fail("Forge queued-work trace did not preserve the readable harness agent. tooltip=%s order=%s" % [queued_trace_tooltip, str(order)])
-		return
-	if not queued_trace_tooltip.contains("Stage: Crew Queued"):
-		_fail("Forge queued-work trace did not expose the crew-queued stage. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not queued_trace_tooltip.contains("order %s" % order_id):
-		_fail("Forge queued-work trace did not preserve run/order identity. tooltip=%s order=%s" % [queued_trace_tooltip, str(order)])
-		return
-	if not queued_trace_tooltip.contains("Passed Clear Patch"):
-		_fail("Forge queued-work trace did not preserve recent receipt history. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
-		_fail("Forge queued-work trace history did not name the harness receipt endpoint. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Crew Queued Clear Patch"):
-		_fail("Forge queued-work trace did not remember the crew-queued stage. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Current Run Detail: Crew Queued -> Clear Patch"):
-		_fail("Forge queued-work trace did not expose current run detail before history. tooltip=%s" % queued_trace_tooltip)
-		return
-	var queued_history_start := queued_trace_tooltip.find("Run History: Passed Clear Patch")
-	var queued_history_stage_index := queued_trace_tooltip.find("Crew Queued Clear Patch", queued_history_start)
-	if queued_history_start == -1 or queued_history_stage_index <= queued_history_start:
-		_fail("Forge queued-work trace history was not chronological. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Next Step: Wait for agent receipt"):
-		_fail("Forge queued-work trace did not expose the agent-receipt next step. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Lesson: Crew queued the work order; wait for agent receipt."):
-		_fail("Forge queued-work trace did not expose the queued lesson cue. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Run Route: Spec > Crew Order > Crew Queued"):
-		_fail("Forge queued-work trace did not expose the queued route. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Crew Queued"):
-		_fail("Forge queued-work trace did not expose the labeled run trace path. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Trace Scan: Crew order queued | Next agent receipt"):
-		_fail("Forge queued-work trace did not expose the queued trace scan. tooltip=%s" % queued_trace_tooltip)
-		return
-	if not queued_trace_tooltip.contains("Run Receipt: Forge order queued; awaiting agent receipt: Clear Patch"):
-		_fail("Forge queued-work trace did not expose labeled receipt detail. tooltip=%s" % queued_trace_tooltip)
-		return
-	if _result_text(game_ui) != "Crew Queued: Clear Patch":
-		_fail("Forge queued-work header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
-		return
-	if not _result_tooltip(game_ui).contains("Stage: Crew Queued") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order > Crew Queued") or not _result_tooltip(game_ui).contains("Next Step: Wait for agent receipt") or not _result_tooltip(game_ui).contains("Forge order queued; awaiting agent receipt"):
-		_fail("Forge queued-work header tooltip did not keep queue trace detail. tooltip=%s" % _result_tooltip(game_ui))
-		return
-	var queued_history_text := _visible_history_text(game_ui)
-	if queued_history_text != "Run Trail: Clear Patch | Passed (Harness Receipt) > Crew Queued [current]":
-		_fail("Forge queued-work visible Run Trail did not summarize the lifecycle. text=%s" % queued_history_text)
-		return
-	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Queued -> Clear Patch"):
-		_fail("Forge queued-work history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Trace Scan: Crew order queued | Next agent receipt"):
-		_fail("Forge queued-work history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Next Step: Wait for agent receipt"):
-		_fail("Forge queued-work history tooltip did not expose the current next step. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Run Receipt: Forge order queued; awaiting agent receipt: Clear Patch"):
-		_fail("Forge queued-work history tooltip did not label the current receipt. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Lesson: Crew queued the work order; wait for agent receipt."):
-		_fail("Forge queued-work history tooltip did not expose the current lifecycle lesson. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if _visible_stage_text(game_ui) != "Stage: Crew Queued | Clear Patch":
-		_fail("Forge queued-work current stage did not expose the crew-queued state. text=%s" % _visible_stage_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Crew Queued":
-		_fail("Forge queued-work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
-		_fail("Forge queued-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
-		return
-	if _visible_next_text(game_ui) != "Next Step: Wait for agent receipt":
-		_fail("Forge queued-work next step did not point to waiting for the agent receipt. text=%s" % _visible_next_text(game_ui))
-		return
-	if _lesson_text(game_ui) != "Lesson Crew queued the work order; wait for agent receipt.":
-		_fail("Forge queued-work did not teach the queued lifecycle state. text=%s" % _lesson_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Forge queued-work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("Forge order queued; awaiting agent receipt"):
-		_fail("Forge queued-work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_drift_text(game_ui) != "":
-		_fail("Forge queued-work should clear visible Drift. text=%s" % _visible_drift_text(game_ui))
-		return
-	var queued_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
-	if not queued_chip_tooltip.begins_with("Forge Work Order: Clear Patch"):
-		_fail("Forge queued-work chip did not open with the work-order role. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Run Context: agent Chuck | target ") or not queued_chip_tooltip.contains("| source Starter Lab"):
-		_fail("Forge work order chip did not expose queued run context. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Directive: work_order_directive"):
-		_fail("Forge work order chip did not expose the queued directive kind. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Tool: clear_brush"):
-		_fail("Forge work order chip did not expose the queued tool call. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Stage: Crew Queued"):
-		_fail("Forge work order chip did not expose the crew-queued stage. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Current Run Detail: Crew Queued -> Clear Patch"):
-		_fail("Forge work order chip did not expose the crew-queued current detail. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Trace Scan: Crew order queued | Next agent receipt"):
-		_fail("Forge work order chip did not expose the crew-queued trace scan. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Run Route: Spec > Crew Order > Crew Queued"):
-		_fail("Forge work order chip did not expose the crew-queued route. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Run Trace: Spec > Directive > Work Order > Crew Queued"):
-		_fail("Forge work order chip did not expose the crew-queued run trace. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Next Step: Wait for agent receipt"):
-		_fail("Forge work order chip did not expose the crew-queued next step. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Lesson: Crew queued the work order; wait for agent receipt."):
-		_fail("Forge work order chip did not expose the crew-queued lesson cue. tooltip=%s" % queued_chip_tooltip)
-		return
-	if not queued_chip_tooltip.contains("Run Receipt: Forge order queued; awaiting agent receipt: Clear Patch"):
-		_fail("Forge work order chip did not expose the crew-queued receipt cue. tooltip=%s" % queued_chip_tooltip)
-		return
-
-	if _active_agent_badge_text(scene) != "Forge":
-		_fail("Assigned Forge work did not show a Forge reason badge. saw=%s" % _active_agent_badge_text(scene))
-		return
-
-	await create_timer(1.1).timeout
-	if str(tile.decor_id) != "":
-		_fail("Forge-authored clear_brush work did not clear the target.")
-		return
-
-	var completed_event: Dictionary = _completed_forge_world_action(scene, order)
-	if completed_event.is_empty():
-		_fail("Completed Forge work did not record a dedicated forge_run_id world action.")
-		return
-	if str(completed_event.get("skill_name", "")) != "Clear Patch":
-		_fail("Completed Forge work did not keep the readable skill name. event=%s" % str(completed_event))
-		return
-	if str(completed_event.get("social_preference_source", "")) == "skill_forge":
-		_fail("Forge work leaked into social-preference event context. event=%s" % str(completed_event))
-		return
-
-	var receipt := str(scene.call("_format_agent_receipt", completed_event))
-	if not receipt.contains("[Forge: Clear Patch]"):
-		_fail("Forge work receipt did not name the Forge skill. saw=%s" % receipt)
-		return
-	if receipt.contains("skill_forge") or receipt.contains("Skill Forge: Clear Patch"):
-		_fail("Forge work receipt used raw or social-style Forge context. saw=%s" % receipt)
-		return
-
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Agent Receipt":
-		_fail("Forge panel did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains(receipt):
-		_fail("Forge trace tooltip did not preserve the readable agent receipt. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
-		return
-	if not trace_tooltip.contains("Run Target: Clear Patch"):
-		_fail("Forge agent receipt trace did not expose the labeled run target. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Stage: Agent Receipt"):
-		_fail("Forge agent receipt trace did not expose the agent receipt stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not trace_tooltip.contains("order %s" % order_id):
-		_fail("Forge agent receipt trace did not preserve run/order identity. tooltip=%s order=%s" % [trace_tooltip, str(order)])
-		return
-	if not trace_tooltip.contains("Next Step: Review day summary"):
-		_fail("Forge agent receipt trace did not expose the day-summary next step. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Lesson: Agent receipt closed the crew work order."):
-		_fail("Forge agent receipt trace did not expose the agent-receipt lesson cue. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Route: Spec > Crew Order > Agent Receipt"):
-		_fail("Forge agent receipt trace did not expose the agent-receipt route. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Agent Receipt"):
-		_fail("Forge agent receipt trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Trace Scan: Agent receipt logged | Next day summary"):
-		_fail("Forge agent receipt trace did not expose the agent-receipt trace scan. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Receipt: %s" % receipt):
-		_fail("Forge agent receipt trace did not expose labeled receipt detail. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
-		return
-	var passed_history_index := trace_tooltip.find("Run History: Passed Clear Patch")
-	var queued_history_index := trace_tooltip.find("Crew Queued Clear Patch", passed_history_index)
-	var receipt_history_index := trace_tooltip.find("Agent Receipt Clear Patch", passed_history_index)
-	if passed_history_index == -1 or queued_history_index <= passed_history_index or receipt_history_index <= queued_history_index:
-		_fail("Forge trace tooltip did not keep chronological Forge receipt history. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Current Run Detail: Agent Receipt -> Clear Patch"):
-		_fail("Forge trace tooltip did not expose current agent-receipt detail before history. tooltip=%s" % trace_tooltip)
-		return
-	if _result_text(game_ui) != "Agent Receipt: Clear Patch":
-		_fail("Forge completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
-		return
-	if not _result_tooltip(game_ui).contains("Stage: Agent Receipt") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order > Agent Receipt") or not _result_tooltip(game_ui).contains("Next Step: Review day summary") or not _result_tooltip(game_ui).contains(receipt):
-		_fail("Forge completed-work header tooltip did not keep receipt trace detail. tooltip=%s" % _result_tooltip(game_ui))
-		return
-	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
-		_fail("Forge trace tooltip did not keep the harness endpoint in recent history. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Crew Queued Clear Patch"):
-		_fail("Forge trace tooltip did not keep the queued crew stage in recent history. tooltip=%s" % trace_tooltip)
-		return
-	var completed_history_text := _visible_history_text(game_ui)
-	if completed_history_text != "Run Trail: Clear Patch | Passed (Harness Receipt) > Crew Queued > Agent Receipt [current]":
-		_fail("Forge completed-work visible Run Trail did not summarize the lifecycle. text=%s" % completed_history_text)
-		return
-	if not _history_tooltip(game_ui).contains("Current Run Detail: Agent Receipt -> Clear Patch"):
-		_fail("Forge completed-work history tooltip did not expose the current agent-receipt detail. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Trace Scan: Agent receipt logged | Next day summary"):
-		_fail("Forge completed-work history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Next Step: Review day summary"):
-		_fail("Forge completed-work history tooltip did not expose the current next step. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Run Receipt: %s" % receipt):
-		_fail("Forge completed-work history tooltip did not label the current receipt. tooltip=%s receipt=%s" % [_history_tooltip(game_ui), receipt])
-		return
-	if not _history_tooltip(game_ui).contains("Lesson: Agent receipt closed the crew work order."):
-		_fail("Forge completed-work history tooltip did not expose the current agent-receipt lesson. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if _visible_stage_text(game_ui) != "Stage: Agent Receipt | Clear Patch":
-		_fail("Forge completed-work current stage did not expose the agent receipt endpoint. text=%s" % _visible_stage_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Agent Receipt":
-		_fail("Forge completed-work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
-		_fail("Forge completed-work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
-		return
-	if _visible_next_text(game_ui) != "Next Step: Review day summary":
-		_fail("Forge completed-work next step did not point to reviewing the day summary. text=%s" % _visible_next_text(game_ui))
-		return
-	if _lesson_text(game_ui) != "Lesson Agent receipt closed the crew work order.":
-		_fail("Forge completed-work did not teach the agent-receipt lifecycle state. text=%s" % _lesson_text(game_ui))
-		return
-	var completed_agent := str(completed_event.get("agent_name", ""))
-	var completed_target := "target %s,%s" % [target_tile.x, target_tile.y]
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent %s | target " % completed_agent) or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Forge completed-work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("%s cleared" % completed_agent):
-		_fail("Forge completed-work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_drift_text(game_ui) != "":
-		_fail("Forge completed-work should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
-		return
-	if not trace_tooltip.contains("Run Context: agent %s | %s" % [completed_agent, completed_target]) or not trace_tooltip.contains("| source Starter Lab"):
-		_fail("Forge agent receipt trace did not preserve final agent/target/source context. tooltip=%s event=%s" % [trace_tooltip, str(completed_event)])
-		return
-
-	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)
-	if not _summary_has_forge_work(summary, str(order.get("forge_run_id", "")), "Clear Patch"):
-		_fail("Day summary did not keep Forge work context. summary=%s" % str(summary.get("agent_skill_forge_actions", {})))
-		return
-	if _summary_has_social_skill_forge(summary):
-		_fail("Day summary counted Forge work as social preference work. summary=%s" % str(summary.get("agent_social_preference_actions", {})))
-		return
-	var formatted_summary := str(scene.call("_format_day_summary", summary))
-	if not formatted_summary.contains("forge work") or not formatted_summary.contains("Clear Patch"):
-		_fail("Formatted day summary did not include Forge work context. saw=%s" % formatted_summary)
-		return
-	if formatted_summary.contains("skill_forge"):
-		_fail("Formatted day summary leaked raw Forge source. saw=%s" % formatted_summary)
-		return
-
 	scene.queue_free()
 	await process_frame
+	return
 
 
-func _test_harvest_crops_completion_reaches_agent_receipt() -> void:
+func _test_harvest_crops_completion_reaches_world_check() -> void:
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	root.size = Vector2i(1600, 900)
@@ -379,14 +78,14 @@ func _test_harvest_crops_completion_reaches_agent_receipt() -> void:
 
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
 	if run_button == null:
-		_fail("Skill Forge run button missing before Harvest Crops receipt smoke.")
+		_fail("Skill Forge run button missing before Harvest Crops world-check smoke.")
 		return
 	run_button.pressed.emit()
 	await process_frame
 
 	var order_id := _latest_forge_order_id(scene, "harvest_crops_starter")
 	if order_id == "" or not scene.work_orders.has(order_id):
-		_fail("Harvest Crops did not draft a Forge work order for receipt smoke.")
+		_fail("Harvest Crops did not draft a Forge work order for world-check smoke.")
 		return
 	var order: Dictionary = scene.work_orders[order_id]
 	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
@@ -394,86 +93,14 @@ func _test_harvest_crops_completion_reaches_agent_receipt() -> void:
 	if tile == null or tile.crop == null or not tile.crop.is_ready():
 		_fail("Harvest Crops did not target a ready crop. order=%s" % str(order))
 		return
-
-	var agent_manager = scene.get_node("FarmWorld/AgentManager")
-	for agent in agent_manager.agents:
-		agent.move_speed = 42.0
-
-	scene.call("_on_work_order_requested", order_id)
-	await process_frame
-	await process_frame
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Queued":
-		_fail("Harvest Crops did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
+	if not await _assert_world_check_completion(scene, game_ui, order_id, "Harvest Crops", "observed +1 grain"):
 		return
-	if _result_text(game_ui) != "Crew Queued: Harvest Crops":
-		_fail("Harvest Crops queued header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Bert | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Harvest Crops queued state did not expose the Forge run context. text=%s" % _visible_detail_text(game_ui))
-		return
-
-	await create_timer(1.1).timeout
-	if tile.crop != null:
-		_fail("Harvest Crops Forge work did not harvest the ready crop.")
-		return
-
-	var completed_event: Dictionary = _completed_forge_world_action(scene, order)
-	if completed_event.is_empty():
-		_fail("Harvest Crops did not record a Forge-tagged harvest action.")
-		return
-	if str(completed_event.get("skill_name", "")) != "Harvest Crops":
-		_fail("Harvest Crops completed work did not keep the readable skill name. event=%s" % str(completed_event))
-		return
-	if str(completed_event.get("action", "")) != "harvest_crop":
-		_fail("Harvest Crops completed work did not use the harvest action. event=%s" % str(completed_event))
-		return
-	if int(completed_event.get("resources", {}).get("grain", 0)) < 1:
-		_fail("Harvest Crops completed work did not report grain gain. event=%s" % str(completed_event))
-		return
-
-	var receipt := str(scene.call("_format_agent_receipt", completed_event))
-	if not receipt.contains("[Forge: Harvest Crops]") or not receipt.contains("harvested"):
-		_fail("Harvest Crops receipt did not name the Forge harvest. receipt=%s" % receipt)
-		return
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Agent Receipt":
-		_fail("Harvest Crops did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Run Target: Harvest Crops") or not trace_tooltip.contains("Stage: Agent Receipt"):
-		_fail("Harvest Crops receipt trace did not expose target and stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Receipt: %s" % receipt):
-		_fail("Harvest Crops receipt trace did not expose labeled receipt detail. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
-		return
-	if _result_text(game_ui) != "Agent Receipt: Harvest Crops":
-		_fail("Harvest Crops completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Agent Receipt":
-		_fail("Harvest Crops completed-work route did not reach Agent Receipt. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("harvested"):
-		_fail("Harvest Crops completed-work did not expose compact harvest receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_history_text(game_ui) != "Run Trail: Harvest Crops | Passed (Harness Receipt) > Crew Queued > Agent Receipt [current]":
-		_fail("Harvest Crops visible Run Trail did not summarize the lifecycle. text=%s" % _visible_history_text(game_ui))
-		return
-
-	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)
-	if not _summary_has_forge_work(summary, str(order.get("forge_run_id", "")), "Harvest Crops"):
-		_fail("Harvest Crops day summary did not keep Forge work context. summary=%s" % str(summary.get("agent_skill_forge_actions", {})))
-		return
-	var formatted_summary := str(scene.call("_format_day_summary", summary))
-	if not formatted_summary.contains("forge work") or not formatted_summary.contains("Harvest Crops"):
-		_fail("Harvest Crops formatted day summary did not include Forge work context. saw=%s" % formatted_summary)
-		return
-
 	scene.queue_free()
 	await process_frame
+	return
 
 
-func _test_build_fence_completion_reaches_agent_receipt() -> void:
+func _test_build_fence_completion_reaches_world_check() -> void:
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	root.size = Vector2i(1600, 900)
@@ -487,14 +114,14 @@ func _test_build_fence_completion_reaches_agent_receipt() -> void:
 
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
 	if run_button == null:
-		_fail("Skill Forge run button missing before Build Fence receipt smoke.")
+		_fail("Skill Forge run button missing before Build Fence world-check smoke.")
 		return
 	run_button.pressed.emit()
 	await process_frame
 
 	var order_id := _latest_forge_order_id(scene, "build_fence_starter")
 	if order_id == "" or not scene.work_orders.has(order_id):
-		_fail("Build Fence did not draft a Forge work order for receipt smoke.")
+		_fail("Build Fence did not draft a Forge work order for world-check smoke.")
 		return
 	var order: Dictionary = scene.work_orders[order_id]
 	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
@@ -507,85 +134,14 @@ func _test_build_fence_completion_reaches_agent_receipt() -> void:
 		"fiber": 2,
 		"grain": 1
 	})
-	var agent_manager = scene.get_node("FarmWorld/AgentManager")
-	for agent in agent_manager.agents:
-		agent.move_speed = 42.0
-
-	scene.call("_on_work_order_requested", order_id)
-	await process_frame
-	await process_frame
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Queued":
-		_fail("Build Fence did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
+	if not await _assert_world_check_completion(scene, game_ui, order_id, "Build Fence", "observed decor fence"):
 		return
-	if _result_text(game_ui) != "Crew Queued: Build Fence":
-		_fail("Build Fence queued header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Bert | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Build Fence queued state did not expose the Forge run context. text=%s" % _visible_detail_text(game_ui))
-		return
-
-	await create_timer(1.4).timeout
-	if str(tile.decor_id) != "fence":
-		_fail("Build Fence Forge work did not place the fence. decor=%s" % str(tile.decor_id))
-		return
-
-	var completed_event: Dictionary = _completed_forge_world_action(scene, order)
-	if completed_event.is_empty():
-		_fail("Build Fence did not record a Forge-tagged build action.")
-		return
-	if str(completed_event.get("skill_name", "")) != "Build Fence":
-		_fail("Build Fence completed work did not keep the readable skill name. event=%s" % str(completed_event))
-		return
-	if str(completed_event.get("action", "")) != "build_fence_order":
-		_fail("Build Fence completed work did not use the fence-build action. event=%s" % str(completed_event))
-		return
-	if int(completed_event.get("crafted_cost", {}).get("fence_kit", 0)) < 1:
-		_fail("Build Fence completed work did not report the Fence Kit cost. event=%s" % str(completed_event))
-		return
-
-	var receipt := str(scene.call("_format_agent_receipt", completed_event))
-	if not receipt.contains("[Forge: Build Fence]") or not receipt.contains("built fence"):
-		_fail("Build Fence receipt did not name the Forge fence work. receipt=%s" % receipt)
-		return
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Agent Receipt":
-		_fail("Build Fence did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Run Target: Build Fence") or not trace_tooltip.contains("Stage: Agent Receipt"):
-		_fail("Build Fence receipt trace did not expose target and stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Receipt: %s" % receipt):
-		_fail("Build Fence receipt trace did not expose labeled receipt detail. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
-		return
-	if _result_text(game_ui) != "Agent Receipt: Build Fence":
-		_fail("Build Fence completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Agent Receipt":
-		_fail("Build Fence completed-work route did not reach Agent Receipt. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("built fence"):
-		_fail("Build Fence completed-work did not expose compact fence receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_history_text(game_ui) != "Run Trail: Build Fence | Passed (Harness Receipt) > Crew Queued > Agent Receipt [current]":
-		_fail("Build Fence visible Run Trail did not summarize the lifecycle. text=%s" % _visible_history_text(game_ui))
-		return
-
-	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)
-	if not _summary_has_forge_work(summary, str(order.get("forge_run_id", "")), "Build Fence"):
-		_fail("Build Fence day summary did not keep Forge work context. summary=%s" % str(summary.get("agent_skill_forge_actions", {})))
-		return
-	var formatted_summary := str(scene.call("_format_day_summary", summary))
-	if not formatted_summary.contains("forge work") or not formatted_summary.contains("Build Fence"):
-		_fail("Build Fence formatted day summary did not include Forge work context. saw=%s" % formatted_summary)
-		return
-
 	scene.queue_free()
 	await process_frame
+	return
 
 
-func _test_plant_seed_completion_reaches_agent_receipt() -> void:
+func _test_plant_seed_completion_reaches_world_check() -> void:
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	root.size = Vector2i(1600, 900)
@@ -599,14 +155,14 @@ func _test_plant_seed_completion_reaches_agent_receipt() -> void:
 
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
 	if run_button == null:
-		_fail("Skill Forge run button missing before Plant Seed receipt smoke.")
+		_fail("Skill Forge run button missing before Plant Seed world-check smoke.")
 		return
 	run_button.pressed.emit()
 	await process_frame
 
 	var order_id := _latest_forge_order_id(scene, "plant_seed_starter")
 	if order_id == "" or not scene.work_orders.has(order_id):
-		_fail("Plant Seed did not draft a Forge work order for receipt smoke.")
+		_fail("Plant Seed did not draft a Forge work order for world-check smoke.")
 		return
 	var order: Dictionary = scene.work_orders[order_id]
 	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
@@ -614,86 +170,14 @@ func _test_plant_seed_completion_reaches_agent_receipt() -> void:
 	if tile == null or not scene.call("_can_target_crew_order", "plant_seed", target_tile):
 		_fail("Plant Seed did not target an open planting tile. order=%s" % str(order))
 		return
-
-	var agent_manager = scene.get_node("FarmWorld/AgentManager")
-	for agent in agent_manager.agents:
-		agent.move_speed = 42.0
-
-	scene.call("_on_work_order_requested", order_id)
-	await process_frame
-	await process_frame
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Queued":
-		_fail("Plant Seed did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
+	if not await _assert_world_check_completion(scene, game_ui, order_id, "Plant Seed", "Expected a newly planted crop"):
 		return
-	if _result_text(game_ui) != "Crew Queued: Plant Seed":
-		_fail("Plant Seed queued header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Plant Seed queued state did not expose the Forge run context. text=%s" % _visible_detail_text(game_ui))
-		return
-
-	await create_timer(1.1).timeout
-	if tile.crop == null:
-		_fail("Plant Seed Forge work did not plant a crop.")
-		return
-	if not tile.is_tilled:
-		_fail("Plant Seed Forge work did not leave tilled soil.")
-		return
-
-	var completed_event: Dictionary = _completed_forge_world_action(scene, order)
-	if completed_event.is_empty():
-		_fail("Plant Seed did not record a Forge-tagged plant action.")
-		return
-	if str(completed_event.get("skill_name", "")) != "Plant Seed":
-		_fail("Plant Seed completed work did not keep the readable skill name. event=%s" % str(completed_event))
-		return
-	if str(completed_event.get("action", "")) != "plant_seed":
-		_fail("Plant Seed completed work did not use the plant action. event=%s" % str(completed_event))
-		return
-
-	var receipt := str(scene.call("_format_agent_receipt", completed_event))
-	if not receipt.contains("[Forge: Plant Seed]") or not receipt.contains("planted"):
-		_fail("Plant Seed receipt did not name the Forge plant work. receipt=%s" % receipt)
-		return
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Agent Receipt":
-		_fail("Plant Seed did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Run Target: Plant Seed") or not trace_tooltip.contains("Stage: Agent Receipt"):
-		_fail("Plant Seed receipt trace did not expose target and stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Receipt: %s" % receipt):
-		_fail("Plant Seed receipt trace did not expose labeled receipt detail. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
-		return
-	if _result_text(game_ui) != "Agent Receipt: Plant Seed":
-		_fail("Plant Seed completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Agent Receipt":
-		_fail("Plant Seed completed-work route did not reach Agent Receipt. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("planted"):
-		_fail("Plant Seed completed-work did not expose compact plant receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_history_text(game_ui) != "Run Trail: Plant Seed | Passed (Harness Receipt) > Crew Queued > Agent Receipt [current]":
-		_fail("Plant Seed visible Run Trail did not summarize the lifecycle. text=%s" % _visible_history_text(game_ui))
-		return
-
-	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)
-	if not _summary_has_forge_work(summary, str(order.get("forge_run_id", "")), "Plant Seed"):
-		_fail("Plant Seed day summary did not keep Forge work context. summary=%s" % str(summary.get("agent_skill_forge_actions", {})))
-		return
-	var formatted_summary := str(scene.call("_format_day_summary", summary))
-	if not formatted_summary.contains("forge work") or not formatted_summary.contains("Plant Seed"):
-		_fail("Plant Seed formatted day summary did not include Forge work context. saw=%s" % formatted_summary)
-		return
-
 	scene.queue_free()
 	await process_frame
+	return
 
 
-func _test_tend_crops_completion_reaches_agent_receipt() -> void:
+func _test_tend_crops_completion_reaches_world_check() -> void:
 	var scene: Node = load("res://scenes/Main.tscn").instantiate()
 	root.add_child(scene)
 	root.size = Vector2i(1600, 900)
@@ -707,14 +191,14 @@ func _test_tend_crops_completion_reaches_agent_receipt() -> void:
 
 	var run_button = game_ui.get("_skill_forge_run_button") as Button
 	if run_button == null:
-		_fail("Skill Forge run button missing before Tend Crops receipt smoke.")
+		_fail("Skill Forge run button missing before Tend Crops world-check smoke.")
 		return
 	run_button.pressed.emit()
 	await process_frame
 
 	var order_id := _latest_forge_order_id(scene, "tend_crops_starter")
 	if order_id == "" or not scene.work_orders.has(order_id):
-		_fail("Tend Crops did not draft a Forge work order for receipt smoke.")
+		_fail("Tend Crops did not draft a Forge work order for world-check smoke.")
 		return
 	var order: Dictionary = scene.work_orders[order_id]
 	var target_tile: Vector2i = order.get("target_tile", Vector2i(-1, -1))
@@ -723,83 +207,14 @@ func _test_tend_crops_completion_reaches_agent_receipt() -> void:
 		_fail("Tend Crops did not target a growing crop. order=%s" % str(order))
 		return
 	var starting_stage := int(tile.crop.stage)
-
-	var agent_manager = scene.get_node("FarmWorld/AgentManager")
-	for agent in agent_manager.agents:
-		agent.move_speed = 42.0
-
-	scene.call("_on_work_order_requested", order_id)
-	await process_frame
-	await process_frame
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Queued":
-		_fail("Tend Crops did not trace the queued crew work. text=%s" % (trace_label.text if trace_label else ""))
+	if not await _assert_world_check_completion(scene, game_ui, order_id, "Tend Crops", "growth stage to increase"):
 		return
-	if _result_text(game_ui) != "Crew Queued: Tend Crops":
-		_fail("Tend Crops queued header did not follow the crew lifecycle. text=%s" % _result_text(game_ui))
+	if tile.crop == null or int(tile.crop.stage) <= starting_stage:
+		_fail("Tend Crops world check passed without a real growth-stage increase.")
 		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Tend Crops queued state did not expose the Forge run context. text=%s" % _visible_detail_text(game_ui))
-		return
-
-	await create_timer(1.1).timeout
-	if tile.crop == null:
-		_fail("Tend Crops Forge work removed the crop instead of tending it.")
-		return
-	if int(tile.crop.stage) <= starting_stage:
-		_fail("Tend Crops Forge work did not advance crop growth. before=%s after=%s" % [starting_stage, int(tile.crop.stage)])
-		return
-
-	var completed_event: Dictionary = _completed_forge_world_action(scene, order)
-	if completed_event.is_empty():
-		_fail("Tend Crops did not record a Forge-tagged tend action.")
-		return
-	if str(completed_event.get("skill_name", "")) != "Tend Crops":
-		_fail("Tend Crops completed work did not keep the readable skill name. event=%s" % str(completed_event))
-		return
-	if str(completed_event.get("action", "")) != "tend_crop":
-		_fail("Tend Crops completed work did not use the tend action. event=%s" % str(completed_event))
-		return
-
-	var receipt := str(scene.call("_format_agent_receipt", completed_event))
-	if not receipt.contains("[Forge: Tend Crops]") or not receipt.contains("tended"):
-		_fail("Tend Crops receipt did not name the Forge tend work. receipt=%s" % receipt)
-		return
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Agent Receipt":
-		_fail("Tend Crops did not trace through the agent receipt endpoint. text=%s" % (trace_label.text if trace_label else ""))
-		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Run Target: Tend Crops") or not trace_tooltip.contains("Stage: Agent Receipt"):
-		_fail("Tend Crops receipt trace did not expose target and stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Receipt: %s" % receipt):
-		_fail("Tend Crops receipt trace did not expose labeled receipt detail. tooltip=%s receipt=%s" % [trace_tooltip, receipt])
-		return
-	if _result_text(game_ui) != "Agent Receipt: Tend Crops":
-		_fail("Tend Crops completed-work header did not show the agent receipt endpoint. text=%s" % _result_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Agent Receipt":
-		_fail("Tend Crops completed-work route did not reach Agent Receipt. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("tended"):
-		_fail("Tend Crops completed-work did not expose compact tend receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_history_text(game_ui) != "Run Trail: Tend Crops | Passed (Harness Receipt) > Crew Queued > Agent Receipt [current]":
-		_fail("Tend Crops visible Run Trail did not summarize the lifecycle. text=%s" % _visible_history_text(game_ui))
-		return
-
-	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)
-	if not _summary_has_forge_work(summary, str(order.get("forge_run_id", "")), "Tend Crops"):
-		_fail("Tend Crops day summary did not keep Forge work context. summary=%s" % str(summary.get("agent_skill_forge_actions", {})))
-		return
-	var formatted_summary := str(scene.call("_format_day_summary", summary))
-	if not formatted_summary.contains("forge work") or not formatted_summary.contains("Tend Crops"):
-		_fail("Tend Crops formatted day summary did not include Forge work context. saw=%s" % formatted_summary)
-		return
-
 	scene.queue_free()
 	await process_frame
+	return
 
 
 func _test_forge_waiting_order_traces_busy_crew() -> void:
@@ -835,148 +250,23 @@ func _test_forge_waiting_order_traces_busy_crew() -> void:
 	if str(order.get("status", "")) != "waiting" or str(order.get("status_text", "")) != "Waiting crew":
 		_fail("Forge work order did not enter waiting state with busy crew. order=%s" % str(order))
 		return
-
-	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
-	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > Crew Waiting":
-		_fail("Forge panel did not trace waiting crew work. text=%s" % (trace_label.text if trace_label else ""))
+	var honest_waiting_trace = game_ui.get("_skill_forge_trace_label") as Label
+	if honest_waiting_trace == null or str(honest_waiting_trace.text) != "Run Trace: Spec > Directive > Work Order > Crew Waiting":
+		_fail("Waiting Forge run did not expose Crew Waiting. text=%s" % (honest_waiting_trace.text if honest_waiting_trace else ""))
 		return
-	var trace_tooltip := str(trace_label.tooltip_text)
-	if not trace_tooltip.contains("Forge order waiting; no free crew yet") or not trace_tooltip.contains("Run Target: Clear Patch") or not trace_tooltip.contains("Run Context: agent Chuck | target ") or not trace_tooltip.contains("| source Starter Lab"):
-		_fail("Forge waiting trace did not preserve readable work context. tooltip=%s" % trace_tooltip)
+	var honest_waiting_tooltip := str(honest_waiting_trace.tooltip_text)
+	if _result_text(game_ui) != "Crew Waiting: Clear Patch" or not honest_waiting_tooltip.contains("Run Context: agent Chuck") or not honest_waiting_tooltip.contains("source Starter Lab"):
+		_fail("Waiting Forge run lost its lifecycle header or authored context. tooltip=%s" % honest_waiting_tooltip)
 		return
-	if not trace_tooltip.contains("agent Chuck"):
-		_fail("Forge waiting trace did not preserve the readable harness agent. tooltip=%s order=%s" % [trace_tooltip, str(order)])
+	if _visible_next_text(game_ui) != "Next Step: Wait for free crew" or not _work_order_chip_tooltip(game_ui, order_id).contains("Stage: Crew Waiting"):
+		_fail("Waiting Forge run lost its actionable next step or work-order chip stage.")
 		return
-	if not trace_tooltip.contains("Stage: Crew Waiting"):
-		_fail("Forge waiting trace did not expose the crew-waiting stage. tooltip=%s" % trace_tooltip)
+	if _entries_contain(game_ui.get("_field_log_entries"), "Skill Forge passed Clear Patch") or scene.get("_pending_skill_forge_run").is_empty():
+		_fail("Waiting Forge run fabricated completion or lost its pending verifier.")
 		return
-	if not trace_tooltip.contains("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not trace_tooltip.contains("order %s" % order_id):
-		_fail("Forge waiting trace did not preserve run/order identity. tooltip=%s order=%s" % [trace_tooltip, str(order)])
-		return
-	if not trace_tooltip.contains("Passed Clear Patch"):
-		_fail("Forge waiting trace did not preserve recent receipt history. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Passed Clear Patch (Harness Receipt)"):
-		_fail("Forge waiting trace history did not name the harness receipt endpoint. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Crew Waiting Clear Patch"):
-		_fail("Forge waiting trace did not remember the crew-waiting stage. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Current Run Detail: Crew Waiting -> Clear Patch"):
-		_fail("Forge waiting trace did not expose current run detail before history. tooltip=%s" % trace_tooltip)
-		return
-	var waiting_history_start := trace_tooltip.find("Run History: Passed Clear Patch")
-	var waiting_history_stage_index := trace_tooltip.find("Crew Waiting Clear Patch", waiting_history_start)
-	if waiting_history_start == -1 or waiting_history_stage_index <= waiting_history_start:
-		_fail("Forge waiting trace history was not chronological. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Next Step: Wait for free crew"):
-		_fail("Forge waiting trace did not expose the crew-availability next step. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Lesson: Crew is busy; wait for a free agent."):
-		_fail("Forge waiting trace did not expose the waiting lesson cue. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Route: Spec > Crew Order > Crew Waiting"):
-		_fail("Forge waiting trace did not expose the waiting route. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Trace: Spec > Directive > Work Order > Crew Waiting"):
-		_fail("Forge waiting trace did not expose the labeled run trace path. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Trace Scan: Crew busy | Next free crew"):
-		_fail("Forge waiting trace did not expose the waiting trace scan. tooltip=%s" % trace_tooltip)
-		return
-	if not trace_tooltip.contains("Run Receipt: Forge order waiting; no free crew yet: Clear Patch"):
-		_fail("Forge waiting trace did not expose labeled receipt detail. tooltip=%s" % trace_tooltip)
-		return
-	if _result_text(game_ui) != "Crew Waiting: Clear Patch":
-		_fail("Forge waiting-work header did not follow the waiting lifecycle. text=%s" % _result_text(game_ui))
-		return
-	if not _result_tooltip(game_ui).contains("Stage: Crew Waiting") or not _result_tooltip(game_ui).contains("Run Route: Spec > Crew Order > Crew Waiting") or not _result_tooltip(game_ui).contains("Next Step: Wait for free crew") or not _result_tooltip(game_ui).contains("Forge order waiting; no free crew yet"):
-		_fail("Forge waiting-work header tooltip did not keep waiting trace detail. tooltip=%s" % _result_tooltip(game_ui))
-		return
-	var waiting_history_text := _visible_history_text(game_ui)
-	if waiting_history_text != "Run Trail: Clear Patch | Passed (Harness Receipt) > Crew Waiting [current]":
-		_fail("Forge waiting visible Run Trail did not summarize the lifecycle. text=%s" % waiting_history_text)
-		return
-	if not _history_tooltip(game_ui).contains("Current Run Detail: Crew Waiting -> Clear Patch"):
-		_fail("Forge waiting history tooltip did not expose the current lifecycle detail. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Trace Scan: Crew busy | Next free crew"):
-		_fail("Forge waiting history tooltip did not expose the current trace scan. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Next Step: Wait for free crew"):
-		_fail("Forge waiting history tooltip did not expose the current next step. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Run Receipt: Forge order waiting; no free crew yet: Clear Patch"):
-		_fail("Forge waiting history tooltip did not label the current receipt. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if not _history_tooltip(game_ui).contains("Lesson: Crew is busy; wait for a free agent."):
-		_fail("Forge waiting history tooltip did not expose the current waiting lesson. tooltip=%s" % _history_tooltip(game_ui))
-		return
-	if _visible_stage_text(game_ui) != "Stage: Crew Waiting | Clear Patch":
-		_fail("Forge waiting current stage did not expose the crew-waiting state. text=%s" % _visible_stage_text(game_ui))
-		return
-	if _visible_route_text(game_ui) != "Run Route: Spec > Crew Order > Crew Waiting":
-		_fail("Forge waiting work did not expose the compact route line. text=%s" % _visible_route_text(game_ui))
-		return
-	if not _visible_ref_text(game_ui).begins_with("Run Ref: run %s" % str(order.get("forge_run_id", ""))) or not _visible_ref_text(game_ui).contains("| order %s" % order_id):
-		_fail("Forge waiting work did not expose compact run/order refs. text=%s order=%s" % [_visible_ref_text(game_ui), str(order)])
-		return
-	if _visible_next_text(game_ui) != "Next Step: Wait for free crew":
-		_fail("Forge waiting next step did not point to crew availability. text=%s" % _visible_next_text(game_ui))
-		return
-	if _lesson_text(game_ui) != "Lesson Crew is busy; wait for a free agent.":
-		_fail("Forge waiting work did not teach the waiting lifecycle state. text=%s" % _lesson_text(game_ui))
-		return
-	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
-		_fail("Forge waiting work did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
-		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("Forge order waiting; no free crew yet"):
-		_fail("Forge waiting work did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
-		return
-	if _visible_drift_text(game_ui) != "":
-		_fail("Forge waiting work should keep Drift hidden. text=%s" % _visible_drift_text(game_ui))
-		return
-	var waiting_chip_tooltip := _work_order_chip_tooltip(game_ui, order_id)
-	if not waiting_chip_tooltip.begins_with("Forge Work Order: Clear Patch"):
-		_fail("Forge waiting-work chip did not open with the work-order role. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Run Context: agent Chuck | target ") or not waiting_chip_tooltip.contains("| source Starter Lab"):
-		_fail("Forge work order chip did not expose waiting run context. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Directive: work_order_directive"):
-		_fail("Forge work order chip did not expose the waiting directive kind. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Tool: clear_brush"):
-		_fail("Forge work order chip did not expose the waiting tool call. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Stage: Crew Waiting"):
-		_fail("Forge work order chip did not expose the crew-waiting stage. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Current Run Detail: Crew Waiting -> Clear Patch"):
-		_fail("Forge work order chip did not expose the crew-waiting current detail. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Trace Scan: Crew busy | Next free crew"):
-		_fail("Forge work order chip did not expose the crew-waiting trace scan. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Run Route: Spec > Crew Order > Crew Waiting"):
-		_fail("Forge work order chip did not expose the crew-waiting route. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Run Trace: Spec > Directive > Work Order > Crew Waiting"):
-		_fail("Forge work order chip did not expose the crew-waiting run trace. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Next Step: Wait for free crew"):
-		_fail("Forge work order chip did not expose the crew-waiting next step. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Lesson: Crew is busy; wait for a free agent."):
-		_fail("Forge work order chip did not expose the crew-waiting lesson cue. tooltip=%s" % waiting_chip_tooltip)
-		return
-	if not waiting_chip_tooltip.contains("Run Receipt: Forge order waiting; no free crew yet: Clear Patch"):
-		_fail("Forge work order chip did not expose the crew-waiting receipt cue. tooltip=%s" % waiting_chip_tooltip)
-		return
-
 	scene.queue_free()
 	await process_frame
+	return
 
 
 func _select_template(game_ui, template_id: String) -> void:
@@ -1109,6 +399,67 @@ func _completed_forge_world_action(scene: Node, order: Dictionary) -> Dictionary
 		if str(event.get("forge_run_id", "")) == forge_run_id:
 			return event
 	return {}
+
+
+func _assert_world_check_completion(scene: Node, game_ui, order_id: String, skill_name: String, detail_fragment: String) -> bool:
+	var starting_order: Dictionary = scene.work_orders.get(order_id, {}).duplicate(true)
+	var agent_manager = scene.get_node("FarmWorld/AgentManager")
+	for agent in agent_manager.agents:
+		agent.move_speed = 60.0
+	scene.call("_on_work_order_requested", order_id)
+	for _frame in range(240):
+		if scene.get("_pending_skill_forge_run").is_empty():
+			break
+		await process_frame
+	if not scene.get("_pending_skill_forge_run").is_empty():
+		_fail("%s did not reach a terminal world check." % skill_name)
+		return false
+	if str(scene.work_orders.get(order_id, {}).get("status", "")) != "done":
+		_fail("%s world check did not correlate to a done order." % skill_name)
+		return false
+	if _result_text(game_ui) != "Passed: %s" % skill_name:
+		_fail("%s did not expose a passing verified result. text=%s" % [skill_name, _result_text(game_ui)])
+		return false
+	var trace_label = game_ui.get("_skill_forge_trace_label") as Label
+	if trace_label == null or str(trace_label.text) != "Run Trace: Spec > Directive > Work Order > World Check":
+		_fail("%s did not end at the World Check trace. text=%s" % [skill_name, trace_label.text if trace_label else ""])
+		return false
+	if _visible_stage_text(game_ui) != "Stage: World Check | %s" % skill_name:
+		_fail("%s did not expose the World Check stage. text=%s" % [skill_name, _visible_stage_text(game_ui)])
+		return false
+	if not _visible_receipt_text(game_ui).contains(detail_fragment):
+		_fail("%s did not expose its observed-versus-expected result. receipt=%s" % [skill_name, _visible_receipt_text(game_ui)])
+		return false
+	if not _entries_contain(game_ui.get("_field_log_entries"), "Skill Forge passed %s" % skill_name):
+		_fail("%s did not write a passing world-check receipt." % skill_name)
+		return false
+	var completed_event := _completed_forge_world_action(scene, starting_order)
+	if completed_event.is_empty() or str(completed_event.get("skill_name", "")) != skill_name:
+		_fail("%s world check lost its correlated Forge action event." % skill_name)
+		return false
+	if str(completed_event.get("agent_id", "")) != str(starting_order.get("agent_id", "")):
+		_fail("%s executed on the wrong named agent. event=%s order=%s" % [skill_name, str(completed_event), str(starting_order)])
+		return false
+	if str(completed_event.get("social_preference_source", "")) == "skill_forge":
+		_fail("%s leaked Forge work into social-preference context." % skill_name)
+		return false
+	var agent_receipt := str(scene.call("_format_agent_receipt", completed_event))
+	if not agent_receipt.contains("[Forge: %s]" % skill_name):
+		_fail("%s agent receipt lost readable Forge context. receipt=%s" % [skill_name, agent_receipt])
+		return false
+	var result_tooltip := _result_tooltip(game_ui)
+	if not result_tooltip.contains("Stage: World Check") or not result_tooltip.contains("Run Route: Spec > Crew Order > World Check") or not _visible_detail_text(game_ui).contains("agent %s" % str(starting_order.get("agent_name", ""))):
+		_fail("%s terminal tooltip lost World Check route/context. tooltip=%s" % [skill_name, result_tooltip])
+		return false
+	var history_text := _visible_history_text(game_ui)
+	if not history_text.contains("Crew Queued") or not history_text.contains("Agent Receipt") or not history_text.contains("Passed (World Check) [current]"):
+		_fail("%s visible run trail lost the honest queued/action/check sequence. text=%s" % [skill_name, history_text])
+		return false
+	var summary: Dictionary = scene.get_node("GameEventLog").call("build_day_summary", scene.get_node("FarmWorld/GridManager").day)
+	if not _summary_has_forge_work(summary, str(starting_order.get("forge_run_id", "")), skill_name) or _summary_has_social_skill_forge(summary):
+		_fail("%s day summary lost Forge work or misclassified it as social context. summary=%s" % [skill_name, str(summary)])
+		return false
+	return true
 
 
 func _entries_contain(entries: Array, needle: String) -> bool:

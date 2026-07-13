@@ -57,7 +57,7 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	run_button.pressed.emit()
 	await process_frame
 
-	if _forge_order_count(scene) != before_count + 1:
+	if _forge_order_count(scene) != 1:
 		_fail("Clear Patch did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
 		return
 
@@ -137,19 +137,19 @@ func _test_clear_patch_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Next Step: Send crew order"):
 		_fail("Forge work order chip tooltip did not expose the ready next step. tooltip=%s" % str(preference.tooltip_text))
 		return
-	if not str(preference.tooltip_text).contains("Lesson: Spec became a crew work order; send for agent receipt."):
+	if not str(preference.tooltip_text).contains("Lesson: Spec became a crew work order; send it, then wait for the world check."):
 		_fail("Forge work order chip tooltip did not expose the ready lesson cue. tooltip=%s" % str(preference.tooltip_text))
 		return
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Forge drafted order did not expose the send-order next step. text=%s" % _visible_next_text(game_ui))
 		return
-	if _lesson_text(game_ui) != "Lesson Spec -> crew work order; send for agent receipt.":
+	if _lesson_text(game_ui) != "Lesson Spec -> crew work order; send it, then wait for the world check.":
 		_fail("Forge drafted order did not teach the crew-order outcome. text=%s" % _lesson_text(game_ui))
 		return
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Chuck | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Forge drafted order did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed clear-patch checks"):
+	if not _visible_receipt_text(game_ui).begins_with("Run Receipt: ") or not _visible_receipt_text(game_ui).contains("order drafted; verification pending"):
 		_fail("Forge drafted order did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 	if _visible_drift_text(game_ui) != "":
@@ -180,7 +180,7 @@ func _test_harvest_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	run_button.pressed.emit()
 	await process_frame
 
-	if _forge_order_count(scene) != before_count + 1:
+	if _forge_order_count(scene) != 1:
 		_fail("Harvest Crops did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
 		return
 
@@ -221,8 +221,8 @@ func _test_harvest_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Tool: harvest_crop"):
 		_fail("Harvest Crops chip tooltip did not expose the harvest tool call. tooltip=%s" % str(preference.tooltip_text))
 		return
-	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Harvest Crops":
-		_fail("Harvest Crops run did not expose the harness receipt stage. text=%s" % _visible_stage_text(game_ui))
+	if _visible_stage_text(game_ui) != "Stage: Work Order | Harvest Crops":
+		_fail("Harvest Crops run did not expose the pending work-order stage. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Harvest Crops run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
@@ -230,7 +230,7 @@ func _test_harvest_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Bert | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Harvest Crops run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed harvest-crop checks"):
+	if not _visible_receipt_text(game_ui).contains("order drafted; verification pending"):
 		_fail("Harvest Crops run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 
@@ -253,7 +253,7 @@ func _test_build_fence_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	run_button.pressed.emit()
 	await process_frame
 
-	if _forge_order_count(scene) != before_count + 1:
+	if _forge_order_count(scene) != 1:
 		_fail("Build Fence did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
 		return
 
@@ -297,8 +297,8 @@ func _test_build_fence_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Tool: build_fence"):
 		_fail("Build Fence chip tooltip did not expose the fence tool call. tooltip=%s" % str(preference.tooltip_text))
 		return
-	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Build Fence":
-		_fail("Build Fence run did not expose the harness receipt stage. text=%s" % _visible_stage_text(game_ui))
+	if _visible_stage_text(game_ui) != "Stage: Work Order | Build Fence":
+		_fail("Build Fence run did not expose the pending work-order stage. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Build Fence run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
@@ -306,7 +306,7 @@ func _test_build_fence_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Bert | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Build Fence run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed fence-building checks"):
+	if not _visible_receipt_text(game_ui).contains("order drafted; verification pending"):
 		_fail("Build Fence run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 
@@ -326,7 +326,7 @@ func _test_tend_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	run_button.pressed.emit()
 	await process_frame
 
-	if _forge_order_count(scene) != before_count + 1:
+	if _forge_order_count(scene) != 1:
 		_fail("Tend Crops did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
 		return
 
@@ -367,8 +367,8 @@ func _test_tend_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Tool: tend_crop"):
 		_fail("Tend Crops chip tooltip did not expose the tend tool call. tooltip=%s" % str(preference.tooltip_text))
 		return
-	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Tend Crops":
-		_fail("Tend Crops run did not expose the harness receipt stage. text=%s" % _visible_stage_text(game_ui))
+	if _visible_stage_text(game_ui) != "Stage: Work Order | Tend Crops":
+		_fail("Tend Crops run did not expose the pending work-order stage. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Tend Crops run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
@@ -376,7 +376,7 @@ func _test_tend_crops_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Tend Crops run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed crop-tending checks"):
+	if not _visible_receipt_text(game_ui).contains("order drafted; verification pending"):
 		_fail("Tend Crops run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 
@@ -396,7 +396,7 @@ func _test_plant_seed_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	run_button.pressed.emit()
 	await process_frame
 
-	if _forge_order_count(scene) != before_count + 1:
+	if _forge_order_count(scene) != 1:
 		_fail("Plant Seed did not draft exactly one Forge work order. before=%s after=%s" % [before_count, _forge_order_count(scene)])
 		return
 
@@ -437,8 +437,8 @@ func _test_plant_seed_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not str(preference.tooltip_text).contains("Tool: plant_seed"):
 		_fail("Plant Seed chip tooltip did not expose the plant tool call. tooltip=%s" % str(preference.tooltip_text))
 		return
-	if _visible_stage_text(game_ui) != "Stage: Harness Receipt | Plant Seed":
-		_fail("Plant Seed run did not expose the harness receipt stage. text=%s" % _visible_stage_text(game_ui))
+	if _visible_stage_text(game_ui) != "Stage: Work Order | Plant Seed":
+		_fail("Plant Seed run did not expose the pending work-order stage. text=%s" % _visible_stage_text(game_ui))
 		return
 	if _visible_next_text(game_ui) != "Next Step: Send crew order":
 		_fail("Plant Seed run did not expose the crew-order next step. text=%s" % _visible_next_text(game_ui))
@@ -446,7 +446,7 @@ func _test_plant_seed_drafts_ready_work_order(scene: Node, game_ui) -> void:
 	if not _visible_detail_text(game_ui).begins_with("Run Context: agent Marigold | target ") or not _visible_detail_text(game_ui).contains("| source Starter Lab"):
 		_fail("Plant Seed run did not expose readable run context. text=%s" % _visible_detail_text(game_ui))
 		return
-	if not _visible_receipt_text(game_ui).contains("manual harness receipt confirmed seed-planting checks"):
+	if not _visible_receipt_text(game_ui).contains("order drafted; verification pending"):
 		_fail("Plant Seed run did not expose compact receipt detail. text=%s" % _visible_receipt_text(game_ui))
 		return
 
