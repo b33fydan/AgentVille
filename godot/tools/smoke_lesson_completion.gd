@@ -5,6 +5,7 @@ const SAVED_PROGRAM_NAME := "Lesson One Clear"
 
 var _failed := false
 var _temp_progress_path := ""
+var _observed_world_actions: Array = []
 
 
 func _initialize() -> void:
@@ -28,9 +29,11 @@ func _run() -> void:
 	var game_ui = scene.get_node_or_null("GameUI")
 	var grid = scene.get_node_or_null("FarmWorld/GridManager")
 	var placement_tool = scene.get_node_or_null("PlacementTool")
-	if progress == null or lesson_library == null or game_ui == null or grid == null or placement_tool == null:
-		_fail("Lesson integration did not expose progress, curriculum, UI, grid, and selection systems.")
+	var agent_manager = scene.get("_agent_manager")
+	if progress == null or lesson_library == null or game_ui == null or grid == null or placement_tool == null or agent_manager == null:
+		_fail("Lesson integration did not expose progress, curriculum, UI, grid, selection, and agent systems.")
 		return
+	agent_manager.connect("agent_world_action", _record_agent_world_action)
 	if str(progress.call("get_storage_path")) != _temp_progress_path:
 		_fail("Game did not use the isolated progress path before boot.")
 		return
@@ -80,7 +83,7 @@ func _run() -> void:
 	if str(legacy_pending.get("origin", "")) != "skill_forge":
 		_fail("Legacy Skill Forge run lost its non-Workbench origin. pending=%s" % str(legacy_pending))
 		return
-	if not _complete_brush_run(scene, legacy_brush, legacy_pending):
+	if not await _complete_brush_run(scene, game_ui, agent_manager, legacy_brush, legacy_pending):
 		return
 	await process_frame
 	if bool(progress.call("is_lesson_completed", lesson_one_id)) or str(progress.call("get_current_lesson")) != lesson_one_id:
@@ -162,7 +165,7 @@ func _run() -> void:
 		_fail("Program shelf did not restore the compiled source exactly.")
 		return
 
-	if not _complete_brush_run(scene, lesson_brush, pending):
+	if not await _complete_brush_run(scene, game_ui, agent_manager, lesson_brush, pending):
 		return
 	await process_frame
 	await process_frame
@@ -274,35 +277,123 @@ func _select_forge_template(game_ui, template_id: String) -> bool:
 	return true
 
 
-func _complete_brush_run(scene: Node, tile, pending: Dictionary) -> bool:
+func _complete_brush_run(scene: Node, game_ui, agent_manager, tile, pending: Dictionary) -> bool:
 	var decor_before := str(tile.decor_id)
 	if decor_before not in ["tall_grass", "flower_patch"]:
 		_fail("Correlated brush target changed before its completion event.")
 		return false
-	if int(tile.cut_with_sickle()) != -1 or str(tile.decor_id) != "":
-		_fail("Smoke could not apply the real brush world mutation.")
-		return false
+
 	var start_result: Dictionary = pending.get("start_result", {})
 	var run: Dictionary = start_result.get("run", {})
-	scene.call("_on_agent_world_action", {
-		"actor": "agent",
-		"agent_id": str(pending.get("agent_id", run.get("agent_id", "chuck"))),
-		"agent_name": str(pending.get("agent_name", run.get("agent_name", "Chuck"))),
-		"action": "clear_brush",
-		"grid_pos": tile.grid_pos,
-		"success": true,
-		"message": "%s cleared %s." % [str(pending.get("agent_name", "Crew")), decor_before.replace("_", " ")],
-		"value": 0,
-		"subject": decor_before,
-		"resources": {"fiber": 2},
-		"crafted_cost": {},
-		"stamps": [],
-		"work_order_id": str(pending.get("order_id", "")),
-		"forge_run_id": str(pending.get("run_id", "")),
-		"skill_id": str(run.get("skill_id", "")),
-		"skill_name": str(run.get("skill_name", "Clear Patch"))
-	})
+	var order_id := str(pending.get("order_id", ""))
+	var run_id := str(pending.get("run_id", ""))
+	var agent_id := str(pending.get("agent_id", run.get("agent_id", "")))
+	if order_id == "" or run_id == "" or agent_id == "":
+		_fail("Correlated brush run did not expose an order, run, and named agent. pending=%s" % str(pending))
+		return false
+
+	_prepare_agents(agent_manager)
+	var assigned_actor = _agent_by_id(agent_manager, agent_id)
+	if assigned_actor == null or not bool(assigned_actor.call("is_available")):
+		_fail("Named agent %s was not available for the correlated brush run." % agent_id)
+		return false
+
+	var rows_value = game_ui.get("_work_order_rows")
+	if typeof(rows_value) != TYPE_DICTIONARY or not (rows_value as Dictionary).has(order_id):
+		_fail("Correlated order %s was not exposed through the live work-order UI." % order_id)
+		return false
+	var row_value = (rows_value as Dictionary).get(order_id, {})
+	if typeof(row_value) != TYPE_DICTIONARY:
+		_fail("Correlated order %s did not expose a UI row dictionary." % order_id)
+		return false
+	var row: Dictionary = row_value
+	var send_button = row.get("button", null) as Button
+	if send_button == null or send_button.disabled or send_button.text != "Send" or str(row.get("intent", "")) != "send":
+		_fail("Correlated order was not ready for the live Send command. text=%s disabled=%s intent=%s" % [send_button.text if send_button else "", send_button.disabled if send_button else true, row.get("intent", "")])
+		return false
+
+	var event_start := _observed_world_actions.size()
+	send_button.pressed.emit()
+	var active_value = assigned_actor.get("_active_decision")
+	if typeof(active_value) != TYPE_DICTIONARY:
+		_fail("Named agent %s did not expose its accepted directive." % agent_id)
+		return false
+	var active: Dictionary = active_value
+	if str(active.get("forge_run_id", "")) != run_id or str(active.get("work_order_id", "")) != order_id:
+		_fail("Named agent %s did not accept the matching Forge run and order. active=%s" % [agent_id, str(active)])
+		return false
+	if str(active.get("action", "")) != "clear_brush" or active.get("target_tile", Vector2i(-1, -1)) != tile.grid_pos:
+		_fail("Named agent %s accepted the wrong action or target. active=%s" % [agent_id, str(active)])
+		return false
+
+	for _frame in range(480):
+		if scene.get("_pending_skill_forge_run").is_empty() and str(tile.decor_id) == "":
+			break
+		await process_frame
+	if not scene.get("_pending_skill_forge_run").is_empty():
+		_fail("Live Send did not finish the correlated Forge run %s." % run_id)
+		return false
+	if str(tile.decor_id) != "":
+		_fail("Named agent %s did not apply the brush world mutation." % agent_id)
+		return false
+
+	var matching_event: Dictionary = {}
+	for index in range(event_start, _observed_world_actions.size()):
+		var event_value = _observed_world_actions[index]
+		if typeof(event_value) != TYPE_DICTIONARY:
+			continue
+		var event: Dictionary = event_value
+		if str(event.get("forge_run_id", "")) != run_id or str(event.get("work_order_id", "")) != order_id:
+			continue
+		matching_event = event
+		break
+	if matching_event.is_empty():
+		_fail("AgentManager did not emit the matching real world action for run %s." % run_id)
+		return false
+	if str(matching_event.get("agent_id", "")) != agent_id or str(matching_event.get("action", "")) != "clear_brush":
+		_fail("Real world action lost its named agent or action identity. event=%s" % str(matching_event))
+		return false
+	if matching_event.get("grid_pos", Vector2i(-1, -1)) != tile.grid_pos or not bool(matching_event.get("success", false)):
+		_fail("Real world action did not report a successful mutation at the correlated tile. event=%s" % str(matching_event))
+		return false
+	if str(matching_event.get("subject", "")) != decor_before.replace("_", " ") or int(matching_event.get("resources", {}).get("fiber", 0)) != 2:
+		_fail("Real brush action lost its observed subject or fiber receipt. event=%s" % str(matching_event))
+		return false
+
+	var orders_value = scene.get("work_orders")
+	if typeof(orders_value) != TYPE_DICTIONARY or not (orders_value as Dictionary).has(order_id):
+		_fail("Completed correlated order %s disappeared before its Done receipt." % order_id)
+		return false
+	if str((orders_value as Dictionary).get(order_id, {}).get("status", "")) != "done":
+		_fail("Real agent world action did not mark correlated order %s Done." % order_id)
+		return false
+
+	for _frame in range(240):
+		if bool(assigned_actor.call("is_available")):
+			break
+		await process_frame
+	if not bool(assigned_actor.call("is_available")):
+		_fail("Named agent %s did not return to available after real work." % agent_id)
+		return false
 	return true
+
+
+func _prepare_agents(agent_manager) -> void:
+	for actor in agent_manager.agents:
+		actor.call("_complete_active_decision")
+		actor.set("_decision_timer", 999.0)
+		actor.move_speed = 60.0
+
+
+func _agent_by_id(agent_manager, agent_id: String):
+	for actor in agent_manager.agents:
+		if str(actor.agent_id) == agent_id:
+			return actor
+	return null
+
+
+func _record_agent_world_action(event: Dictionary) -> void:
+	_observed_world_actions.append(event.duplicate(true))
 
 
 func _find_brush_tile(grid):
