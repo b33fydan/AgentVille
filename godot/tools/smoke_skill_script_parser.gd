@@ -162,6 +162,9 @@ func _expect_error(source: String, expected_line: int, message_fragment: String)
 	if int(error.get("col", 0)) < 1:
 		_fail("Parse error did not include a 1-based column. error=%s" % str(error))
 		return
+	if str(error.get("token", "")).strip_edges() in ["", "<unknown>"]:
+		_fail("Parse error did not preserve a human offending token. error=%s" % str(error))
+		return
 	if not str(error.get("message", "")).contains(message_fragment):
 		_fail("Parse error message was not specific. expected=%s error=%s" % [message_fragment, str(error)])
 		return

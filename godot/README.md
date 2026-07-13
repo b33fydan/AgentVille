@@ -1,6 +1,6 @@
-# AgentVille Voxel Farm Prototype
+# AgentVille Learn-to-Code Voxel Farm
 
-Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
+Godot 4 learn-to-code game where a cozy voxel farm is the classroom: players write bounded agent programs, send named farmhands to execute them, and read receipts checked against the real farm state.
 
 ## Play
 
@@ -10,7 +10,11 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Use the left `CREW` command tab for marked jobs, Parley, supply crafting, live demand actions, and crew-order actions.
 - Use the left `AGENT` command tab for the ordered lesson ladder, Skill Forge starter workflows, and saved compiled programs; use the left `WORLD` tab for view controls, camera zoom/recenter, and End Day.
 - The bottom Agent Workbench is a live local teaching compiler: select a farm tile, edit the bounded agent program, then press `COMPILE` or Cmd/Ctrl+Enter to parse, validate, guard, draft named-agent crew work, and verify the actual resulting farm state.
+- A fresh player lands in Lesson 1 with its starter source, tutor hint, and brush target ready. `FARM`, free-play Forge recipes, and End Day unlock after the first verified lesson run; returning players resume their saved lesson and its authored starter while exact named programs remain available on the shelf.
+- Parser and validator failures render the authored line and column, offending token, plain-language cause, and one concrete fix while keeping the technical trace visible.
+- Compile, crew dispatch, passed receipts, and lesson mastery have distinct visual pulses and sound stamps. Forge Drift also reaches the executing farmhand as a bounded face, tint, and observer badge cue.
 - Lesson mastery, the current lesson, named program source, and view toggles persist locally in `user://agentville_progress.json`; a missing or malformed file safely starts fresh.
+- Completing the lesson ladder opens a deterministic `Graduate Field Loop` through the existing demand, mission, Forge, day-change, and Parley systems instead of ending at an empty free-play screen.
 - Palette selections attach a small item ghost to the cursor.
 - Hovering a selected palette item over the farm shows a hologram footprint before placement.
 - The Tools tab includes Pickaxe for breaking rocks/structures/roads and Sickle for cutting brush or harvesting ready crops.
@@ -124,32 +128,33 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 
 ## Structure
 
+- `scripts/core/Game.gd` orchestrates the farm, crew, Workbench pipeline, first-run gate, persisted lesson resume, and post-ladder goal loop through explicit signals.
 - `scripts/world/GridManager.gd` owns the farm grid, day growth, walkability bounds, and deterministic four-neighbor NPC pathfinding.
 - `scripts/world/Tile.gd` owns each tile's visual state, contents, solid-agent boundary state, and packed walk-surface height.
 - `scripts/world/LocalMegavoxAssets.gd` optionally loads local licensed MEGAVOXPACK GLBs for curated prop swaps while preserving procedural fallbacks.
 - `scripts/world/Crop.gd` owns crop growth stages.
 - Vegetation has subtle procedural wind sway for crops and tall grass.
-- `scripts/tools/PlacementTool.gd` owns pointer interaction, tool actions, and the persistent `selected_tile` target used by the Workbench.
+- `scripts/tools/PlacementTool.gd` owns pointer interaction, tool actions, the persistent `selected_tile` target used by the Workbench, and the matching farm-sandbox onboarding guard.
 - `scripts/tools/PlacementPreview.gd` owns selected-item holograms for tile hover previews.
-- `scripts/audio/SoundManager.gd` owns named sound stamps and temporary placeholder tones.
+- `scripts/audio/SoundManager.gd` owns named sound stamps and temporary placeholder tones, including distinct compile, dispatch, passed-receipt, and lesson-completion feedback.
 - `scripts/ui/BuildPalette.gd` owns the `FARM` command tab's embedded voxel catalog.
 - `scripts/ui/VoxelIcon.gd` renders pack-backed or procedural fallback voxel icons in isolated sub-viewports.
-- `scripts/ui/GameUI.gd` owns the four-tab command dock, editable Agent Workbench compiler controls/teaching trace, crew/status panels, and compact Field Log.
+- `scripts/ui/GameUI.gd` owns the four-tab command dock, first-run/current/free-play goal panel, editable Agent Workbench compiler controls and teaching trace, feedback pulses, crew/status panels, and compact Field Log.
 - `scripts/camera/CameraController.gd` owns the fixed isometric camera.
 - `scripts/systems/SkillLessonLibrary.gd` owns the ordered curriculum, prerequisites, and evidence-backed completion conditions.
 - `scripts/systems/SkillTutorLibrary.gd` turns parser, validator, guard, lifecycle, drift, and check states into deterministic teaching copy and escalating hints.
 - `scripts/systems/PlayerProgress.gd` owns safe local lesson, program-shelf, and view-toggle persistence.
 - `scripts/ai/GameEventLog.gd` records structured player/agent events for future observer summaries.
 - `scripts/ai/AgentManager.gd` spawns the current NPC crew: Bert, Marigold, and Chuck.
-- `scripts/ai/AgentActor.gd` owns each visible NPC, its state, memory, movement, reactions, and small world actions.
+- `scripts/ai/AgentActor.gd` owns each visible NPC, its state, memory, movement, reactions, small world actions, and allowlisted Forge Drift face/observer cues.
 - `scripts/ai/AgentReactionModel.gd` scores player receipts into local NPC mood, irritation, and expression changes.
 - `scripts/ai/AgentDialogueLibrary.gd` stores the first no-API sarcastic reaction lines.
 - `scripts/ai/PlayerVibeScorer.gd` classifies day summaries into local player vibe labels for sharper crew verdicts.
 - `scripts/ai/AdversarialSessionManager.gd` runs bounded no-API NPC grievance sessions with patience, turns, claims, verdicts, and rewards or penalties.
 - `scripts/ai/UtilityAgentDecisionModel.gd` is the deterministic decision layer that an LSTM can later replace or assist.
-- `scripts/systems/SkillScriptParser.gd` tokenizes and parses the bounded Workbench language into safe Skill Spec dictionaries with positional teaching errors.
+- `scripts/systems/SkillScriptParser.gd` tokenizes and parses the bounded Workbench language into safe Skill Spec dictionaries with positional teaching errors and an authored-field source map for validator diagnostics.
 - `scripts/systems/SkillSpecValidator.gd` hard-blocks tools, targets, checks, and guard conditions outside the local runtime allowlist.
-- `scripts/systems/SkillForgeRunHarness.gd` turns validated specs into crew directives and lifecycle receipts without claiming success before execution.
+- `scripts/systems/SkillForgeRunHarness.gd` turns validated specs into crew directives, carries their data-only Drift hints, and emits lifecycle receipts without claiming success before execution.
 - `scripts/systems/SkillCheckEvaluator.gd` snapshots the selected tile and inventory, evaluates runtime guards, and compares post-action world state with the requested success check.
 - `tools/run_all_smokes.sh` runs every registered `smoke_*.gd` script with `$GODOT` or the documented local fallback and fails on non-zero exits or engine/script errors.
 - `tools/smoke_receipts.gd` exercises player-action receipts, agent reactions, and day summaries.
@@ -190,13 +195,16 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_skill_forge_work_order_directive.gd` exercises Tend Crops, Clear Patch, Plant Seed, Harvest Crops, and Build Fence turning Forge `work_order_directive` specs into ready crew-order rows, including visible `Run Context:`/`Stage:`/next-step/`Run Receipt:` labels plus Forge chip route/trace/stage/current-detail/trace-scan separator/next/lesson cues, labeled route notes, and target-changed `Order Blocked:` endpoints.
 - `tools/smoke_skill_forge_work_receipts.gd` exercises all five Forge actions reaching honest post-world-state checks, with correlated done orders, observed-versus-expected receipts, queued/waiting behavior, and Forge context preserved in agent events.
 - `tools/smoke_skill_forge_run_harness.gd` exercises manual Skill Forge starter runs turning valid specs into deterministic directives, start/pass/fail receipts, and blocked-run Hallucination Drift copy.
+- `tools/smoke_skill_forge_drift_visuals.gd` exercises validator Drift surviving the run harness and Game work-order bridge into allowlisted AgentActor face, tint, observer-badge, snapshot, and bounded blocked-run reaction state.
 - `tools/smoke_skill_forge_spec_validator.gd` exercises the first Skill Forge validator contract for manual task specs, allowlisted tools, templated receipts, and data-only Hallucination Drift signals.
 - `tools/smoke_skill_forge_templates.gd` exercises static Skill Forge starter templates for Tend Crops, Plant Seed, Clear Patch, Harvest Crops, and Build Fence, including validator-clean specs and compact preview data.
 - `tools/smoke_skill_script_parser.gd` exercises the bounded hand-written parser, canonical sample, all starter defaults, optional semicolons, named crew, validator handoff, and positional teaching errors.
+- `tools/smoke_parse_error_battery.gd` exercises malformed lexical, syntax, structure, and identity cases plus successful source provenance and live parser/validator trace diagnostics with line, column, token, cause, and fix.
 - `tools/smoke_skill_check_evaluator.gd` exercises pass/fail observations for tile, crop, and inventory checks plus all five runtime guards and fail-closed malformed input.
 - `tools/smoke_workbench_compile.gd` exercises the complete local compiler pipeline, named-agent execution, pending/retry/cancel/replacement/timeout lifecycle, arrival-time guard recheck, a verified ready-crop pass, and the same program blocking on an empty tile.
 - `tools/smoke_selected_tile_target.gd` exercises persistent `selected_tile` coordinates taking priority over starter fallbacks and flowing into the compiled crew order.
 - `tools/smoke_workbench_ui_controls.gd` exercises the Compile button, shared Cmd/Ctrl+Enter path, ready/edit state, and safe plain-text teaching trace.
+- `tools/smoke_workbench_feedback.gd` exercises distinct compile, dispatch, passed-receipt, and lesson-completion sound profiles plus their visible deterministic pulse targets and feedback state.
 - `tools/smoke_persistent_tile_selection.gd` exercises the independent selected-tile voxel frame surviving hover refreshes and navigation-tool changes.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
 - `tools/smoke_visual_polish.gd` exercises the reference contrast profile, including a raised soft-shadow sun, voxel-scale contact occlusion, restrained saturation, the opt-in macro grid, independent hover/placement feedback, manual grid toggle, and the reason-badge backing plate, readable outline, and motive-change pop.
@@ -260,11 +268,14 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_ui_field_targeting.gd` exercises opening the left `CREW` tab, selecting a crew-order command, and then clicking the farm field.
 - `tools/smoke_ui_overhaul.gd` exercises the four command tabs, voxel-icon/fallback contract, strict 1600x900 and 1280x720 layout, status-only right rail, editable live Workbench, camera-key isolation, and UI pointer blocking.
 - `tools/smoke_camera_navigation.gd` exercises expanded zoom/pan bounds, wheel zoom, left-dock camera commands, voxel icons, default-view recentering, real View-tool drag over a tile, text-focus isolation, release-over-panel cleanup, persistent selection, and ray-selectable corner clearance at 1600×900 and 1280×720.
+- `tools/smoke_onboarding.gd` exercises fresh Lesson 1 landing, target/source/tutor setup, locked farm mutation and day controls, real Workbench/Send/NPC completion, sandbox unlock, and exact Lesson 2 resume after reload.
 - `tools/smoke_skill_lessons.gd` exercises the ten ordered lessons, prerequisite gates, distinct first-three programs, and evaluable completion contracts.
 - `tools/smoke_lesson_completion.gd` exercises a real Workbench compile, live CREW ORDERS `Send`, named-AgentActor movement/work and emitted world action, honest receipt, lesson unlock, legacy-run mastery guard, and exact compiled-program save/load.
 - `tools/smoke_player_progress.gd` exercises fresh defaults, immediate JSON persistence, program replacement, duplicate lesson hardening, and malformed progress recovery.
 - `tools/smoke_tutor_copy.gd` exercises deterministic parser, validator, drift, guard, lifecycle, and check teaching copy plus three-step hint escalation.
+- `tools/smoke_post_ladder_goal_loop.gd` exercises an affordable returning-graduate stake, the `Graduate Field Loop` mission and demand, and identity-safe interleaving with a pending Forge run, day advance, and Parley.
 - `tools/walkthrough_skill_lessons.gd` records the two-process Session 2 cold-start acceptance: `-- fresh` completes lessons 1–3 through each live `Send` button and the named Chuck/Chuck/Bert AgentActor execution path, asserts correlated order/world-action evidence, and persists an exact saved program/view state; `-- verify` proves restart restoration and cleans its isolated progress file.
+- `tools/qa_cold_start.gd` is the windowed Session 3 acceptance harness: isolated fresh boot, Lesson 1 compile/Send/NPC completion, free-play Forge run, End Day, teardown/reload, exact progress checks, and six 1600×900 step captures.
 - `tools/smoke_tile_micro_detail_grid.gd` exercises the packed visual-only 4x4 tile surface, terrain/content-specific coverage and row direction, support-plane contact, internal and cross-tile seams, coherent palette grouping, deterministic refreshes, varied dirt-road detail signatures, and original-grid gameplay targeting through till, plant, erase, and decor actions.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, harvest orders, tend orders, and plant orders.
 - `tools/capture_crafting.gd` captures `artifacts/screenshots/agentville-crafting.png`.
@@ -284,14 +295,16 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/capture_camera_navigation.gd` captures `artifacts/screenshots/agentville-camera-navigation.png` at 1600×900 with a formerly obscured corner centered above the Workbench and the `WORLD` camera commands visible.
 - `tools/capture_skill_lessons.gd` captures `artifacts/screenshots/agentville-skill-lessons.png` at 1600×900 with the lesson ladder, current goal, tutor layer, and technical trace.
 - `tools/capture_workbench_compile.gd` captures `artifacts/screenshots/agentville-workbench-compile.png` at 1600×900 with a selected ready crop and the real pending compiler trace.
+- `tools/capture_session3_portfolio.gd` captures the fresh 1600×900 Session 3 portfolio set: Workbench mid-lesson, failed-run teaching trace, passed receipt, and unobstructed farm view.
+- `tools/capture_skill_forge_drift_visuals.gd` captures `artifacts/screenshots/agentville-skill-forge-drift-visuals.png` at 1600×900 with Bert's sandbox-blocked hallucinating Drift reaction, `x_x` face, purple tint, observer badge, and the real allowlist failure context.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
 - `tools/capture_npc_work.gd` captures `artifacts/screenshots/agentville-npc-work.png`.
 - `tools/capture_placement_preview.gd` captures `artifacts/screenshots/agentville-placement-preview.png`.
 - `tools/capture_receipts_screenshot.gd` captures `artifacts/screenshots/agentville-receipts.png`.
 
-## Post-Foundation Priority
+## Agent Workbench And Skill Forge
 
-Once the core farm, NPC, mission, memory, Parley, and verification loops feel stable, the next top-priority direction is **Skill Forge**: a cozy agent-harness learning mode where players write small skill specs and watch NPCs or helper bots execute them on the farm.
+**Skill Forge is now the shipped teaching spine:** a cozy, local agent harness where players write bounded Skill Script v1 programs, compile them into allowlisted specs, watch named NPCs execute them on the farm, and read proof from the resulting world state.
 
 - The working PRD and reflection questionnaire live in `docs/skill_forge_prd.md`.
 - The first local rule layer lives in `scripts/systems/SkillSpecValidator.gd`, with smoke coverage in `tools/smoke_skill_forge_spec_validator.gd`.
@@ -305,10 +318,10 @@ Once the core farm, NPC, mission, memory, Parley, and verification loops feel st
 - Skill Forge runs now land in day summaries as compact Forge recaps, including blocked-run Drift notes.
 - Tend Crops, Clear Patch, Plant Seed, Harvest Crops, and Build Fence now bridge the run harness into the crew-order board: valid Forge `work_order_directive` specs draft ready `tend_crop`, `clear_brush`, `plant_seed`, `harvest_crop`, and `build_fence` rows with labeled `Crew Work Order:` trace detail and a `Forge` chip whose `Forge Work Order:` tooltip carries run/order identity, `Run Context:`, directive, tool call, route, trace path, stage, current-detail separator, trace-scan, next-step, and lesson cues.
 - Sent Forge-authored crew work keeps Forge context through the active reason badge, queued/waiting receipt cues, named-agent action event, and day summary; `SkillCheckEvaluator` then compares the actual tile/inventory snapshot and emits the terminal World Check receipt.
-- This should teach agent-skill building rather than general programming: triggers, context, tools, steps, receipts, verification, memory, and failure handling.
-- The first version should stay deterministic and local, using safe structured skill specs instead of arbitrary runtime code.
-- Skill runs should reuse existing AgentVille systems: missions become learning objectives, work orders become tool calls, Field Log entries become receipts, and smoke-style checks become visible pass/fail validation.
-- The farm should show the skill in motion, making agent harness concepts nostalgic, visual, and playful without interrupting the current foundation work.
+- The lesson ladder teaches agent-skill building through triggers, context, tools, steps, receipts, verification, memory, and failure handling rather than general-purpose programming syntax.
+- The shipped runtime stays deterministic and local, using safe structured skill specs instead of arbitrary runtime code.
+- Skill runs reuse existing AgentVille systems: missions become learning objectives, work orders become tool calls, Field Log entries become receipts, and smoke-style checks become visible pass/fail validation.
+- The farm shows each skill in motion, keeping the agent-harness concepts visual and playful while the trace remains technically honest.
 
 ## AI Direction
 
@@ -425,3 +438,7 @@ Drop final `.ogg` files into `audio/sfx/` using these names whenever the sound d
 - `coin_burst`: tiny reward sparkle after selling/harvest.
 - `day_advance`: gentle morning/time transition.
 - `error_soft`: warm, non-punishing blocked-action sound.
+- `compile_success`: short high confirmation when valid Workbench source compiles.
+- `run_dispatch`: lower dispatch cue when a Forge crew order is actually sent.
+- `receipt_pass`: bright proof cue when the correlated world check passes.
+- `lesson_complete`: longer mastery cue when a verified run completes the current lesson.

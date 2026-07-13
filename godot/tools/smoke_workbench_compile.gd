@@ -34,7 +34,8 @@ func _run() -> void:
 	var editor = game_ui.get("_code_editor") as CodeEdit
 	var compile_button = game_ui.get("_workbench_compile_button") as Button
 	var runtime_label = game_ui.get("_workbench_runtime_label") as Label
-	if editor == null or compile_button == null or runtime_label == null:
+	var compiler_output = game_ui.get("_compiler_output") as RichTextLabel
+	if editor == null or compile_button == null or runtime_label == null or compiler_output == null:
 		_fail("Integrated Workbench controls were unavailable.")
 		return
 	editor.text = CLEAR_PROGRAM
@@ -87,9 +88,13 @@ func _run() -> void:
 	if scene.get("_pending_skill_forge_run").is_empty() or str(scene.work_orders.get(retry_order_id, {}).get("status", "")) != "ready":
 		_fail("Failed crew attempt did not requeue while keeping verification pending.")
 		return
+	if not _assert_runtime_diagnostic(compiler_output.text, 4, 9, "harvest_crop", "Crew attempt failed", "same order returned to ready"):
+		return
 	scene.call("_on_work_order_cancel_requested", retry_order_id)
 	if not scene.get("_pending_skill_forge_run").is_empty() or scene.work_orders.has(retry_order_id):
 		_fail("Cancelling the correlated order did not close the pending run and remove the order.")
+		return
+	if not _assert_runtime_diagnostic(compiler_output.text, 4, 9, "harvest_crop", "player cancelled", "cancelled before verification"):
 		return
 
 	placement_tool.set_tool("select")
@@ -154,7 +159,6 @@ func _run() -> void:
 	if not _entries_contain(game_ui.get("_field_log_entries"), "Skill Forge passed Harvest Crops"):
 		_fail("Honest post-world-state check did not record a passing receipt.")
 		return
-	var compiler_output = game_ui.get("_compiler_output") as RichTextLabel
 	if compiler_output == null or not compiler_output.text.contains("PASSED") or not compiler_output.text.contains("observed +1 grain"):
 		_fail("Workbench trace did not show the verified inventory observation. trace=%s" % (compiler_output.text if compiler_output else ""))
 		return
@@ -180,6 +184,8 @@ func _run() -> void:
 	if runtime_label.text != "BLOCKED  ·  GUARD":
 		_fail("Guard-blocked compile left a stale runtime status. status=%s" % runtime_label.text)
 		return
+	if not _assert_runtime_diagnostic(compiler_output.text, 3, 8, "crop.ready", "observed an empty tile", "Select a mature crop"):
+		return
 
 	# A valid always guard can still fail order feasibility; that must reach the trace.
 	scene.call("_on_workbench_compile_requested", ALWAYS_HARVEST_PROGRAM)
@@ -188,6 +194,8 @@ func _run() -> void:
 		return
 	if runtime_label.text != "FAILED  ·  ORDER BLOCKED":
 		_fail("Infeasible order left the Workbench stuck compiling. status=%s" % runtime_label.text)
+		return
+	if not _assert_runtime_diagnostic(compiler_output.text, 4, 9, "harvest_crop", "cannot accept", "Select a compatible tile"):
 		return
 
 	# A drafted order that sits for two day advances must fail instead of hanging forever.
@@ -208,6 +216,35 @@ func _run() -> void:
 	if compiler_output == null or not compiler_output.text.contains("order never completed after two day advances"):
 		_fail("Timeout failure did not reach the Workbench teaching trace.")
 		return
+	if not _assert_runtime_diagnostic(compiler_output.text, 4, 9, "clear_brush", "two day advances", "Retarget or simplify"):
+		return
+
+	# A successful action event is still a failed run when its declared world check
+	# cannot observe the promised state change.
+	placement_tool.call("_apply_to_tile", brush_tile)
+	scene.call("_on_workbench_compile_requested", CLEAR_PROGRAM)
+	var failed_check_pending: Dictionary = scene.get("_pending_skill_forge_run")
+	var failed_check_order_id := str(failed_check_pending.get("order_id", ""))
+	scene.call("_on_agent_world_action", {
+		"actor": "agent",
+		"agent_id": "chuck",
+		"agent_name": "Chuck",
+		"action": "clear_brush",
+		"grid_pos": brush_tile.grid_pos,
+		"success": true,
+		"message": "Chuck reported success without changing the target.",
+		"resources": {},
+		"crafted_cost": {},
+		"stamps": [],
+		"work_order_id": failed_check_order_id,
+		"forge_run_id": str(failed_check_pending.get("run_id", "")),
+		"skill_name": "Clear Patch"
+	})
+	if not scene.get("_pending_skill_forge_run").is_empty() or not compiler_output.text.contains("FAILED"):
+		_fail("A mismatched post-action world check did not close with a failed trace.")
+		return
+	if not _assert_runtime_diagnostic(compiler_output.text, 6, 10, "tile_state", "observed", "Compare expected decor"):
+		return
 
 	# Invalid target drift before Send must close with a blocked receipt.
 	placement_tool.call("_apply_to_tile", brush_tile)
@@ -220,6 +257,8 @@ func _run() -> void:
 		return
 	if compiler_output == null or not compiler_output.text.contains("Guard inspect.has_brush blocked at tile"):
 		_fail("Pre-Send target drift did not produce the blocked guard receipt.")
+		return
+	if not _assert_runtime_diagnostic(compiler_output.text, 3, 8, "inspect.has_brush", "Guard inspect.has_brush blocked", "Select brush"):
 		return
 
 	# The named agent also rechecks the guard on arrival, catching drift after Send.
@@ -257,6 +296,8 @@ func _run() -> void:
 	if compiler_output == null or not compiler_output.text.contains("Guard inspect.has_brush blocked at tile"):
 		_fail("Arrival-time guard failure did not reach the Workbench trace.")
 		return
+	if not _assert_runtime_diagnostic(compiler_output.text, 3, 8, "inspect.has_brush", "Guard inspect.has_brush blocked", "Select brush"):
+		return
 
 	scene.queue_free()
 	await process_frame
@@ -293,6 +334,22 @@ func _entries_contain(entries, needle: String) -> bool:
 		if str(entry).contains(needle):
 			return true
 	return false
+
+
+func _assert_runtime_diagnostic(trace: String, line: int, col: int, token: String, cause_fragment: String, fix_fragment: String) -> bool:
+	var expected := [
+		"line %s:%s" % [line, col],
+		"token %s" % token,
+		"cause",
+		cause_fragment,
+		"fix",
+		fix_fragment
+	]
+	for fragment in expected:
+		if not trace.contains(str(fragment)):
+			_fail("Runtime teaching diagnostic omitted '%s'. trace=%s" % [str(fragment), trace])
+			return false
+	return true
 
 
 func _fail(message: String) -> void:

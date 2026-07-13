@@ -15,7 +15,7 @@ func _run() -> void:
 	await process_frame
 
 	var game_ui = scene.get_node("GameUI")
-	_test_panel_loads_template_previews(game_ui)
+	await _test_panel_loads_template_previews(game_ui)
 	if _failed:
 		return
 	_test_template_selection_updates_preview(game_ui)
@@ -149,6 +149,10 @@ func _test_panel_loads_template_previews(game_ui) -> void:
 		_fail("Skill Forge history trail should stay hidden before a run. text=%s" % _visible_history_text(game_ui))
 		return
 
+	var command_scroll = game_ui.get_node("UIRoot/CommandDock").find_child("CommandScroll", true, false) as ScrollContainer
+	if command_scroll:
+		command_scroll.ensure_control_visible(run_button)
+		await process_frame
 	if not game_ui.is_pointer_over_ui(run_button.get_global_rect().get_center()):
 		_fail("Skill Forge run button was not registered as part of the UI hit region.")
 		return

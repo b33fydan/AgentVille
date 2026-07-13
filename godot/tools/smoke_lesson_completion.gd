@@ -59,35 +59,19 @@ func _run() -> void:
 	if not _assert_initial_lesson_ui(game_ui, lesson_one, lesson_two):
 		return
 
-	# The legacy template Run path may execute real farm work, but it cannot award
-	# mastery because it was not compiled by the player in the Workbench.
-	var legacy_brush = _find_brush_tile(grid)
-	if legacy_brush == null:
-		_fail("Starter map did not expose brush for the legacy-run mastery guard.")
+	if bool(game_ui.call("is_farm_sandbox_unlocked")) or bool(placement_tool.call("is_farm_sandbox_unlocked")):
+		_fail("Fresh lesson progress did not lock the farm sandbox before the first real run.")
 		return
-	placement_tool.set_tool("select")
-	placement_tool.call("_apply_to_tile", legacy_brush)
-	if not _select_forge_template(game_ui, "clear_patch_starter"):
+	var command_tabs: Dictionary = game_ui.get("_command_tab_buttons")
+	var farm_tab = command_tabs.get("farm", null) as Button
+	var crew_tab = command_tabs.get("crew", null) as Button
+	var free_play_section = game_ui.get("_skill_forge_onboarding_section") as Control
+	var end_day_button = game_ui.get("_end_day_button") as Button
+	if farm_tab == null or not farm_tab.disabled or crew_tab == null or crew_tab.disabled:
+		_fail("Onboarding did not lock FARM while keeping CREW Send reachable.")
 		return
-	var forge_run_button = game_ui.get("_skill_forge_run_button") as Button
-	if forge_run_button == null:
-		_fail("Legacy Skill Forge Run button was unavailable.")
-		return
-	forge_run_button.pressed.emit()
-	await process_frame
-	var legacy_pending_value = scene.get("_pending_skill_forge_run")
-	if typeof(legacy_pending_value) != TYPE_DICTIONARY or legacy_pending_value.is_empty():
-		_fail("Legacy Skill Forge Run did not establish a correlated world check.")
-		return
-	var legacy_pending: Dictionary = legacy_pending_value.duplicate(true)
-	if str(legacy_pending.get("origin", "")) != "skill_forge":
-		_fail("Legacy Skill Forge run lost its non-Workbench origin. pending=%s" % str(legacy_pending))
-		return
-	if not await _complete_brush_run(scene, game_ui, agent_manager, legacy_brush, legacy_pending):
-		return
-	await process_frame
-	if bool(progress.call("is_lesson_completed", lesson_one_id)) or str(progress.call("get_current_lesson")) != lesson_one_id:
-		_fail("Legacy Skill Forge Run incorrectly granted lesson mastery.")
+	if free_play_section == null or free_play_section.visible or end_day_button == null or not end_day_button.disabled:
+		_fail("Onboarding exposed free-play Forge or End Day before lesson 1 mastery.")
 		return
 
 	# Drive lesson 1 through the actual editor and Compile button. The lesson is
@@ -179,6 +163,43 @@ func _run() -> void:
 	if not _assert_completed_lesson_ui(game_ui, lesson_one, lesson_two):
 		return
 	if not _assert_lesson_receipt_and_trace(game_ui, lesson_one):
+		return
+	if not bool(game_ui.call("is_farm_sandbox_unlocked")) or not bool(placement_tool.call("is_farm_sandbox_unlocked")):
+		_fail("Lesson 1 mastery did not unlock the farm sandbox immediately.")
+		return
+	if farm_tab.disabled or not free_play_section.visible or end_day_button.disabled:
+		_fail("Lesson 1 mastery did not enable FARM, free-play Forge, and End Day together.")
+		return
+
+	# Once unlocked, a legacy template may execute real farm work, but it still
+	# cannot award the current lesson because it was not compiled in Workbench.
+	var legacy_brush = _find_brush_tile(grid)
+	if legacy_brush == null:
+		_fail("Starter map did not expose brush for the unlocked legacy-run mastery guard.")
+		return
+	placement_tool.set_tool("select")
+	placement_tool.call("_apply_to_tile", legacy_brush)
+	if not _select_forge_template(game_ui, "clear_patch_starter"):
+		return
+	var forge_run_button = game_ui.get("_skill_forge_run_button") as Button
+	if forge_run_button == null:
+		_fail("Unlocked legacy Skill Forge Run button was unavailable.")
+		return
+	forge_run_button.pressed.emit()
+	await process_frame
+	var legacy_pending_value = scene.get("_pending_skill_forge_run")
+	if typeof(legacy_pending_value) != TYPE_DICTIONARY or legacy_pending_value.is_empty():
+		_fail("Unlocked legacy Skill Forge Run did not establish a correlated world check.")
+		return
+	var legacy_pending: Dictionary = legacy_pending_value.duplicate(true)
+	if str(legacy_pending.get("origin", "")) != "skill_forge":
+		_fail("Legacy Skill Forge run lost its non-Workbench origin. pending=%s" % str(legacy_pending))
+		return
+	if not await _complete_brush_run(scene, game_ui, agent_manager, legacy_brush, legacy_pending):
+		return
+	await process_frame
+	if progress.call("get_completed_lessons") != [lesson_one_id] or str(progress.call("get_current_lesson")) != lesson_two_id:
+		_fail("Legacy Skill Forge Run incorrectly granted lesson 2 mastery.")
 		return
 
 	scene.queue_free()

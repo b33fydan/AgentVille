@@ -339,7 +339,7 @@ func _assert_editor_contract(scene: Node, game_ui, editor: CodeEdit) -> void:
 	if compile_button == null or compile_button.text != "COMPILE" or not compile_button.tooltip_text.contains("Cmd/Ctrl+Enter"):
 		_fail("Agent workbench did not expose its compile control and shortcut.")
 		return
-	if compiler_output == null or not compiler_output.text.contains("COMPILER TRACE") or not compiler_output.text.contains("local deterministic compiler ready"):
+	if compiler_output == null or not compiler_output.text.contains("COMPILER TRACE") or not compiler_output.text.contains("stage     LESSON READY"):
 		_fail("Agent workbench compiler output lost its live pipeline trace.")
 		return
 
