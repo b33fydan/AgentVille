@@ -62,7 +62,8 @@ func parse(source: String) -> Dictionary:
 	return {
 		"ok": true,
 		"spec": compiled.get("spec", {}),
-		"request": compiled.get("request", {})
+		"request": compiled.get("request", {}),
+		"source_map": _source_map_for_program(program)
 	}
 
 
@@ -119,7 +120,7 @@ func _tokenize(source: String) -> void:
 			column += 1
 			continue
 
-		_set_error(line, column, "Unexpected character '%s'." % character, "Use agent keywords, names, braces, parentheses, or an optional semicolon.")
+		_set_error(line, column, character, "Unexpected character '%s'." % character, "Use agent keywords, names, braces, parentheses, or an optional semicolon.")
 		return
 
 	_tokens.append(_token(TOKEN_EOF, "", line, column))
@@ -138,15 +139,15 @@ func _scan_string(source: String, start_offset: int, line: int, start_column: in
 				"next_column": column + 1
 			}
 		if character == "\r" or character == "\n":
-			_set_error(line, start_column, "Unterminated string.", "Close the string with a double quote before the end of the line.")
+			_set_error(line, start_column, _unterminated_string_token(value), "Unterminated string.", "Close the string with a double quote before the end of the line.")
 			return {}
 		if character == "\\":
 			if offset + 1 >= source.length():
-				_set_error(line, start_column, "Unterminated string escape.", "Add a quote or backslash after the escape character.")
+				_set_error(line, column, "\\", "Unterminated string escape.", "Add a quote or backslash after the escape character.")
 				return {}
 			var escaped := source.substr(offset + 1, 1)
 			if escaped != "\"" and escaped != "\\":
-				_set_error(line, column, "Unsupported string escape '\\%s'." % escaped, "Only escaped quotes and backslashes are supported.")
+				_set_error(line, column, "\\%s" % escaped, "Unsupported string escape '\\%s'." % escaped, "Only escaped quotes and backslashes are supported.")
 				return {}
 			value += escaped
 			offset += 2
@@ -156,7 +157,7 @@ func _scan_string(source: String, start_offset: int, line: int, start_column: in
 		offset += 1
 		column += 1
 
-	_set_error(line, start_column, "Unterminated string.", "Close the string with a double quote before the end of the file.")
+	_set_error(line, start_column, _unterminated_string_token(value), "Unterminated string.", "Close the string with a double quote before the end of the file.")
 	return {}
 
 
@@ -172,6 +173,7 @@ func _parse_program() -> Dictionary:
 		return {}
 
 	var program := {
+		"agent_keyword": agent_keyword,
 		"agent_token": agent_token,
 		"observe": {},
 		"uses": [],
@@ -245,7 +247,7 @@ func _parse_when(program: Dictionary) -> void:
 		if str(token.get("kind", "")) != TOKEN_IDENTIFIER or str(token.get("lexeme", "")) != "use":
 			_set_error_from_token(token, "A when block can only contain a use statement.", "Put one use tool_name(selected_tile) statement inside the when block.")
 			return
-		_parse_use(program, str(condition.get("lexeme", "")))
+		_parse_use(program, str(condition.get("lexeme", "")), condition)
 		if not _parse_error.is_empty():
 			return
 		use_count += 1
@@ -258,7 +260,7 @@ func _parse_when(program: Dictionary) -> void:
 	_finish_statement()
 
 
-func _parse_use(program: Dictionary, condition: String) -> void:
+func _parse_use(program: Dictionary, condition: String, condition_token: Dictionary = {}) -> void:
 	var keyword := _advance()
 	var uses: Array = program.get("uses", [])
 	if not uses.is_empty():
@@ -278,7 +280,8 @@ func _parse_use(program: Dictionary, condition: String) -> void:
 		"keyword": keyword,
 		"tool": tool,
 		"target": target,
-		"condition": condition
+		"condition": condition,
+		"condition_token": condition_token.duplicate(true)
 	})
 	program["uses"] = uses
 	_finish_statement()
@@ -427,6 +430,70 @@ func _compile_program(program: Dictionary) -> Dictionary:
 	}
 
 
+func _source_map_for_program(program: Dictionary) -> Dictionary:
+	var source_map := {}
+	var agent_keyword: Dictionary = program.get("agent_keyword", {})
+	var agent_token: Dictionary = program.get("agent_token", {})
+	var observe_token: Dictionary = program.get("observe", {})
+	var verify_token: Dictionary = program.get("verify", {})
+	var receipt_token: Dictionary = program.get("receipt", {})
+	var uses: Array = program.get("uses", [])
+	var use_statement: Dictionary = uses[0] if not uses.is_empty() and typeof(uses[0]) == TYPE_DICTIONARY else {}
+	var use_keyword: Dictionary = use_statement.get("keyword", {})
+	var tool_token: Dictionary = use_statement.get("tool", {})
+	var target_token: Dictionary = use_statement.get("target", {})
+	var condition_token: Dictionary = use_statement.get("condition_token", {})
+	if condition_token.is_empty():
+		condition_token = use_keyword
+
+	_map_source_fields(source_map, ["agent", "agent.name"], agent_token)
+	_map_source_fields(source_map, ["trigger", "trigger.type"], agent_keyword)
+	_map_source_fields(source_map, ["id", "name"], receipt_token)
+	_map_source_fields(source_map, ["context", "context.target", "context.allowed_sources"], observe_token)
+	_map_source_fields(source_map, ["tools", "tools[0]", "steps", "steps[0]", "steps[0].id", "steps[0].tool"], tool_token)
+	_map_source_fields(source_map, ["steps[0].target"], target_token)
+	_map_source_fields(source_map, ["steps[0].when"], condition_token)
+	_map_source_fields(source_map, [
+		"success_check",
+		"success_check.type",
+		"success_check.target",
+		"success_check.state",
+		"success_check.decor_id",
+		"success_check.item",
+		"success_check.min_delta"
+	], verify_token)
+	_map_source_fields(source_map, [
+		"failure_handling",
+		"failure_handling.on_blocked",
+		"failure_handling.suggestion"
+	], condition_token)
+	_map_source_fields(source_map, [
+		"receipt",
+		"receipt.label",
+		"receipt.template",
+		"receipt_template"
+	], receipt_token)
+	return source_map
+
+
+func _map_source_fields(source_map: Dictionary, fields: Array, token: Dictionary) -> void:
+	if token.is_empty():
+		return
+	var location := _source_location(token)
+	for field_value in fields:
+		var field := str(field_value).strip_edges()
+		if field != "":
+			source_map[field] = location.duplicate(true)
+
+
+func _source_location(token: Dictionary) -> Dictionary:
+	return {
+		"line": max(int(token.get("line", 1)), 1),
+		"col": max(int(token.get("col", 1)), 1),
+		"token": _human_token(token)
+	}
+
+
 func _failure_suggestion(condition: String, tool_name: String, template_spec: Dictionary) -> String:
 	if not template_spec.is_empty():
 		var steps = template_spec.get("steps", [])
@@ -521,21 +588,47 @@ func _is_identifier_part(character: String) -> bool:
 
 
 func _set_error_from_token(token: Dictionary, message: String, suggestion: String) -> void:
-	_set_error(int(token.get("line", 1)), int(token.get("col", 1)), message, suggestion)
+	_set_error(
+		int(token.get("line", 1)),
+		int(token.get("col", 1)),
+		_human_token(token),
+		message,
+		suggestion
+	)
 
 
-func _set_error(line: int, column: int, message: String, suggestion: String) -> void:
+func _set_error(line: int, column: int, token: String, message: String, suggestion: String) -> void:
 	if not _parse_error.is_empty():
 		return
 	var classification := _classify_parse_error(message)
 	_parse_error = {
 		"line": max(line, 1),
 		"col": max(column, 1),
+		"token": token if token.strip_edges() != "" else "<unknown>",
 		"code": str(classification.get("code", "syntax_error")),
 		"class": str(classification.get("class", "syntax")),
 		"message": message,
 		"suggestion": suggestion
 	}
+
+
+func _human_token(token: Dictionary) -> String:
+	var kind := str(token.get("kind", ""))
+	var lexeme := str(token.get("lexeme", ""))
+	match kind:
+		TOKEN_EOF:
+			return "<end of file>"
+		TOKEN_NEWLINE:
+			return "<newline>"
+		TOKEN_STRING:
+			return "\"%s\"" % lexeme.replace("\\", "\\\\").replace("\"", "\\\"")
+	if lexeme != "":
+		return lexeme
+	return "<unknown>"
+
+
+func _unterminated_string_token(value: String) -> String:
+	return "\"%s" % value.replace("\\", "\\\\").replace("\"", "\\\"")
 
 
 func _classify_parse_error(message: String) -> Dictionary:

@@ -20,6 +20,7 @@ var game_ui
 var item_availability_checker: Callable
 var crew_order_target_checker: Callable
 var agent_occupancy_checker: Callable
+var _farm_sandbox_unlocked: bool = true
 
 var _hovered_tile
 var _selected_tile
@@ -36,7 +37,22 @@ func configure(new_grid_manager, new_camera_controller, new_game_ui) -> void:
 	_setup_preview()
 
 
+func set_farm_sandbox_unlocked(is_unlocked: bool) -> void:
+	_farm_sandbox_unlocked = is_unlocked
+	if not is_unlocked:
+		clear_crew_order_targeting()
+		if current_tool not in [Tool.SELECT, Tool.PAN]:
+			set_tool("select")
+	_update_preview_visibility()
+
+
+func is_farm_sandbox_unlocked() -> bool:
+	return _farm_sandbox_unlocked
+
+
 func set_tool(tool_name: String) -> void:
+	if not _farm_sandbox_unlocked and tool_name not in ["select", "pan"]:
+		tool_name = "select"
 	match tool_name:
 		"place":
 			current_tool = Tool.PLACE
@@ -88,6 +104,10 @@ func get_selected_tile():
 	return null
 
 
+func select_tile_without_action(tile) -> void:
+	_set_selected_tile(tile)
+
+
 func get_selected_grid_pos() -> Vector2i:
 	if get_selected_tile() == null:
 		return Vector2i(-1, -1)
@@ -103,6 +123,8 @@ func clear_selected_tile() -> void:
 
 
 func set_crew_order_targeting(action_id: String, preview_item_id: String) -> void:
+	if not _farm_sandbox_unlocked:
+		return
 	_crew_order_action_id = action_id
 	_crew_order_preview_item_id = preview_item_id
 	if camera_controller:
@@ -191,6 +213,10 @@ func _set_selected_tile(tile) -> void:
 
 
 func _apply_to_tile(tile) -> void:
+	if not _farm_sandbox_unlocked and current_tool not in [Tool.SELECT, Tool.PAN]:
+		action_performed.emit("Complete Lesson 1 to unlock the farm sandbox.")
+		sound_requested.emit("error_soft")
+		return
 	var success := false
 	var message := ""
 	var harvested_value := 0
@@ -302,6 +328,8 @@ func _is_targeting_crew_order() -> bool:
 
 
 func _can_target_crew_order(tile) -> bool:
+	if not _farm_sandbox_unlocked:
+		return false
 	if tile == null:
 		return false
 	if not crew_order_target_checker.is_valid():
@@ -310,6 +338,14 @@ func _can_target_crew_order(tile) -> bool:
 
 
 func _apply_selected_item(tile) -> Dictionary:
+	if not _farm_sandbox_unlocked:
+		return {
+			"success": false,
+			"message": "Complete Lesson 1 to unlock the farm sandbox.",
+			"value": 0,
+			"resources": {},
+			"stamps": ["error_soft"]
+		}
 	match selected_item_id:
 		"pickaxe":
 			var resource_gain: Dictionary = {}

@@ -26,6 +26,12 @@ const CURRENT_WORK_ORDER_ACTIONS := {
 	}
 }
 
+const DRIFT_VISUAL_HINTS := {
+	"steady": {"face_hint": "focused", "observer_hint": "calm"},
+	"wobbly": {"face_hint": "sweating", "observer_hint": "crew_noticing"},
+	"hallucinating": {"face_hint": "glitched", "observer_hint": "crew_worried"}
+}
+
 var _validator = SkillSpecValidatorScript.new()
 var _next_run_number: int = 1
 
@@ -55,11 +61,7 @@ func complete_run(start_result: Dictionary, passed: bool, details: Dictionary = 
 	run["result_detail"] = str(details.get("result_detail", "pass/fail recorded")).strip_edges()
 	if run["result_detail"] == "":
 		run["result_detail"] = "pass/fail recorded"
-	var drift_override := str(details.get("drift_level", "")).strip_edges()
-	if drift_override != "":
-		var drift: Dictionary = run.get("drift", {})
-		drift["level"] = drift_override
-		run["drift"] = drift
+	_apply_drift_override(run, details)
 
 	var directive: Dictionary = start_result.get("directive", {})
 	return _result_from_run(run, directive, status_text, _completion_field_log_line(run, passed), start_result.get("validation", {}))
@@ -73,11 +75,23 @@ func block_run(start_result: Dictionary, details: Dictionary = {}) -> Dictionary
 	run["result_detail"] = str(details.get("result_detail", "runtime guard blocked the run")).strip_edges()
 	if run["result_detail"] == "":
 		run["result_detail"] = "runtime guard blocked the run"
-	var drift: Dictionary = run.get("drift", {})
-	drift["level"] = str(details.get("drift_level", "steady"))
-	run["drift"] = drift
+	_apply_drift_override(run, details)
 	var directive: Dictionary = start_result.get("directive", {})
 	return _result_from_run(run, directive, "blocked", _runtime_blocked_field_log_line(run), start_result.get("validation", {}))
+
+
+func _apply_drift_override(run: Dictionary, details: Dictionary) -> void:
+	if not details.has("drift_level"):
+		return
+	var drift_level := str(details.get("drift_level", "")).strip_edges()
+	if not DRIFT_VISUAL_HINTS.has(drift_level):
+		return
+	var drift: Dictionary = run.get("drift", {}).duplicate(true)
+	var hints: Dictionary = DRIFT_VISUAL_HINTS[drift_level]
+	drift["level"] = drift_level
+	drift["face_hint"] = str(hints.get("face_hint", "focused"))
+	drift["observer_hint"] = str(hints.get("observer_hint", "calm"))
+	run["drift"] = drift
 
 
 func _base_run(spec: Dictionary, validation: Dictionary, request: Dictionary) -> Dictionary:
@@ -139,7 +153,8 @@ func _build_directive(run: Dictionary, spec: Dictionary, request: Dictionary) ->
 		"success_check": spec.get("success_check", {}).duplicate(true),
 		"failure_handling": spec.get("failure_handling", {}).duplicate(true),
 		"receipt": spec.get("receipt", {}).duplicate(true),
-		"source_context": run.get("source_context", {}).duplicate(true)
+		"source_context": run.get("source_context", {}).duplicate(true),
+		"drift": run.get("drift", {}).duplicate(true)
 	}
 	if request.has("priority"):
 		directive["priority"] = request.get("priority")
@@ -182,6 +197,8 @@ func _event_payload(run: Dictionary, status_text: String) -> Dictionary:
 		"result_detail": str(run.get("result_detail", "")),
 		"failure_suggestion": str(run.get("failure_suggestion", "")),
 		"drift_level": str(run.get("drift", {}).get("level", "steady")),
+		"drift_face_hint": str(run.get("drift", {}).get("face_hint", "focused")),
+		"drift_observer_hint": str(run.get("drift", {}).get("observer_hint", "calm")),
 		"source_context": run.get("source_context", {}).duplicate(true)
 	}
 	return payload

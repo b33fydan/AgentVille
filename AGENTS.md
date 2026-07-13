@@ -7,7 +7,7 @@ A Godot 4.6 voxel farm game whose end state is a **learn-to-code game**: the pla
 1. This file, then the session brief in `docs/sol-sessions/`.
 2. `godot/README.md` — authoritative doc for the live codebase, including the registry of smoke/capture tools.
 3. `godot/docs/skill_forge_prd.md` — design source for Skill Forge, **except**: all of its "Non-Goals For MVP" are **superseded by the vision above**, apart from the safety model (see Non-negotiables). Typed skill programs in the Workbench are the product now; loops and multi-tile/multi-agent programs stay out until a session brief says otherwise.
-4. Root `README.md` and `CLAUDE.md` describe a **dead React/Three.js web app** (`src/`, `api/`, `dist/`). Never take direction from them — everything live is under `godot/`.
+4. Root `README.md` describes the live Godot product and isolates the **dead React/Three.js web app** under its Legacy section; `CLAUDE.md` still describes that legacy app. Never take direction from legacy material — everything live is under `godot/`.
 
 ## Environment
 - Repo: `/Volumes/beefybackup/AgentVille`, branch `agentville-v4-godot-fresh`.

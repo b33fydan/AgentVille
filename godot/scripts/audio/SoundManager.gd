@@ -15,7 +15,11 @@ var asset_paths := {
 	"harvest_chime": "res://audio/sfx/harvest_chime.ogg",
 	"coin_burst": "res://audio/sfx/coin_burst.ogg",
 	"day_advance": "res://audio/sfx/day_advance.ogg",
-	"error_soft": "res://audio/sfx/error_soft.ogg"
+	"error_soft": "res://audio/sfx/error_soft.ogg",
+	"compile_success": "res://audio/sfx/compile_success.ogg",
+	"run_dispatch": "res://audio/sfx/run_dispatch.ogg",
+	"receipt_pass": "res://audio/sfx/receipt_pass.ogg",
+	"lesson_complete": "res://audio/sfx/lesson_complete.ogg"
 }
 
 var placeholder_shapes := {
@@ -28,10 +32,23 @@ var placeholder_shapes := {
 	"harvest_chime": {"freq": 880.0, "duration": 0.16, "wave": "sine"},
 	"coin_burst": {"freq": 1180.0, "duration": 0.12, "wave": "sine"},
 	"day_advance": {"freq": 420.0, "duration": 0.22, "wave": "sine"},
-	"error_soft": {"freq": 150.0, "duration": 0.14, "wave": "sine"}
+	"error_soft": {"freq": 150.0, "duration": 0.14, "wave": "sine"},
+	# The Workbench stamps intentionally differ in pitch, length, and contour so
+	# compile, dispatch, proof, and mastery remain legible without visual focus.
+	"compile_success": {"freq": 720.0, "duration": 0.09, "wave": "pop"},
+	"run_dispatch": {"freq": 405.0, "duration": 0.13, "wave": "sine"},
+	"receipt_pass": {"freq": 960.0, "duration": 0.18, "wave": "sine"},
+	"lesson_complete": {"freq": 1240.0, "duration": 0.26, "wave": "pop"}
 }
 
 var _loaded_streams: Dictionary = {}
+
+
+func get_placeholder_profile(stamp_name: String) -> Dictionary:
+	var profile = placeholder_shapes.get(stamp_name, {})
+	if typeof(profile) != TYPE_DICTIONARY:
+		return {}
+	return (profile as Dictionary).duplicate(true)
 
 
 func play_stamp(stamp_name: String) -> void:

@@ -1,14 +1,14 @@
 # Skill Forge PRD
 
-Status: pre-implementation vision
-Scope: final foundation slice before Skill Forge implementation
-Codebase: AgentVille Godot 4 prototype
+Status: implemented and playable
+Scope: shipped Agent Workbench, Skill Forge, curriculum, and sandbox contract
+Codebase: AgentVille Godot 4.6
 
 ## Product Summary
 
-Skill Forge is a cozy agent-harness learning mode inside AgentVille. Players write safe, structured skill specs and watch NPCs or helper bots execute those specs on the farm. The mode should teach the shape of agent skills through play: triggers, context, tools, ordered steps, receipts, verification, memory, and failure handling.
+Skill Forge is the deterministic agent-runtime layer behind AgentVille's learn-to-code game. Players type bounded Skill Script v1 programs into the Agent Workbench, compile them into data-only Skill Specs, and watch named NPC farmhands execute the resulting crew work. A starter-template panel exposes the same contracts without requiring source authoring.
 
-The Forge is not a general programming IDE. It is a readable, forgiving farm workshop where a player can describe a useful routine, see how an agent interprets it, inspect what happened, and revise the routine with confidence.
+The Workbench is a real code editor and teaching compiler for the shipped language. It is deliberately not a general-purpose IDE or arbitrary-script host: the language exposes only the farm context, tools, guards, and checks documented below. Every run remains inspectable from authored source through validation, order execution, observed world state, and receipt.
 
 ## Player Promise
 
@@ -36,9 +36,9 @@ Skill Forge should reuse those systems instead of introducing a parallel simulat
 
 ## Design Pillars
 
-### 1. Structured Before Freeform
+### 1. Bounded Source, Structured Runtime
 
-The first Forge should use safe structured specs, not arbitrary scripts. Players can author fields and steps, but the runtime only executes known farm tools and deterministic checks.
+Players author small programs, but the compiler emits only schema-validated Skill Spec dictionaries. The runtime executes known farm tools and deterministic checks; source text is never evaluated as GDScript or shell code.
 
 ### 2. Visible Runs
 
@@ -50,36 +50,85 @@ The Forge should feel like learning by tending a farm, not debugging a compiler.
 
 ### 4. Local First
 
-The MVP should stay deterministic and local. No live API dependency is required for the first playable Forge loop.
+The runtime is deterministic and local. The playable Forge loop has no live API dependency.
 
 ### 5. Existing Systems Win
 
 If a Forge concept can map to missions, work orders, Field Log receipts, day summaries, NPC comments, or smoke-style validation, it should use those paths first.
 
-## MVP Concept
+## Shipped Authoring Surfaces
 
-The first playable MVP is a single Forge panel that lets the player assemble one safe skill spec and run it on the farm.
+The primary product surface is the bottom-center Agent Workbench. The player selects a farm tile, writes or modifies a Skill Script v1 program, presses `COMPILE`, and then sends the drafted crew order. Parse and validation failures stop safely with teaching diagnostics. A valid run stays pending until its named NPC performs the action and the post-action world check passes or fails.
 
-Example skill:
+The `AGENT` command tab also contains five starter templates—Tend Crops, Plant Seed, Clear Patch, Harvest Crops, and Build Fence—with readable contract previews and a bounded Check/Fix revision loop. Both surfaces route through the same validator, run harness, work-order system, Field Log, and day-summary receipts.
 
-```text
-Name: Clear a pressure patch
-Trigger: Manual
-Context: Use the current target tile and recent Mission Momentum reason
-Tools: inspect_tile, clear_brush
-Steps:
-  1. Inspect the target tile.
-  2. If it contains brush, clear it.
-  3. Record a receipt with the source context.
-Success check: Target tile no longer has brush.
-Failure handling: If the tile is not brush, write a blocked receipt and suggest retargeting.
+## Skill Script v1 Grammar
+
+Skill Script v1 is hand-tokenized and parsed by `scripts/systems/SkillScriptParser.gd`. This EBNF describes the accepted source shape; whitespace between tokens is optional, while statements must be separated by a newline or semicolon unless a closing brace ends the statement.
+
+```ebnf
+program       = separators, "agent", string, "{", separators,
+                statement, { separators, statement }, separators,
+                "}", separators ;
+statement     = observe | use | guarded_use | verify | receipt ;
+observe       = "observe", identifier ;
+use           = "use", identifier, "(", identifier, ")" ;
+guarded_use   = "when", identifier, "{", separators,
+                use, separators, "}" ;
+verify        = "verify", identifier ;
+receipt       = "receipt", string ;
+separators    = { newline | ";" } ;
+identifier    = ( letter | "_" ), { letter | digit | "_" | "." } ;
+string        = '"', { string_character | escape }, '"' ;
+escape        = BACKSLASH, ( '"' | BACKSLASH ) ;
+BACKSLASH     = Unicode U+005C ;
+string_character = any character except '"', BACKSLASH, CR, or LF ;
+letter        = "A" ... "Z" | "a" ... "z" ;
+digit         = "0" ... "9" ;
 ```
 
-The player presses Run, a helper/NPC executes the routine through existing work-order and agent-action systems, then the Forge shows a pass/fail recap.
+Each program must contain exactly one `observe`, one `use`, one `verify`, and one `receipt`. The single `use` may appear directly, which implies the `always` guard, or inside one `when` block. Statement order is not otherwise significant. Keywords are lowercase and case-sensitive. Crew names are quoted and resolve case-insensitively to `Bert`, `Marigold`, or `Chuck`. Strings stay on one line and only escaped quotes (`\"`) and backslashes (`\\`) are supported. Comments, variables, arithmetic, user-defined functions, loops, and nested control flow are not part of v1.
 
-## Skill Spec v0
+### Shipped vocabulary
 
-The first spec should be a dictionary-shaped object that can be serialized and validated.
+| Role | Accepted v1 values |
+| --- | --- |
+| Crew | `Bert`, `Marigold`, `Chuck` |
+| Context and call target | `selected_tile` |
+| Farm action tools | `clear_brush`, `harvest_crop`, `plant_seed`, `tend_crop`, `build_fence` |
+| Guards | `always`, `inspect.has_brush`, `crop.needs_tending`, `crop.ready`, `tile.empty` |
+| Success checks | `tile_state`, `crop_state`, `inventory_delta` |
+
+`inspect_tile` is an internal allowlisted template step, not a standalone player action that drafts farm work. The shipped action/check contracts with complete verifier metadata are:
+
+| Action | Canonical guard | Canonical check | Observed proof |
+| --- | --- | --- | --- |
+| `clear_brush` | `inspect.has_brush` | `tile_state` | Target decor becomes empty. |
+| `harvest_crop` | `crop.ready` | `inventory_delta` | Grain increases by at least one. |
+| `plant_seed` | `tile.empty` | `crop_state` | A new crop exists on the target. |
+| `tend_crop` | `crop.needs_tending` | `crop_state` | The same crop's growth stage increases. |
+| `build_fence` | `tile.empty` | `tile_state` | Target decor becomes `fence`; a Fence Kit may be required. |
+
+Identifiers outside these semantic allowlists can tokenize and parse so the validator can explain the problem; they cannot run. Parser failures return a one-based line and column, offending token, plain-language cause, and one fix suggestion. Validator failures are tied back to the authored field through the parser source map.
+
+### Canonical example
+
+```text
+agent "Marigold" {
+  observe selected_tile
+  when crop.ready {
+    use harvest_crop(selected_tile)
+  }
+  verify inventory_delta
+  receipt "Harvest Crops run"
+}
+```
+
+This source compiles to a manual, selected-tile Skill Spec for Marigold. It does not pass merely because compilation succeeds: the guard must pass, the crew order must complete, and the inventory delta must be observed after the correlated NPC action.
+
+## Compiled Skill Spec v1
+
+The parser and template panel normalize authored intent into a dictionary-shaped, serializable data contract. The example below shows the fuller Clear Patch template form; Workbench programs emit the same required top-level contract with one authored action step.
 
 ```gdscript
 {
@@ -135,7 +184,7 @@ Player-facing label. Should be short enough to fit in compact UI rows.
 
 ### trigger
 
-The first Forge only needs manual triggers. Later triggers can include day start, Mission Momentum, memory consequence, inventory threshold, or crop-ready events.
+Skill Script v1 accepts only `{ "type": "manual" }`. Day-start, Mission Momentum, inventory-threshold, and crop-ready triggers are deferred.
 
 ### context
 
@@ -147,7 +196,7 @@ An allowlist of tool actions. A skill can only call tools listed here.
 
 ### steps
 
-Ordered execution plan. MVP steps should be simple, deterministic, and visible.
+Ordered, deterministic execution plan. A Workbench program emits one action step; starter templates can also include a preceding internal `inspect_tile` step.
 
 ### success_check
 
@@ -163,30 +212,30 @@ What gets written to the Field Log and day summary.
 
 ## Existing System Mapping
 
-| Forge Concept | Existing AgentVille System | MVP Reuse |
+| Forge concept | Shipped AgentVille system | Current route |
 | --- | --- | --- |
-| Skill spec | Dictionary resource or saved data | New validator, no arbitrary code |
-| Trigger | Player action or day event | Manual trigger first |
-| Context | Mission/source/memory snapshots | Reuse preference/source context vocabulary |
-| Tool call | Work order or agent directive | Reuse work-order assignment |
-| Step | Mission step or directive step | Reuse demand/work-order progression where possible |
-| Receipt | Field Log event | Reuse readable source/origin receipt helpers |
-| Success check | Smoke-style assertion | Start with tile/inventory state checks |
-| Failure handling | Failed receipt and blocked order copy | Reuse failed receipt context |
-| Run recap | Day summary run recap | Extend recent Mission Momentum recap patterns |
-| Observer verdict | NPC summary comment/vibe scorer | Reuse local deterministic observers |
+| Skill source | `SkillScriptParser` | Hand-written parser emits a data-only Skill Spec and source map. |
+| Skill spec | `SkillSpecValidator` | Schema and allowlists hard-block unsupported behavior. |
+| Trigger | Compile/Run player action | v1 is manual-only. |
+| Context | Persistent `selected_tile` | One explicit farm tile flows into the order and verifier. |
+| Tool call | Crew work order and `AgentActor` directive | Named NPC walks to and performs the requested farm action. |
+| Guard | `SkillCheckEvaluator` | Checked before drafting and again when the agent arrives. |
+| Success check | Before/after farm snapshots | Tile, crop, or inventory proof runs only after correlated work. |
+| Failure handling | Compiler trace and Field Log | Parse, validation, guard, order, and world-check failures remain teaching receipts. |
+| Run recap | `GameEventLog` and day summary | Final status, runner, target, result, and Drift survive the immediate trace. |
+| Curriculum | `SkillLessonLibrary`, `SkillTutorLibrary`, `PlayerProgress` | Ten mastery-gated lessons, escalating local hints, exact-source program shelf. |
 
-## First Playable Flow
+## Shipped Workbench Flow
 
-1. Player opens Skill Forge from the existing UI.
-2. Player chooses a starter template.
-3. Player fills safe fields: name, target context, allowed tool, success check.
-4. Forge validates the spec and shows warnings before running.
-5. Player presses Run.
-6. A helper/NPC receives a deterministic directive or work order.
-7. Field Log records trigger, tool call, result, and source context.
-8. Forge shows pass/fail with a compact run recap.
-9. Player revises the spec and runs again.
+1. On a fresh profile, the current lesson source and goal appear in the open Workbench.
+2. The player selects one farm tile and edits the program.
+3. `COMPILE` or Cmd/Ctrl+Enter runs parser → validator → runtime guard.
+4. A valid program drafts one named-NPC crew order; compilation alone is not success.
+5. The player sends the order and the named farmhand walks to the target.
+6. The guard is checked again on arrival before the farm action executes.
+7. A correlated action event triggers the concrete after-state check.
+8. The trace and Field Log record `PASSED`, `FAILED`, or `BLOCKED`; eligible player-authored passes advance lesson mastery.
+9. Exact parser/validator-valid source can be saved to and restored from the local program shelf without executing it.
 
 ## Starter Templates
 
@@ -194,23 +243,31 @@ What gets written to the Field Log and day summary.
 
 Use a target tile, inspect it, clear brush if present, validate open ground.
 
-### Tend Growth
+### Plant Seed
 
-Find a ready crop or prepared soil, harvest or plant when valid, validate inventory/resource change.
+Inspect an open selected tile, plant a seed, and verify that a crop now exists.
 
-### Restock Kit
+### Tend Crops
 
-Choose an NPC kit need, check inventory, craft or gather support resources, validate item count.
+Inspect a growing crop, tend it, and verify that the same crop advanced a growth stage.
 
-### Boundary Check
+### Harvest Crops
 
-Inspect a fence or open boundary tile, build when valid, validate fence placement.
+Inspect a ready crop, harvest it, and verify that Grain increased.
 
-## MVP UI Surfaces
+### Build Fence
+
+Inspect an open tile, route a fence crew order, and verify fence decor after the action.
+
+## Shipped UI Surfaces
 
 ### Forge Panel
 
-Compact tool panel with template choice, spec fields, validation warnings, run button, and latest result.
+Compact template panel with contract preview, validation warnings, Check/Fix revision controls, Run, lifecycle trace, and latest receipt.
+
+### Agent Workbench
+
+Editable Skill Script v1 source, Compile control, current lesson goal, deterministic tutor layer, technical trace, exact-source save/load controls, and pending/terminal run state.
 
 ### Run Preview
 
@@ -218,93 +275,96 @@ Shows trigger, context, tool allowlist, ordered steps, and success check before 
 
 ### Field Log
 
-Continues to be the immediate receipt stream.
+Immediate receipt stream for compile, draft, execution, guard, verification, lesson, and Forge events.
 
 ### Crew Row
 
-Shows when an NPC/helper is running a Forge-authored skill.
+Shows when a named NPC is assigned or executing Forge-authored work.
 
 ### Day Summary
 
-Adds run recap lines for completed Forge runs.
+Includes compact terminal Forge run recaps.
 
 ## Validation Rules
 
-The validator should reject:
+The validator rejects:
 
-- Unknown tools.
-- Missing success checks.
-- Steps that reference unavailable context.
-- Specs with no receipt.
-- Specs that require arbitrary code execution.
-- Specs that try to mutate unrelated world state.
-- Specs that cannot produce a pass/fail result.
+- Missing or malformed skill identity.
+- Non-manual triggers.
+- Missing or unsupported context and step targets.
+- Empty, unknown, or unlisted tools.
+- Missing steps or unsupported guard conditions.
+- Missing or unsupported success checks, including check-specific proof metadata.
+- Missing blocked-run handling or a concrete revision suggestion.
+- Missing receipt/template data.
 
-The validator should warn on:
+Arbitrary code and unrelated world mutation are not expressible in Skill Script v1; they never become validator input from the Workbench.
 
-- Very broad context.
-- A success check that does not match the tool.
-- More than three steps in the MVP.
-- A receipt label that is too vague.
-- A failure handler that only says "try again."
+The validator warns on:
+
+- Long display names or duplicate tool entries.
+- Unknown optional source-context labels.
+- More than three compiled steps.
+- Missing or non-snake-case step ids.
+- Missing clarity metadata such as a tile-state `decor_id`.
+- Missing or vague receipt labels.
+- A failure suggestion that is too short or only says "try again."
 
 ## Safety Model
 
-The first Forge must be safe by construction.
+Skill Script v1 is safe by construction.
 
-- No arbitrary scripting.
-- No eval.
+- No arbitrary scripting or GDScript execution.
+- No `eval` or dynamic source execution.
 - No shell access.
 - No network access.
 - No file writes from player-authored specs.
 - Only allowlisted tools.
-- Tool parameters must be schema-validated.
+- Tool names, targets, guards, and success checks are schema-validated.
 - Context reads must be explicit.
 - Runs must produce receipts.
 
-## Success Criteria
+## Shipped Acceptance Contract
 
-The first Forge slice is successful when:
+- A player can type, compile, save, reload, and execute a bounded agent program.
+- Parser and validator failures stop before world mutation and return actionable diagnostics.
+- A valid run uses the selected tile, named NPC, real crew-order route, arrival-time guard, and observed after-state check.
+- A compiled or drafted order never fabricates a pass; only correlated world evidence closes the run.
+- Field Log, technical trace, tutor copy, and day summary expose the run lifecycle and final outcome.
+- Ten ordered lessons grant mastery only from qualifying player-authored terminal Workbench runs.
+- Focused smokes and the cold-start QA harness prove the local loop without a network or model dependency.
 
-- A player can author or choose one structured skill spec.
-- The spec validates before running.
-- The run executes through existing deterministic farm systems.
-- The Field Log shows trigger, tool action, and result.
-- The run records pass or fail.
-- A failed run gives a specific revision suggestion.
-- A day-summary recap names the run and outcome.
-- A smoke script can prove the full local loop without live APIs.
+## Current Non-Goals
 
-## Non-Goals For MVP
+These are product boundaries for Skill Script v1, not a rejection of code authoring—the bounded code editor and compiler are the product.
 
-- Natural-language freeform skill generation.
-- Live model calls.
-- General code editing.
-- Multi-agent planning.
-- Long-term skill marketplace.
-- Persistent cloud sync.
-- Complex branching logic.
-- Arbitrary loops.
+- Natural-language-to-program generation or live model calls.
+- Arbitrary GDScript, JavaScript, shell, Python, plugins, imports, or user-defined functions.
+- Variables, arithmetic, loops, recursion, exceptions, or general expression evaluation.
+- Branching beyond one optional `when` guard around the single `use` statement.
+- More than one farm action, selected tile, or executing agent in one player program.
+- Automatic/day/event triggers; v1 runs are manually compiled and dispatched.
+- Multi-agent planning, multi-tile targets, or long-running autonomous programs.
+- Player-authored file/network access, persistent cloud sync, a skill marketplace, or program sharing.
+- New lesson tiers, export templates, and distribution builds in the current Session 3 scope.
 
-## Open Product Questions
+## Deferred Product Questions
 
-- Is Skill Forge a literal place on the farm, a UI panel, or both?
-- Does the player write specs as themselves, or as an in-world apprentice?
-- Are NPCs the executors, or is there a separate helper bot?
-- Should bad specs be funny, instructive, or quietly corrective?
-- How much should the Forge teach real agent-building terms?
-- Should the first Forge run require an existing Mission Momentum context?
-- Should skill specs be collectible objects, recipes, or notebook entries?
+- Should the Workbench eventually gain a physical in-world workshop or remain a UI surface?
+- How should NPC personality alter future program critique without changing deterministic semantics?
+- When should non-manual triggers, multi-tile programs, and multi-agent coordination unlock?
+- Should programs become collectible notebook objects or shareable artifacts?
+- Where should the optional future LLM-observer seam add commentary without entering the deterministic execution path?
 
-## Questionnaire Direction
+## Resolved Product Direction
 
-The first answered direction is:
+The shipped foundation uses these decisions:
 
 - Fantasy: the player is an apprentice learning how agents work by teaching NPCs safe task specs.
-- Place: the Forge should feel like a lab connected to the farm, not a generic automation editor.
-- First task: Tend Crops, using manual trigger, selected farm context, visible success checks, required failure handling, and templated receipts.
-- Failure tone: early failures can be funny, but repeated bad specs should produce visible Hallucination Drift.
-- Hallucination Drift starts as data, not animation: validation warnings create a wobbly state with sweating/crew-noticing hints, while hard blockers create a hallucinating state with glitched/crew-worried hints.
+- Place: a compiler-like Workbench stays visibly connected to the live farm rather than becoming a generic automation editor.
+- First lesson: Clear Patch with Chuck, using a manual trigger, selected-tile context, a brush guard, a tile-state check, and a named receipt.
+- Failure tone: failures are specific teaching moments, with gentle personality copy layered above exact technical evidence.
+- Hallucination Drift: validation warnings produce `wobbly`/`sweating`/`crew_noticing`; hard blockers produce `hallucinating`/`glitched`/`crew_worried`. These are data contracts for the farm and UI feedback layers.
 
 ## Risks
 
@@ -314,11 +374,11 @@ If the Forge feels like filling forms disconnected from the farm, it will lose t
 
 Mitigation: every field should map to a visible farm consequence or receipt.
 
-### Too Programmery
+### Too Much Syntax At Once
 
-If the MVP exposes too much syntax, it may feel like homework.
+If the Workbench introduces every concept at once, it may feel like homework instead of a learn-to-code game.
 
-Mitigation: use templates, constrained fields, and readable previews.
+Mitigation: the ten-lesson ladder starts from a working program, asks for one bounded change at a time, and pairs friendly tutor copy with exact trace evidence.
 
 ### Too Magical
 
@@ -328,11 +388,11 @@ Mitigation: make every run leave a visible trace.
 
 ### Too Broad
 
-If the first Forge supports many tools and triggers, it may blur before it becomes fun.
+If v1 expands beyond one action, target, agent, and manual trigger, its teaching contract may blur before the fundamentals are solid.
 
-Mitigation: start with one or two farm skills and one manual trigger.
+Mitigation: preserve the documented v1 boundary; add future capabilities as explicit new language/runtime versions with their own smokes and lessons.
 
-## Implementation Plan
+## Shipped Implementation Map
 
 ### Slice 1: PRD And Spec Validator
 
@@ -345,7 +405,7 @@ Mitigation: start with one or two farm skills and one manual trigger.
 
 - Implemented in `scripts/systems/SkillForgeTemplateLibrary.gd`.
 - Adds static starter specs for Tend Crops, Plant Seed, Clear Patch, Harvest Crops, and Build Fence.
-- Provides compact template preview data for future UI without exposing full step data in preview rows.
+- Provides compact template preview data for the live Forge panel without exposing full step data in preview rows.
 - Covered by `tools/smoke_skill_forge_templates.gd`, which validates every starter spec through `SkillSpecValidator.gd`.
 
 ### Slice 3: Manual Run Harness
@@ -366,7 +426,7 @@ Mitigation: start with one or two farm skills and one manual trigger.
 ### Slice 5: Revision Loop
 
 - Implemented in `scripts/ui/GameUI.gd` and `scripts/core/Game.gd`.
-- Adds a bounded Check/Fix loop before the full editor: Check runs a flawed copy of the selected starter spec, shows the validator issue, Hallucination Drift state, and concrete revision suggestion, then Fix reruns the clean starter spec.
+- Adds a bounded Check/Fix template loop: Check runs a flawed copy of the selected starter spec, shows the validator issue, Hallucination Drift state, and concrete revision suggestion, then Fix reruns the clean starter spec.
 - Records blocked and passed receipts through existing Field Log and event-log surfaces.
 - Covered by `tools/smoke_skill_forge_revision_loop.gd`.
 
@@ -374,7 +434,7 @@ Mitigation: start with one or two farm skills and one manual trigger.
 
 - Implemented in `scripts/systems/SkillForgeTemplateLibrary.gd` and rendered in `scripts/ui/GameUI.gd`.
 - Extends starter template previews with compact contract fields: trigger, context, ordered tools, step ids, success check, and receipt label.
-- Shows those fields directly in the Forge panel so players can read the agent-skill shape before a full editor exists.
+- Shows those fields directly in the Forge panel so players can read the agent-skill shape alongside the source editor.
 - Covered by `tools/smoke_skill_forge_spec_preview.gd`.
 
 ### Slice 7: Day Summary Forge Recaps
@@ -398,9 +458,21 @@ Mitigation: start with one or two farm skills and one manual trigger.
 - Keeps Forge execution context separate from social preference context so a skill run does not appear as memory, truce, or Mission Momentum work.
 - Covered by `tools/smoke_skill_forge_work_receipts.gd`.
 
-## Questionnaire For The Big PRD Session
+### Slice 10: Skill Script v1 And Agent Workbench
 
-Use these questions when you sit down to think through the full Forge vision.
+- Implemented in `scripts/systems/SkillScriptParser.gd`, `scripts/core/Game.gd`, and `scripts/ui/GameUI.gd`.
+- Parses the documented v1 source into allowlisted specs, preserves selected-tile and source provenance, drafts one named-agent order, and closes only from a correlated post-action check.
+- Covered by `tools/smoke_skill_script_parser.gd`, `tools/smoke_parse_error_battery.gd`, `tools/smoke_workbench_compile.gd`, `tools/smoke_skill_check_evaluator.gd`, and the Workbench/selection UI smokes.
+
+### Slice 11: Curriculum, Tutor, And Persistence
+
+- Implemented in `scripts/systems/SkillLessonLibrary.gd`, `scripts/systems/SkillTutorLibrary.gd`, and `scripts/systems/PlayerProgress.gd` with `Game.gd`/`GameUI.gd` integration.
+- Adds ten ordered mastery-gated lessons, deterministic three-stage hints, exact-source program saving, and safe local resume behavior.
+- Covered by `tools/smoke_skill_lessons.gd`, `tools/smoke_lesson_completion.gd`, `tools/smoke_tutor_copy.gd`, `tools/smoke_player_progress.gd`, and the two-process lesson walkthrough.
+
+## Historical Discovery Questionnaire
+
+These questions drove the original Forge design session. They remain as decision history and as prompts for explicitly versioned future work; they are not evidence that the shipped v1 foundation is still unchosen.
 
 ### North Star
 
@@ -503,21 +575,14 @@ Use these questions when you sit down to think through the full Forge vision.
 67. Can skills interact with Parley, truces, and memory?
 68. What would a "masterpiece" skill look like after many hours of play?
 
-## Decision Checklist For Starting Implementation
+## Foundation Decisions Now Shipped
 
-Before coding the Forge, choose:
-
-- First executor: NPC or helper bot.
-- First skill template.
-- First UI surface.
-- First success check type.
-- First failure suggestion style.
-- Whether the player sees raw spec data.
-- Whether the first run requires Mission Momentum context.
-- Whether Forge run recaps live in day summaries, Field Log, or both.
-
-## Recommended First Implementation Slice
-
-Add a local `SkillSpecValidator.gd` and one `smoke_skill_forge_spec_validator.gd`.
-
-This is the safest next step because it lets the project define the rules of a skill before it asks agents to execute one.
+- Executor: one named NPC farmhand through the existing crew-order and `AgentActor` path.
+- First lesson action: Chuck clears brush on `selected_tile` and proves the empty tile state.
+- Primary UI: editable Agent Workbench; starter templates remain a secondary readable path.
+- Success checks: explicit tile, crop, or inventory observations after correlated work.
+- Failure copy: deterministic tutor guidance plus exact technical diagnostics and one repair suggestion.
+- Raw data: players author the bounded language and read contract previews, not arbitrary runtime dictionaries.
+- Mission Momentum: optional source context for relevant templates, not a prerequisite for Workbench programs.
+- Receipts: immediate compiler/Field Log feedback plus terminal day-summary recaps.
+- Original foundation slice: `SkillSpecValidator.gd` and `smoke_skill_forge_spec_validator.gd`; both shipped and became the base for the implementation map above.

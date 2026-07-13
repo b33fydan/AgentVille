@@ -48,6 +48,13 @@ var _workbench_runtime_label: Label
 var _workbench_compile_button: Button
 var _workbench_filename_label: Label
 var _workbench_lesson_goal_label: Label
+var _workbench_feedback_counts: Dictionary = {}
+var _workbench_feedback_state: String = ""
+var _workbench_feedback_tweens: Dictionary = {}
+var _onboarding_goal_panel: PanelContainer
+var _onboarding_goal_label: Label
+var _skill_forge_onboarding_section: VBoxContainer
+var _farm_sandbox_unlocked: bool = true
 var _suppress_workbench_text_changed: bool = false
 var _crew_rows: Dictionary = {}
 var _crew_signal_labels: Dictionary = {}
@@ -108,6 +115,7 @@ var _program_picker: OptionButton
 var _program_save_button: Button
 var _program_load_button: Button
 var _view_toggle_buttons: Dictionary = {}
+var _end_day_button: Button
 var _crew_status_label: Label
 var _parley_button: Button
 var _parley_prompt_active: bool = false
@@ -226,6 +234,77 @@ func get_workbench_source() -> String:
 	return _code_editor.text if _code_editor else ""
 
 
+func pulse_workbench_compile() -> void:
+	_record_workbench_feedback("compile")
+	_pulse_feedback_control(_workbench_compile_button, "compile", Color(1.0, 0.92, 0.70, 1.0))
+	_pulse_feedback_control(_workbench_runtime_label, "compile", Color(1.0, 0.95, 0.78, 1.0))
+
+
+func pulse_workbench_run(order_id: String = "") -> void:
+	_record_workbench_feedback("run")
+	var target: Control = null
+	if order_id != "" and _work_order_rows.has(order_id):
+		var row = _work_order_rows.get(order_id, {})
+		if typeof(row) == TYPE_DICTIONARY:
+			target = (row as Dictionary).get("button", null) as Control
+	if target == null:
+		target = _workbench_runtime_label
+	_pulse_feedback_control(target, "run", Color(0.76, 0.96, 1.0, 1.0))
+	_pulse_feedback_control(_code_workbench, "run", Color(0.92, 0.99, 1.0, 1.0), 1.012)
+
+
+func pulse_workbench_receipt_passed() -> void:
+	_record_workbench_feedback("receipt_passed")
+	_pulse_feedback_control(_compiler_output, "receipt_passed", Color(0.80, 1.0, 0.72, 1.0))
+	_pulse_feedback_control(_code_workbench, "receipt_passed", Color(0.94, 1.0, 0.90, 1.0), 1.014)
+
+
+func pulse_lesson_complete() -> void:
+	_record_workbench_feedback("lesson_complete")
+	_pulse_feedback_control(_workbench_lesson_goal_label, "lesson_complete", Color(1.0, 0.86, 0.46, 1.0), 1.025)
+	_pulse_feedback_control(_onboarding_goal_panel, "lesson_complete", Color(1.0, 0.94, 0.72, 1.0), 1.018)
+
+
+func get_workbench_feedback_snapshot() -> Dictionary:
+	return {
+		"state": _workbench_feedback_state,
+		"counts": _workbench_feedback_counts.duplicate(true)
+	}
+
+
+func _record_workbench_feedback(feedback_state: String) -> void:
+	_workbench_feedback_state = feedback_state
+	_workbench_feedback_counts[feedback_state] = int(_workbench_feedback_counts.get(feedback_state, 0)) + 1
+
+
+func _pulse_feedback_control(
+	control: Control,
+	feedback_state: String,
+	accent: Color,
+	peak_scale: float = 1.035
+) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	var control_id := control.get_instance_id()
+	var previous = _workbench_feedback_tweens.get(control_id, null)
+	if previous is Tween and (previous as Tween).is_valid():
+		(previous as Tween).kill()
+	control.set_meta("agentville_feedback", feedback_state)
+	control.pivot_offset = control.size * 0.5
+	control.scale = Vector2.ONE * peak_scale
+	control.modulate = accent
+	var tween := create_tween()
+	_workbench_feedback_tweens[control_id] = tween
+	tween.set_parallel(true)
+	tween.tween_property(control, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(control, "modulate", Color.WHITE, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(_on_workbench_feedback_tween_finished.bind(control_id))
+
+
+func _on_workbench_feedback_tween_finished(control_id: int) -> void:
+	_workbench_feedback_tweens.erase(control_id)
+
+
 func set_lesson_ladder(lessons: Array, current_lesson_id: String, completed_lesson_ids: Array) -> void:
 	_lesson_rows = lessons.duplicate(true)
 	_current_lesson_id = current_lesson_id
@@ -239,14 +318,62 @@ func set_current_lesson_goal(lesson: Dictionary) -> void:
 	if _workbench_lesson_goal_label == null:
 		return
 	if lesson.is_empty():
-		_workbench_lesson_goal_label.text = "CURRICULUM COMPLETE\nEvery lesson receipt is in your field log."
-		_workbench_lesson_goal_label.tooltip_text = "All AgentVille lessons are complete."
+		_workbench_lesson_goal_label.text = "CURRICULUM COMPLETE · FREE PLAY\nBuild for a crew demand, finish a mission, Parley when tension rises, and author another selected-tile program."
+		_workbench_lesson_goal_label.tooltip_text = "The lesson ladder is complete. Keep using the same Forge, crew, mission, demand, and Parley systems."
 		return
 	var ordinal := int(lesson.get("order", 0))
 	var title := str(lesson.get("title", "Current lesson")).strip_edges()
 	var goal := str(lesson.get("goal", "Read the goal in the AGENT tab.")).strip_edges()
 	_workbench_lesson_goal_label.text = "LESSON %02d · %s\n%s" % [ordinal, title, goal]
 	_workbench_lesson_goal_label.tooltip_text = "%s | Concept: %s" % [goal, str(lesson.get("concept", "agent workflow"))]
+
+
+func set_onboarding_state(sandbox_unlocked: bool, lesson: Dictionary) -> void:
+	_farm_sandbox_unlocked = sandbox_unlocked
+	var has_lesson := not lesson.is_empty()
+	var ordinal := int(lesson.get("order", 0)) if has_lesson else 0
+	var title := str(lesson.get("title", "Current lesson")).strip_edges() if has_lesson else "Curriculum complete"
+	var goal := str(lesson.get("goal", "Use the farm sandbox to keep building agent skills.")).strip_edges() if has_lesson else "The full farm sandbox is open. Build, test, and revise your own runs."
+
+	if _onboarding_goal_panel:
+		# Keep the first-run instruction unmissable, then return the command dock
+		# space to the lesson ladder and Forge. Graduates keep a persistent goal.
+		_onboarding_goal_panel.visible = not sandbox_unlocked or not has_lesson
+	if _onboarding_goal_label:
+		if not sandbox_unlocked:
+			_onboarding_goal_label.text = "START HERE · LESSON %02d\n%s\n1  Target ready   2  COMPILE   3  SEND" % [ordinal, goal]
+			_onboarding_goal_label.tooltip_text = "Complete the first real Workbench run to unlock FARM tools, free-play Forge recipes, and End Day."
+		elif has_lesson:
+			_onboarding_goal_label.text = "CURRENT GOAL · LESSON %02d\n%s\n%s" % [ordinal, title, goal]
+			_onboarding_goal_label.tooltip_text = "Returning progress restored. Continue this lesson or use the unlocked farm sandbox."
+		else:
+			_onboarding_goal_label.text = "FREE PLAY GOAL · GRADUATE FIELD LOOP\nBuild Bert's Fence Kit, finish the mission, and author the next selected-tile run."
+			_onboarding_goal_label.tooltip_text = "Demands, missions, Forge runs, day changes, and Parley now share the same free-play loop."
+
+	for tab_id in ["farm"]:
+		var tab = _command_tab_buttons.get(tab_id, null) as Button
+		if tab == null:
+			continue
+		tab.disabled = not sandbox_unlocked
+		tab.tooltip_text = "Complete Lesson 1 to unlock the %s sandbox." % tab_id.to_upper() if not sandbox_unlocked else "%s commands" % tab_id.capitalize()
+	var crew_tab = _command_tab_buttons.get("crew", null) as Button
+	if crew_tab:
+		crew_tab.disabled = false
+		crew_tab.tooltip_text = "Send the lesson's drafted crew order" if not sandbox_unlocked else "Crew commands"
+	if _skill_forge_onboarding_section:
+		_skill_forge_onboarding_section.visible = sandbox_unlocked
+	if _end_day_button:
+		_end_day_button.disabled = not sandbox_unlocked
+		_end_day_button.tooltip_text = "Complete Lesson 1 before ending the day." if not sandbox_unlocked else "Advance crop growth"
+
+	if has_lesson:
+		_select_command_tab("agent")
+	elif sandbox_unlocked:
+		_select_command_tab("farm")
+
+
+func is_farm_sandbox_unlocked() -> bool:
+	return _farm_sandbox_unlocked
 
 
 func set_saved_programs(programs: Array) -> void:
@@ -367,9 +494,14 @@ func _append_workbench_trace_issues(output_lines: PackedStringArray, label: Stri
 			location = "line %s" % line_number
 			if column_number > 0:
 				location += ":%s" % column_number
-			location += " · "
+		var token := str(issue.get("token", "")).strip_edges()
+		if token != "":
+			if location != "":
+				location += " · "
+			location += "token %s" % token
 		var message := str(issue.get("message", "Needs revision.")).strip_edges()
-		output_lines.append("%s  %s%s" % [label.rpad(9), location, message])
+		output_lines.append("%s  %s" % [label.rpad(9), location if location != "" else str(issue.get("field", "spec"))])
+		output_lines.append("cause     %s" % message)
 		var suggestion := str(issue.get("suggestion", "")).strip_edges()
 		if suggestion != "":
 			output_lines.append("fix       %s" % suggestion)
@@ -984,6 +1116,9 @@ func _new_command_page(page_id: String, parent: VBoxContainer) -> VBoxContainer:
 
 
 func _select_command_tab(tab_id: String) -> void:
+	var requested_tab = _command_tab_buttons.get(tab_id, null) as Button
+	if requested_tab != null and requested_tab.disabled:
+		return
 	_active_command_tab = tab_id
 	for key in _command_tab_pages.keys():
 		(_command_tab_pages[key] as Control).visible = str(key) == tab_id
@@ -1107,10 +1242,31 @@ func _add_crew_signal_control(parent: VBoxContainer, agent_id: String, agent_nam
 
 
 func _build_agent_command_page(page: VBoxContainer) -> void:
+	_onboarding_goal_panel = PanelContainer.new()
+	_onboarding_goal_panel.name = "OnboardingGoalPanel"
+	_onboarding_goal_panel.add_theme_stylebox_override("panel", _soft_box(Color("#fff2c8"), 10, 1))
+	page.add_child(_onboarding_goal_panel)
+	var onboarding_margin := MarginContainer.new()
+	onboarding_margin.add_theme_constant_override("margin_left", 9)
+	onboarding_margin.add_theme_constant_override("margin_right", 9)
+	onboarding_margin.add_theme_constant_override("margin_top", 8)
+	onboarding_margin.add_theme_constant_override("margin_bottom", 8)
+	_onboarding_goal_panel.add_child(onboarding_margin)
+	_onboarding_goal_label = Label.new()
+	_onboarding_goal_label.name = "OnboardingGoal"
+	_onboarding_goal_label.text = "START HERE · LESSON 01\nSelect the highlighted brush, compile, then send the crew order."
+	_onboarding_goal_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_onboarding_goal_label.add_theme_font_size_override("font_size", 11)
+	_onboarding_goal_label.add_theme_color_override("font_color", Color("#7b4a2f"))
+	onboarding_margin.add_child(_onboarding_goal_label)
 	page.add_child(_command_section_label("LESSON LADDER", "Master each real Workbench run to unlock the next lesson"))
 	_build_lesson_controls(page)
-	page.add_child(_command_section_label("AGENT RECIPES", "Load, run, check, and revise a starter workflow"))
-	_build_skill_forge_controls(page)
+	_skill_forge_onboarding_section = VBoxContainer.new()
+	_skill_forge_onboarding_section.name = "FreePlayForgeSection"
+	_skill_forge_onboarding_section.add_theme_constant_override("separation", 9)
+	page.add_child(_skill_forge_onboarding_section)
+	_skill_forge_onboarding_section.add_child(_command_section_label("AGENT RECIPES", "Load, run, check, and revise a starter workflow"))
+	_build_skill_forge_controls(_skill_forge_onboarding_section)
 	page.add_child(_command_section_label("PROGRAM SHELF", "Name compiled programs and load them back into the editor"))
 	_build_program_shelf(page)
 
@@ -1202,20 +1358,20 @@ func _build_palette(parent: VBoxContainer) -> void:
 
 
 func _build_end_day_button(parent: VBoxContainer) -> void:
-	var end_day := Button.new()
-	end_day.name = "EndDayButton"
-	end_day.text = "       END DAY"
-	end_day.custom_minimum_size = Vector2(0, 50)
-	end_day.focus_mode = Control.FOCUS_NONE
-	end_day.tooltip_text = "Advance crop growth"
-	end_day.add_theme_font_size_override("font_size", 15)
-	end_day.add_theme_color_override("font_color", Color("#2c2619"))
-	end_day.add_theme_stylebox_override("normal", _big_button_style(false))
-	end_day.add_theme_stylebox_override("hover", _big_button_style(true))
-	end_day.add_theme_stylebox_override("pressed", _big_button_style(true))
-	end_day.pressed.connect(func() -> void: advance_day_requested.emit())
-	parent.add_child(end_day)
-	_attach_voxel_icon(end_day, "end_day", Vector2(42, 40), false)
+	_end_day_button = Button.new()
+	_end_day_button.name = "EndDayButton"
+	_end_day_button.text = "       END DAY"
+	_end_day_button.custom_minimum_size = Vector2(0, 50)
+	_end_day_button.focus_mode = Control.FOCUS_NONE
+	_end_day_button.tooltip_text = "Advance crop growth"
+	_end_day_button.add_theme_font_size_override("font_size", 15)
+	_end_day_button.add_theme_color_override("font_color", Color("#2c2619"))
+	_end_day_button.add_theme_stylebox_override("normal", _big_button_style(false))
+	_end_day_button.add_theme_stylebox_override("hover", _big_button_style(true))
+	_end_day_button.add_theme_stylebox_override("pressed", _big_button_style(true))
+	_end_day_button.pressed.connect(func() -> void: advance_day_requested.emit())
+	parent.add_child(_end_day_button)
+	_attach_voxel_icon(_end_day_button, "end_day", Vector2(42, 40), false)
 
 
 func _build_parley_button(parent: VBoxContainer) -> void:
@@ -1485,7 +1641,7 @@ func _build_settings_panel() -> void:
 func _build_code_workbench() -> void:
 	_code_workbench = PanelContainer.new()
 	_code_workbench.name = "CodeWorkbench"
-	_code_workbench.anchor_left = 0.21
+	_code_workbench.anchor_left = 0.23
 	_code_workbench.anchor_top = 0.735
 	_code_workbench.anchor_right = 0.765
 	_code_workbench.anchor_bottom = 0.985

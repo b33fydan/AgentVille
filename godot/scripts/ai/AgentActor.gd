@@ -15,6 +15,22 @@ const ARRIVAL_DISTANCE := 0.04
 const WORK_SECONDS := 0.58
 const FEET_LOCAL_BOTTOM := 0.02
 const ANGRY_SPEED_MULTIPLIER := 1.5
+const FORGE_DRIFT_FACE_HINTS := ["focused", "sweating", "glitched"]
+const FORGE_DRIFT_OBSERVER_HINTS := ["calm", "crew_noticing", "crew_worried"]
+const FORGE_DRIFT_DEFAULTS := {
+	"steady": {
+		"face_hint": "focused",
+		"observer_hint": "calm"
+	},
+	"wobbly": {
+		"face_hint": "sweating",
+		"observer_hint": "crew_noticing"
+	},
+	"hallucinating": {
+		"face_hint": "glitched",
+		"observer_hint": "crew_worried"
+	}
+}
 const APPROACH_ACTIONS := [
 	"harvest_crop",
 	"clear_brush",
@@ -72,6 +88,8 @@ var _arrival_action_done: bool = false
 var _work_timer: float = 0.0
 var _morale_boost_timer: float = 0.0
 var _morale_speed_multiplier: float = 1.0
+var _transient_forge_drift: Dictionary = {}
+var _forge_drift_reaction_timer: float = 0.0
 
 
 func setup(config: Dictionary, new_grid_manager, new_event_log) -> void:
@@ -142,6 +160,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_morale_boost(delta)
+	_update_forge_drift_reaction(delta)
 	_update_movement(delta)
 	_update_visual_motion(delta)
 
@@ -222,6 +241,9 @@ func start_work_order(order: Dictionary) -> void:
 		var source_context = order.get("source_context", {})
 		if typeof(source_context) == TYPE_DICTIONARY and not source_context.is_empty():
 			extra["forge_source_context"] = source_context.duplicate(true)
+	var forge_drift := _normalized_forge_drift(order.get("forge_drift", order.get("drift", {})))
+	if not forge_drift.is_empty():
+		extra["forge_drift"] = forge_drift
 	var mission_id := str(order.get("mission_id", "")).strip_edges()
 	if mission_id != "":
 		extra["mission_id"] = mission_id
@@ -242,7 +264,23 @@ func start_directive(action_name: String, target_tile: Vector2i, reason: String,
 	}
 	for key in extra.keys():
 		decision[key] = extra[key]
+	var forge_drift := _normalized_forge_drift(extra.get("forge_drift", extra.get("drift", {})))
+	decision.erase("drift")
+	decision.erase("forge_drift")
+	if not forge_drift.is_empty():
+		decision["forge_drift"] = forge_drift
 	_start_decision(decision)
+
+
+func show_forge_drift_reaction(drift, duration_seconds: float = 1.6) -> bool:
+	var normalized := _normalized_forge_drift(drift)
+	if normalized.is_empty() or str(normalized.get("level", "steady")) == "steady":
+		return false
+	_transient_forge_drift = normalized
+	_forge_drift_reaction_timer = clampf(duration_seconds, 0.15, 4.0)
+	_update_expression_visuals()
+	state_changed.emit(get_snapshot())
+	return true
 
 
 func is_available() -> bool:
@@ -290,6 +328,7 @@ func _start_decision(decision: Dictionary) -> void:
 	_arrival_action_done = false
 	_work_timer = 0.0
 	_set_phase("blocked" if not _route_reachable else ("working" if _is_at_target() else "walking"))
+	_update_expression_visuals()
 
 	if event_log:
 		var action_event := {
@@ -316,6 +355,7 @@ func _start_decision(decision: Dictionary) -> void:
 
 
 func get_snapshot() -> Dictionary:
+	var forge_drift := _current_forge_drift()
 	return {
 		"id": agent_id,
 		"name": display_name,
@@ -362,7 +402,11 @@ func get_snapshot() -> Dictionary:
 		"grid_pos": current_grid_pos,
 		"target_grid_pos": target_grid_pos,
 		"movement_speed_multiplier": _current_movement_speed_multiplier(),
-		"route_reachable": _route_reachable
+		"route_reachable": _route_reachable,
+		"forge_drift_level": str(forge_drift.get("level", "")),
+		"forge_face_hint": str(forge_drift.get("face_hint", "")),
+		"forge_observer_hint": str(forge_drift.get("observer_hint", "")),
+		"forge_drift_transient": _forge_drift_reaction_timer > 0.0 and not _transient_forge_drift.is_empty()
 	}
 
 
@@ -833,6 +877,7 @@ func _complete_active_decision() -> void:
 	state["current_action"] = "idle"
 	_clear_active_social_preference()
 	_set_phase("idle")
+	_update_expression_visuals()
 	state_changed.emit(get_snapshot())
 
 
@@ -861,6 +906,47 @@ func _update_morale_boost(delta: float) -> void:
 	if _morale_boost_timer <= 0.0:
 		_morale_speed_multiplier = 1.0
 		state_changed.emit(get_snapshot())
+
+
+func _update_forge_drift_reaction(delta: float) -> void:
+	if _forge_drift_reaction_timer <= 0.0:
+		return
+	_forge_drift_reaction_timer = maxf(0.0, _forge_drift_reaction_timer - delta)
+	if _forge_drift_reaction_timer > 0.0:
+		return
+	_transient_forge_drift = {}
+	_update_expression_visuals()
+	state_changed.emit(get_snapshot())
+
+
+func _current_forge_drift() -> Dictionary:
+	if _forge_drift_reaction_timer > 0.0 and not _transient_forge_drift.is_empty():
+		return _transient_forge_drift.duplicate(true)
+	if _active_decision.is_empty():
+		return {}
+	return _normalized_forge_drift(_active_decision.get("forge_drift", _active_decision.get("drift", {})))
+
+
+func _normalized_forge_drift(value) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	var drift: Dictionary = value
+	var level := str(drift.get("level", "")).strip_edges()
+	if not FORGE_DRIFT_DEFAULTS.has(level):
+		return {}
+	var defaults: Dictionary = FORGE_DRIFT_DEFAULTS[level]
+	var face_hint := str(drift.get("face_hint", defaults.get("face_hint", "focused"))).strip_edges()
+	var observer_hint := str(drift.get("observer_hint", defaults.get("observer_hint", "calm"))).strip_edges()
+	if not FORGE_DRIFT_FACE_HINTS.has(face_hint):
+		face_hint = str(defaults.get("face_hint", "focused"))
+	if not FORGE_DRIFT_OBSERVER_HINTS.has(observer_hint):
+		observer_hint = str(defaults.get("observer_hint", "calm"))
+	return {
+		"level": level,
+		"points": maxi(0, int(drift.get("points", 0))),
+		"face_hint": face_hint,
+		"observer_hint": observer_hint
+	}
 
 
 func _current_speed_multiplier() -> float:
@@ -1052,6 +1138,11 @@ func _add_skill_forge_metadata(payload: Dictionary, decision: Dictionary) -> voi
 	payload["skill_name"] = skill_name
 	payload["directive_id"] = str(decision.get("directive_id", ""))
 	payload["directive_kind"] = str(decision.get("directive_kind", ""))
+	var drift := _normalized_forge_drift(decision.get("forge_drift", decision.get("drift", {})))
+	if not drift.is_empty():
+		payload["forge_drift_level"] = str(drift.get("level", "steady"))
+		payload["forge_face_hint"] = str(drift.get("face_hint", "focused"))
+		payload["forge_observer_hint"] = str(drift.get("observer_hint", "calm"))
 	var source_context = decision.get("forge_source_context", {})
 	if typeof(source_context) == TYPE_DICTIONARY and not source_context.is_empty():
 		payload["forge_source_context"] = source_context.duplicate(true)
@@ -1342,16 +1433,26 @@ func _build_visual() -> void:
 
 
 func _update_expression_visuals() -> void:
-	var expression := str(state.get("expression", "neutral"))
+	var drift := _current_forge_drift()
+	var expression := str(drift.get("face_hint", state.get("expression", "neutral")))
 	var irritation := float(state.get("irritation", 0.0))
 	var heat := clampf(irritation / 80.0, 0.0, 1.0)
+	var head_color := _skin_color.lerp(Color("#ff8a68"), heat * 0.68)
+	var pip_color := _accent_color.lerp(Color("#ff5348"), heat)
+	match str(drift.get("level", "")):
+		"wobbly":
+			head_color = head_color.lerp(Color("#ffd17a"), 0.34)
+			pip_color = Color("#e7a63b")
+		"hallucinating":
+			head_color = head_color.lerp(Color("#d58cff"), 0.38)
+			pip_color = Color("#a959d1")
 
 	if _face_label:
 		_face_label.text = _face_text(expression)
 	if _head:
-		_head.material_override = VoxelFactory.material(_skin_color.lerp(Color("#ff8a68"), heat * 0.68))
+		_head.material_override = VoxelFactory.material(head_color)
 	if _mood_pip:
-		_mood_pip.material_override = VoxelFactory.material(_accent_color.lerp(Color("#ff5348"), heat))
+		_mood_pip.material_override = VoxelFactory.material(pip_color)
 	_refresh_reason_badge()
 
 
@@ -1395,6 +1496,19 @@ func _update_reason_badge_pop(delta: float) -> void:
 
 
 func _reason_badge_context() -> Dictionary:
+	var drift := _current_forge_drift()
+	match str(drift.get("observer_hint", "calm")):
+		"crew_noticing":
+			return {
+				"text": "Crew notices",
+				"color": Color("#d48b32")
+			}
+		"crew_worried":
+			return {
+				"text": "Crew worried",
+				"color": Color("#a959d1")
+			}
+
 	var mission_label := str(_active_decision.get("mission_label", "")).strip_edges()
 	if mission_label != "":
 		return {
@@ -1465,6 +1579,12 @@ func _reason_badge_color_for_social_source(source: String) -> Color:
 
 func _face_text(expression: String) -> String:
 	match expression:
+		"focused":
+			return "o_o"
+		"sweating":
+			return "o_o;"
+		"glitched":
+			return "x_x"
 		"pleased":
 			return "^_^"
 		"side_eye":

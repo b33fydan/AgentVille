@@ -124,6 +124,8 @@ var _last_valid_compiled_spec: Dictionary = {}
 var _active_lesson_id: String = ""
 var _lesson_failure_counts: Dictionary = {}
 var _lesson_failure_keys: Dictionary = {}
+var _farm_sandbox_unlocked: bool = true
+var _post_ladder_goal_seeded: bool = false
 var _crew_priority_timer: float = 0.0
 var _next_work_order_number: int = 1
 var _next_crafting_demand_number: int = 1
@@ -266,7 +268,7 @@ func _setup_ai_layer() -> void:
 
 func _setup_player_progress() -> void:
 	var storage_path := progress_storage_path.strip_edges()
-	var disk_enabled := storage_path != "" or not OS.has_feature("headless")
+	var disk_enabled := storage_path != "" or DisplayServer.get_name() != "headless"
 	if storage_path == "":
 		storage_path = PlayerProgressScript.DEFAULT_PATH
 	_player_progress = PlayerProgressScript.new(storage_path, disk_enabled, _skill_lesson_library.first_lesson_id())
@@ -304,6 +306,97 @@ func _apply_player_progress(load_lesson_source: bool = false) -> void:
 			str(lesson.get("starting_editor_text", "")),
 			"lesson_%02d.agent" % int(lesson.get("order", 0))
 		)
+		var first_hint := str(lesson.get("tutor", {}).get("first_hint", "")).strip_edges()
+		game_ui.set_workbench_trace({
+			"stage": "LESSON READY",
+			"status": "READY",
+			"runtime_status": "READY  ·  LOCAL COMPILER",
+			"tutor_lines": [first_hint] if first_hint != "" else [],
+			"lines": ["Select a compatible farm tile, then press COMPILE."]
+		})
+	_apply_onboarding_state(not load_lesson_source)
+	_ensure_post_ladder_goal_loop()
+
+
+func _apply_onboarding_state(announce_unlock: bool = false) -> void:
+	var gate_enabled := _player_progress != null and bool(_player_progress.call("is_disk_enabled"))
+	var first_lesson_id: String = str(_skill_lesson_library.first_lesson_id())
+	var was_unlocked := _farm_sandbox_unlocked
+	_farm_sandbox_unlocked = not gate_enabled or bool(_player_progress.call("is_lesson_completed", first_lesson_id))
+	if placement_tool != null and placement_tool.has_method("set_farm_sandbox_unlocked"):
+		placement_tool.call("set_farm_sandbox_unlocked", _farm_sandbox_unlocked)
+	var current_lesson: Dictionary = _skill_lesson_library.get_lesson(_active_lesson_id)
+	game_ui.set_onboarding_state(_farm_sandbox_unlocked, current_lesson)
+
+	if not _farm_sandbox_unlocked:
+		placement_tool.set_tool("select")
+		if not bool(placement_tool.call("has_selected_tile")):
+			var starter_tile = _first_onboarding_target()
+			if starter_tile != null:
+				placement_tool.call("select_tile_without_action", starter_tile)
+	elif announce_unlock and not was_unlocked:
+		game_ui.add_field_log("Farm sandbox unlocked: FARM tools, free-play recipes, and End Day are ready.")
+		game_ui.show_message("FARM SANDBOX UNLOCKED  ·  Keep learning or explore the farm.")
+		sound_manager.play_stamp("success_chime")
+
+
+func _first_onboarding_target():
+	if grid_manager == null:
+		return null
+	for tile in grid_manager.tiles.values():
+		if str(tile.decor_id) in ["tall_grass", "flower_patch"]:
+			return tile
+	return null
+
+
+func _sandbox_action_blocked(action_label: String) -> bool:
+	if _farm_sandbox_unlocked:
+		return false
+	game_ui.show_message("Complete Lesson 1 before %s." % action_label)
+	sound_manager.play_stamp("error_soft")
+	return true
+
+
+func _ensure_post_ladder_goal_loop() -> bool:
+	if _post_ladder_goal_seeded or _player_progress == null:
+		return _post_ladder_goal_seeded
+	var lesson_ids: Array = _skill_lesson_library.get_lesson_ids()
+	var completed: Array = _player_progress.get_completed_lessons()
+	if not str(_player_progress.get_current_lesson()).is_empty() or completed.size() != lesson_ids.size():
+		return false
+
+	# Progress persists while the farm world resets, so returning graduates need a
+	# small deterministic stake that makes the first existing-system mission viable.
+	resources["fiber"] = maxi(int(resources.get("fiber", 0)), 2)
+	resources["grain"] = maxi(int(resources.get("grain", 0)), 1)
+	_refresh_inventory_and_orders()
+	var mission_id := _create_crew_mission({
+		"label": "Graduate Field Loop",
+		"steps": [
+			{
+				"kind": "deliver_item",
+				"required_item": "fence_kit",
+				"amount": 1,
+				"label": "Build Bert a Fence Kit"
+			},
+			{
+				"kind": "clear_brush",
+				"required_action": "clear_brush",
+				"amount": 1,
+				"label": "Run a Brush Program"
+			}
+		],
+		"completion_resource_delta": {"grain": 1}
+	}, {
+		"agent_id": "bert",
+		"agent_name": "Bert"
+	})
+	if mission_id == "":
+		return false
+	_post_ladder_goal_seeded = true
+	game_ui.add_field_log("Graduate kit ready: +2 Fiber, +1 Grain. Build Bert's Fence Kit, then run a brush program.")
+	game_ui.show_message("FREE PLAY GOAL  ·  Complete Bert's Graduate Field Loop.")
+	return true
 
 
 func _pipeline_tutor_line(state_key: String, detail_key: String = "", context: Dictionary = {}) -> String:
@@ -399,6 +492,8 @@ func _evaluate_lesson_terminal(pending: Dictionary, result: Dictionary, verdict:
 			game_ui.add_field_log(receipt)
 			game_ui.show_message(receipt)
 			_apply_player_progress(false)
+			game_ui.pulse_lesson_complete()
+			sound_manager.play_stamp("lesson_complete")
 		return tutor_lines
 
 	var failure_key := "check.%s.failed" % (check_type if check_type != "" else "lesson")
@@ -439,12 +534,18 @@ func _set_environment_property(property_name: StringName, value) -> void:
 
 
 func _on_tool_selected(tool_name: String) -> void:
+	if tool_name not in ["select", "pan"] and _sandbox_action_blocked("using FARM tools"):
+		game_ui.set_selected_tool("select")
+		placement_tool.set_tool("select")
+		return
 	placement_tool.clear_crew_order_targeting()
 	game_ui.set_selected_work_order_tool("")
 	placement_tool.set_tool(tool_name)
 
 
 func _on_palette_item_selected(item_id: String) -> void:
+	if _sandbox_action_blocked("placing farm items"):
+		return
 	placement_tool.clear_crew_order_targeting()
 	game_ui.set_selected_work_order_tool("")
 	placement_tool.set_selected_item(item_id)
@@ -457,6 +558,9 @@ func _on_work_order_tool_selected(action_id: String) -> void:
 		game_ui.set_selected_work_order_tool("")
 		game_ui.show_message("Crew order cleared.")
 		sound_manager.play_stamp("ui_click")
+		return
+	if _sandbox_action_blocked("marking free-play crew orders"):
+		game_ui.set_selected_work_order_tool("")
 		return
 
 	if not WORK_ORDER_ACTIONS.has(action_id):
@@ -474,14 +578,20 @@ func _on_work_order_tool_selected(action_id: String) -> void:
 
 
 func _on_skill_forge_run_requested(template_id: String) -> void:
+	if _sandbox_action_blocked("running free-play Forge recipes"):
+		return
 	_run_skill_forge_template(template_id, "Skill Forge order drafted.")
 
 
 func _on_skill_forge_revision_requested(template_id: String) -> void:
+	if _sandbox_action_blocked("running free-play Forge recipes"):
+		return
 	_run_skill_forge_template(template_id, "Skill Forge revision compiled.")
 
 
 func _on_skill_forge_review_requested(template_id: String) -> void:
+	if _sandbox_action_blocked("reviewing free-play Forge recipes"):
+		return
 	if _skill_forge_templates == null or _skill_forge_run_harness == null:
 		return
 
@@ -625,7 +735,7 @@ func _on_workbench_compile_requested(source_text: String) -> void:
 		"source": "skill_forge",
 		"label": "Agent Workbench"
 	}
-	_start_skill_forge_spec(spec, request, "workbench", source_text)
+	_start_skill_forge_spec(spec, request, "workbench", source_text, parsed.get("source_map", {}))
 
 
 func _workbench_target_for_spec(spec: Dictionary) -> Dictionary:
@@ -648,7 +758,7 @@ func _workbench_target_for_spec(spec: Dictionary) -> Dictionary:
 	}
 
 
-func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: String, source_text: String = "") -> Dictionary:
+func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: String, source_text: String = "", source_map: Dictionary = {}) -> Dictionary:
 	var lesson_id_for_run := _active_lesson_id if origin == "workbench" else ""
 	_cancel_pending_skill_forge_run("order never completed; replaced by a newer compile", true)
 	var start_result: Dictionary = _skill_forge_run_harness.start_manual_run(spec, request)
@@ -657,7 +767,8 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 	if str(start_result.get("status", "")) != "started":
 		_apply_skill_forge_result(start_result)
 		if origin == "workbench":
-			var validation_errors: Array = validation.get("errors", [])
+			var validation_errors: Array = _workbench_diagnostics(validation.get("errors", []), source_map)
+			var validation_warnings: Array = _workbench_diagnostics(validation.get("warnings", []), source_map)
 			var first_issue: Dictionary = validation_errors[0] if not validation_errors.is_empty() and typeof(validation_errors[0]) == TYPE_DICTIONARY else {}
 			var issue_code := str(first_issue.get("code", "validator_error"))
 			var tutor_lines := _lesson_failure_tutor(
@@ -676,7 +787,7 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				"target_tile": target,
 				"target_source": str(request.get("target_source", "selected_tile")),
 				"issues": validation_errors,
-				"warnings": validation.get("warnings", []),
+				"warnings": validation_warnings,
 				"drift": validation.get("drift", {}),
 				"tutor_lines": tutor_lines,
 				"lines": ["Parse passed.", "Validator rejected the Skill Spec."]
@@ -693,8 +804,9 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 	var guard_condition := _skill_forge_guard_condition(spec)
 	var guard_result: Dictionary = _skill_check_evaluator.evaluate_guard(guard_condition, before)
 	if not bool(guard_result.get("allowed", false)):
+		var guard_detail := str(guard_result.get("result_detail", "Runtime guard blocked the run."))
 		var blocked_result: Dictionary = _skill_forge_run_harness.block_run(start_result, {
-			"result_detail": str(guard_result.get("result_detail", "Runtime guard blocked the run.")),
+			"result_detail": guard_detail,
 			"day": grid_manager.day
 		})
 		_apply_skill_forge_result(blocked_result)
@@ -714,9 +826,16 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				"agent_name": str(request.get("agent_name", "Crew")),
 				"target_tile": target,
 				"target_source": str(request.get("target_source", "selected_tile")),
+				"issues": [_workbench_runtime_issue(
+					source_map,
+					"steps[0].when",
+					"runtime_guard_blocked",
+					guard_detail,
+					_pipeline_tutor_line("guard", guard_condition, {"allowed": false})
+				)],
 				"drift": validation.get("drift", {}),
 				"tutor_lines": tutor_lines,
-				"lines": ["Parse passed.", "Validation passed.", str(guard_result.get("result_detail", "Guard blocked."))]
+				"lines": ["Parse passed.", "Validation passed.", guard_detail]
 			})
 		game_ui.show_message(str(guard_result.get("result_detail", "Workbench guard blocked the run.")))
 		sound_manager.play_stamp("error_soft")
@@ -747,7 +866,13 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				"agent_name": str(request.get("agent_name", "Crew")),
 				"target_tile": target,
 				"target_source": str(request.get("target_source", "selected_tile")),
-				"issues": validation.get("errors", []),
+				"issues": [_workbench_runtime_issue(
+					source_map,
+					"steps[0].tool",
+					"order_blocked",
+					failure_detail,
+					_pipeline_tutor_line("order", "blocked", {"detail": failure_detail})
+				)],
 				"warnings": validation.get("warnings", []),
 				"drift": validation.get("drift", {}),
 				"tutor_lines": tutor_lines,
@@ -772,9 +897,12 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 		"lesson_id": lesson_id_for_run,
 		"source_text": source_text,
 		"compiled_spec": spec.duplicate(true),
-		"target_source": str(request.get("target_source", "selected_tile"))
+		"target_source": str(request.get("target_source", "selected_tile")),
+		"source_map": source_map.duplicate(true)
 	}
 	if origin == "workbench":
+		game_ui.pulse_workbench_compile()
+		sound_manager.play_stamp("compile_success")
 		var tutor_lines: Array[String] = [
 			_pipeline_tutor_line("lifecycle", "pending")
 		]
@@ -788,7 +916,7 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 			"agent_name": str(request.get("agent_name", "Crew")),
 			"target_tile": target,
 			"target_source": str(request.get("target_source", "selected_tile")),
-			"warnings": validation.get("warnings", []),
+			"warnings": _workbench_diagnostics(validation.get("warnings", []), source_map),
 			"drift": validation.get("drift", {}),
 			"run_id": str(_pending_skill_forge_run.get("run_id", "")),
 			"order_id": order_id,
@@ -796,6 +924,69 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 			"lines": ["Parse passed.", "Validation passed.", str(guard_result.get("result_detail", "Guard passed.")), "Crew order drafted; verification is pending."]
 		})
 	return start_result
+
+
+func _workbench_diagnostics(issues, source_map: Dictionary) -> Array:
+	var enriched: Array = []
+	if typeof(issues) != TYPE_ARRAY:
+		return enriched
+	for issue_value in issues:
+		if typeof(issue_value) != TYPE_DICTIONARY:
+			continue
+		var issue: Dictionary = issue_value.duplicate(true)
+		var field := str(issue.get("field", "")).strip_edges()
+		var location_value = source_map.get(field, {})
+		if typeof(location_value) != TYPE_DICTIONARY or (location_value as Dictionary).is_empty():
+			location_value = source_map.get(_workbench_source_alias(field), {})
+		if typeof(location_value) == TYPE_DICTIONARY:
+			var location: Dictionary = location_value
+			issue["line"] = maxi(1, int(location.get("line", 1)))
+			issue["col"] = maxi(1, int(location.get("col", 1)))
+			issue["token"] = str(location.get("token", field if field != "" else "<spec>"))
+		else:
+			issue["line"] = 1
+			issue["col"] = 1
+			issue["token"] = field if field != "" else "<spec>"
+		var code := str(issue.get("code", "validator_error"))
+		issue["suggestion"] = _pipeline_tutor_line("validator", code)
+		enriched.append(issue)
+	return enriched
+
+
+func _workbench_runtime_issue(
+	source_map: Dictionary,
+	field: String,
+	code: String,
+	cause: String,
+	suggestion: String
+) -> Dictionary:
+	var source_field := _workbench_source_alias(field)
+	var location_value = source_map.get(field, source_map.get(source_field, {}))
+	var location: Dictionary = location_value if typeof(location_value) == TYPE_DICTIONARY else {}
+	var clean_field := field.strip_edges()
+	return {
+		"field": clean_field if clean_field != "" else "runtime",
+		"code": code.strip_edges() if code.strip_edges() != "" else "runtime_error",
+		"line": maxi(1, int(location.get("line", 1))),
+		"col": maxi(1, int(location.get("col", 1))),
+		"token": str(location.get("token", source_field if source_field != "" else "<runtime>")),
+		"message": cause.strip_edges() if cause.strip_edges() != "" else "The runtime could not complete this program.",
+		"suggestion": suggestion.strip_edges() if suggestion.strip_edges() != "" else _pipeline_tutor_line("lifecycle", "cancelled")
+	}
+
+
+func _workbench_source_alias(field: String) -> String:
+	if field.begins_with("steps["):
+		if field.ends_with(".when"):
+			return "steps[0].when"
+		if field.ends_with(".target"):
+			return "steps[0].target"
+		if field.ends_with(".tool") or field.ends_with(".id"):
+			return "steps[0].tool"
+		return "steps[0]"
+	if field.begins_with("success_check."):
+		return "success_check.type"
+	return field
 
 
 func _skill_forge_primary_action(spec: Dictionary) -> String:
@@ -875,6 +1066,13 @@ func _cancel_pending_skill_forge_run(reason: String, remove_order: bool) -> bool
 			"target_source": str(pending.get("target_source", "selected_tile")),
 			"run_id": run_id,
 			"order_id": order_id,
+			"issues": [_workbench_runtime_issue(
+				pending.get("source_map", {}),
+				"steps[0].tool",
+				"lifecycle_%s" % lifecycle_state,
+				reason,
+				_pipeline_tutor_line("lifecycle", lifecycle_state, {"detail": reason})
+			)],
 			"tutor_lines": tutor_lines,
 			"lines": [reason]
 		})
@@ -921,6 +1119,9 @@ func _finish_pending_skill_forge_run(event: Dictionary) -> void:
 		"day": grid_manager.day
 	})
 	_apply_skill_forge_result(completion)
+	if bool(verdict.get("passed", false)):
+		game_ui.pulse_workbench_receipt_passed()
+		sound_manager.play_stamp("receipt_pass")
 	_update_workbench_terminal_trace(pending, completion, verdict)
 
 
@@ -930,8 +1131,18 @@ func _update_workbench_terminal_trace(pending: Dictionary, result: Dictionary, v
 	var status := str(result.get("status", "failed")).to_upper()
 	var detail := str(verdict.get("result_detail", result.get("run", {}).get("result_detail", "World check finished.")))
 	var tutor_lines: Array[String] = []
+	var runtime_issues: Array = []
 	if not verdict.is_empty():
 		tutor_lines = _evaluate_lesson_terminal(pending, result, verdict)
+		if status != "PASSED":
+			var check_type := str(verdict.get("check_type", result.get("run", {}).get("success_check_type", "")))
+			runtime_issues.append(_workbench_runtime_issue(
+				pending.get("source_map", {}),
+				"success_check.type",
+				"world_check_failed",
+				detail,
+				_pipeline_tutor_line("check", check_type, {"passed": false})
+			))
 	elif status == "BLOCKED":
 		var guard_condition := str(pending.get("guard_condition", "always"))
 		tutor_lines = _lesson_failure_tutor(
@@ -941,14 +1152,29 @@ func _update_workbench_terminal_trace(pending: Dictionary, result: Dictionary, v
 			guard_condition,
 			{"allowed": false, "detail": detail}
 		)
+		runtime_issues.append(_workbench_runtime_issue(
+			pending.get("source_map", {}),
+			"steps[0].when",
+			"runtime_guard_blocked",
+			detail,
+			_pipeline_tutor_line("guard", guard_condition, {"allowed": false})
+		))
 	else:
+		var check_type := str(result.get("run", {}).get("success_check_type", ""))
 		tutor_lines = _lesson_failure_tutor(
 			str(pending.get("lesson_id", "")),
 			"check.failed",
 			"check",
-			str(result.get("run", {}).get("success_check_type", "")),
+			check_type,
 			{"passed": false, "detail": detail}
 		)
+		runtime_issues.append(_workbench_runtime_issue(
+			pending.get("source_map", {}),
+			"success_check.type",
+			"world_check_failed",
+			detail,
+			_pipeline_tutor_line("check", check_type, {"passed": false})
+		))
 	game_ui.set_workbench_trace({
 		"stage": "WORLD CHECK",
 		"status": status,
@@ -959,6 +1185,7 @@ func _update_workbench_terminal_trace(pending: Dictionary, result: Dictionary, v
 		"order_id": str(pending.get("order_id", "")),
 		"runtime_status": status,
 		"runtime_color": Color("#8fbe67") if status == "PASSED" else Color("#e7785b"),
+		"issues": runtime_issues,
 		"tutor_lines": tutor_lines,
 		"lines": [detail]
 	})
@@ -1170,6 +1397,13 @@ func _skill_forge_expected_revision_tool(template_id: String, spec: Dictionary) 
 
 
 func _apply_skill_forge_result(result: Dictionary) -> void:
+	var run_value = result.get("run", {})
+	if str(result.get("status", "")) == "blocked" and typeof(run_value) == TYPE_DICTIONARY:
+		var blocked_run: Dictionary = run_value
+		_show_named_agent_drift_reaction(
+			str(blocked_run.get("agent_id", "")),
+			blocked_run.get("drift", {})
+		)
 	for line in result.get("field_log_lines", []):
 		game_ui.add_field_log(str(line))
 
@@ -1250,6 +1484,7 @@ func _maybe_draft_skill_forge_work_order(result: Dictionary) -> String:
 		"agent_name": str(directive.get("agent_name", "")),
 		"directive_id": str(directive.get("id", "")),
 		"directive_kind": str(directive.get("kind", "")),
+		"drift": directive.get("drift", {}).duplicate(true),
 		"source_context": directive.get("source_context", {}),
 		"steps": directive.get("steps", []).duplicate(true),
 		"success_check": directive.get("success_check", {}).duplicate(true),
@@ -2518,6 +2753,8 @@ func _perk_for_demand(demand: Dictionary) -> Dictionary:
 
 
 func _on_crew_order_targeted(action_id: String, grid_pos: Vector2i) -> void:
+	if _sandbox_action_blocked("marking free-play crew orders"):
+		return
 	if not WORK_ORDER_ACTIONS.has(action_id):
 		game_ui.show_message("Unknown crew order.")
 		sound_manager.play_stamp("error_soft")
@@ -2762,6 +2999,8 @@ func _queue_escalated_work_order(order_id: String) -> bool:
 
 
 func _on_advance_day_requested() -> void:
+	if _sandbox_action_blocked("ending the day"):
+		return
 	sound_manager.play_stamp("day_advance")
 	var ending_day: int = grid_manager.day
 	if _event_log:
@@ -2840,10 +3079,14 @@ func _on_agent_world_action(event: Dictionary) -> void:
 
 
 func _on_craft_requested(recipe_id: String) -> void:
+	if _sandbox_action_blocked("using the Supply Bench"):
+		return
 	_craft_recipe(recipe_id, "player")
 
 
 func _on_crafting_demand_requested(demand_id: String) -> void:
+	if _sandbox_action_blocked("delivering free-play supplies"):
+		return
 	if not crafting_demands.has(demand_id):
 		game_ui.show_message("Unknown crew demand.")
 		sound_manager.play_stamp("error_soft")
@@ -2915,19 +3158,30 @@ func _on_work_order_requested(order_id: String) -> void:
 
 	var action_id := str(order.get("action", "build_fence"))
 	if action_id != "build_fence":
-		_queue_directive_order(order_id)
+		if _queue_directive_order(order_id):
+			_emit_skill_run_dispatch_feedback(order_id, order)
 		return
 
 	if _has_required_item_for_order(order):
-		_queue_build_order(order_id)
+		if _queue_build_order(order_id):
+			_emit_skill_run_dispatch_feedback(order_id, order)
 		return
 
 	if _can_craft_required_item_for_order(order):
 		if _craft_recipe(str(order.get("required_item", "")), "crew"):
-			_queue_build_order(order_id)
+			if _queue_build_order(order_id):
+				_emit_skill_run_dispatch_feedback(order_id, order)
 		return
 
-	_queue_supply_for_order(order_id)
+	if _queue_supply_for_order(order_id):
+		_emit_skill_run_dispatch_feedback(order_id, order)
+
+
+func _emit_skill_run_dispatch_feedback(order_id: String, order: Dictionary) -> void:
+	if str(order.get("source", "")) != "skill_forge":
+		return
+	game_ui.pulse_workbench_run(order_id)
+	sound_manager.play_stamp("run_dispatch")
 
 
 func _on_work_order_cancel_requested(order_id: String) -> void:
@@ -3032,7 +3286,8 @@ func _queue_build_order(order_id: String, quiet: bool = false) -> bool:
 	_refresh_crafting_demands()
 	if not quiet:
 		game_ui.show_message("Crew assigned: %s." % str(order.get("label", "Work order")))
-		sound_manager.play_stamp("tool_select")
+		if str(order.get("source", "")) != "skill_forge":
+			sound_manager.play_stamp("tool_select")
 	game_ui.add_field_log("Work order queued: %s%s." % [str(order.get("label", "Crew task")), _format_work_order_context_suffix(order)])
 	_record_work_order_event(order_id, "queued")
 
@@ -3068,7 +3323,8 @@ func _queue_directive_order(order_id: String, quiet: bool = false) -> bool:
 	_refresh_crafting_demands()
 	if not quiet:
 		game_ui.show_message("Crew assigned: %s." % str(order.get("label", "Work order")))
-		sound_manager.play_stamp("tool_select")
+		if str(order.get("source", "")) != "skill_forge":
+			sound_manager.play_stamp("tool_select")
 	game_ui.add_field_log("Work order queued: %s%s." % [str(order.get("label", "Crew task")), _format_work_order_context_suffix(order)])
 	_record_work_order_event(order_id, "queued")
 
@@ -3258,7 +3514,21 @@ func _work_order_skill_forge_context(order: Dictionary) -> Dictionary:
 	var source_context = order.get("source_context", {})
 	if typeof(source_context) == TYPE_DICTIONARY and not source_context.is_empty():
 		context["forge_source_context"] = source_context.duplicate(true)
+	var drift = order.get("drift", {})
+	if typeof(drift) == TYPE_DICTIONARY and not drift.is_empty():
+		context["forge_drift"] = drift.duplicate(true)
 	return context
+
+
+func _show_named_agent_drift_reaction(agent_id: String, drift) -> bool:
+	if _agent_manager == null or agent_id.strip_edges() == "" or typeof(drift) != TYPE_DICTIONARY:
+		return false
+	for actor in _agent_manager.agents:
+		if str(actor.get("agent_id")) != agent_id:
+			continue
+		if actor.has_method("show_forge_drift_reaction"):
+			return bool(actor.call("show_forge_drift_reaction", drift))
+	return false
 
 
 func _consume_crafted_cost(cost) -> Dictionary:
@@ -3567,6 +3837,7 @@ func _update_work_order_from_agent_action(event: Dictionary) -> void:
 	if not success and not _pending_skill_forge_run.is_empty():
 		var pending_order_id := str(_pending_skill_forge_run.get("order_id", ""))
 		if pending_order_id == order_id and str(_pending_skill_forge_run.get("origin", "")) == "workbench":
+			var retry_detail := "Crew attempt failed; the correlated order returned to ready."
 			game_ui.set_workbench_trace({
 				"stage": "CREW RETRY",
 				"status": "PENDING WORLD CHECK",
@@ -3576,8 +3847,15 @@ func _update_work_order_from_agent_action(event: Dictionary) -> void:
 				"target_source": str(_pending_skill_forge_run.get("target_source", "selected_tile")),
 				"run_id": str(_pending_skill_forge_run.get("run_id", "")),
 				"order_id": order_id,
+				"issues": [_workbench_runtime_issue(
+					_pending_skill_forge_run.get("source_map", {}),
+					"steps[0].tool",
+					"lifecycle_retrying",
+					retry_detail,
+					_pipeline_tutor_line("lifecycle", "retrying")
+				)],
 				"tutor_lines": [_pipeline_tutor_line("lifecycle", "retrying")],
-				"lines": ["Crew attempt failed; the correlated order returned to ready."]
+				"lines": [retry_detail]
 			})
 
 	_record_work_order_event(order_id, str(order.get("status", "ready")))
