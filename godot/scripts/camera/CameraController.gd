@@ -15,6 +15,7 @@ var camera: Camera3D
 var pan_tool_active: bool = false
 
 var _dragging: bool = false
+var _drag_button: int = 0
 var _last_mouse_position: Vector2 = Vector2.ZERO
 var _camera_attributes: CameraAttributesPractical
 
@@ -56,7 +57,15 @@ func _keyboard_pan_blocked() -> bool:
 	var viewport := get_viewport()
 	if viewport == null:
 		return false
-	return viewport.gui_get_focus_owner() is TextEdit
+	var focus_owner := viewport.gui_get_focus_owner()
+	return focus_owner is TextEdit or focus_owner is LineEdit
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_button := event as InputEventMouseButton
+		if not mouse_button.pressed and mouse_button.button_index == _drag_button:
+			_stop_drag()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -69,20 +78,45 @@ func _unhandled_input(event: InputEvent) -> void:
 			adjust_zoom(1)
 			get_viewport().set_input_as_handled()
 		elif mouse_button.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT] or (pan_tool_active and mouse_button.button_index == MOUSE_BUTTON_LEFT):
-			_dragging = mouse_button.pressed
-			_last_mouse_position = mouse_button.position
+			if mouse_button.pressed:
+				_dragging = true
+				_drag_button = mouse_button.button_index
+				_last_mouse_position = mouse_button.position
+			elif mouse_button.button_index == _drag_button:
+				_stop_drag()
 			get_viewport().set_input_as_handled()
 
 	if event is InputEventMouseMotion and _dragging:
 		var motion := event as InputEventMouseMotion
+		var drag_mask := _mouse_button_mask(_drag_button)
+		if drag_mask != 0 and (motion.button_mask & drag_mask) == 0:
+			_stop_drag()
+			return
 		_pan_screen_delta(motion.relative)
+		_last_mouse_position = motion.position
 		get_viewport().set_input_as_handled()
 
 
 func set_pan_tool_active(is_active: bool) -> void:
 	pan_tool_active = is_active
 	if not pan_tool_active:
-		_dragging = false
+		_stop_drag()
+
+
+func _stop_drag() -> void:
+	_dragging = false
+	_drag_button = 0
+
+
+func _mouse_button_mask(button_index: int) -> int:
+	match button_index:
+		MOUSE_BUTTON_LEFT:
+			return MOUSE_BUTTON_MASK_LEFT
+		MOUSE_BUTTON_MIDDLE:
+			return MOUSE_BUTTON_MASK_MIDDLE
+		MOUSE_BUTTON_RIGHT:
+			return MOUSE_BUTTON_MASK_RIGHT
+	return 0
 
 
 func center_on_farm() -> void:

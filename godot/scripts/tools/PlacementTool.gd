@@ -136,9 +136,10 @@ func _input(event: InputEvent) -> void:
 			if _hovered_tile:
 				if _is_targeting_crew_order():
 					crew_order_targeted.emit(_crew_order_action_id, _hovered_tile.grid_pos)
+					get_viewport().set_input_as_handled()
 				elif current_tool != Tool.PAN:
 					_apply_to_tile(_hovered_tile)
-				get_viewport().set_input_as_handled()
+					get_viewport().set_input_as_handled()
 
 
 func _update_hover(mouse_position: Vector2) -> void:
