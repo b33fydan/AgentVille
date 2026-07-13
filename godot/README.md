@@ -8,8 +8,9 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Run `scenes/Main.tscn`.
 - Use the left `FARM` command tab to till, plant, harvest, erase, place, or pan, and choose terrain, crops, roads, decor, structures, or tools from its embedded voxel catalog.
 - Use the left `CREW` command tab for marked jobs, Parley, supply crafting, live demand actions, and crew-order actions.
-- Use the left `AGENT` command tab for Skill Forge starter workflows, and the left `WORLD` tab for view controls, camera zoom/recenter, and End Day.
+- Use the left `AGENT` command tab for the ordered lesson ladder, Skill Forge starter workflows, and saved compiled programs; use the left `WORLD` tab for view controls, camera zoom/recenter, and End Day.
 - The bottom Agent Workbench is a live local teaching compiler: select a farm tile, edit the bounded agent program, then press `COMPILE` or Cmd/Ctrl+Enter to parse, validate, guard, draft named-agent crew work, and verify the actual resulting farm state.
+- Lesson mastery, the current lesson, named program source, and view toggles persist locally in `user://agentville_progress.json`; a missing or malformed file safely starts fresh.
 - Palette selections attach a small item ghost to the cursor.
 - Hovering a selected palette item over the farm shows a hologram footprint before placement.
 - The Tools tab includes Pickaxe for breaking rocks/structures/roads and Sickle for cutting brush or harvesting ready crops.
@@ -118,7 +119,7 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - Aged targeted crew demands now let the NPC draft a linked work order for the same tile, so the player can send the crew to resolve the original social contract.
 - Ignored NPC-authored orders now escalate the next morning, adding author pressure and auto-sending the crew when someone is free.
 - Escalated NPC-authored orders now attach small bargain incentives, surface the resource offer in both demand and order rows, and pay it once the order is completed.
-- Pan with right/middle mouse drag, the Pan tool, or WASD/arrow keys. The expanded pan range lets either farm edge move out from behind the side rails or bottom workbench. Keyboard panning pauses while the Agent Workbench editor owns focus.
+- Pan with right/middle mouse drag, `FARM` → `View` left-drag, or WASD/arrow keys. The expanded pan range lets either farm edge move out from behind the side rails or bottom Workbench. Keyboard panning pauses while the Agent Workbench editor or another text field owns focus, and releasing over a panel safely ends the drag.
 - Zoom with the mouse wheel or the `Zoom +` / `Zoom -` voxel commands in the left `WORLD` tab; `Center` restores the default farm view.
 
 ## Structure
@@ -135,6 +136,9 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `scripts/ui/VoxelIcon.gd` renders pack-backed or procedural fallback voxel icons in isolated sub-viewports.
 - `scripts/ui/GameUI.gd` owns the four-tab command dock, editable Agent Workbench compiler controls/teaching trace, crew/status panels, and compact Field Log.
 - `scripts/camera/CameraController.gd` owns the fixed isometric camera.
+- `scripts/systems/SkillLessonLibrary.gd` owns the ordered curriculum, prerequisites, and evidence-backed completion conditions.
+- `scripts/systems/SkillTutorLibrary.gd` turns parser, validator, guard, lifecycle, drift, and check states into deterministic teaching copy and escalating hints.
+- `scripts/systems/PlayerProgress.gd` owns safe local lesson, program-shelf, and view-toggle persistence.
 - `scripts/ai/GameEventLog.gd` records structured player/agent events for future observer summaries.
 - `scripts/ai/AgentManager.gd` spawns the current NPC crew: Bert, Marigold, and Chuck.
 - `scripts/ai/AgentActor.gd` owns each visible NPC, its state, memory, movement, reactions, and small world actions.
@@ -255,7 +259,12 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises opening the left `CREW` tab, selecting a crew-order command, and then clicking the farm field.
 - `tools/smoke_ui_overhaul.gd` exercises the four command tabs, voxel-icon/fallback contract, strict 1600x900 and 1280x720 layout, status-only right rail, editable live Workbench, camera-key isolation, and UI pointer blocking.
-- `tools/smoke_camera_navigation.gd` exercises expanded zoom/pan bounds, wheel zoom, left-dock camera commands, voxel icons, and default-view recentering.
+- `tools/smoke_camera_navigation.gd` exercises expanded zoom/pan bounds, wheel zoom, left-dock camera commands, voxel icons, default-view recentering, real View-tool drag over a tile, text-focus isolation, release-over-panel cleanup, persistent selection, and ray-selectable corner clearance at 1600×900 and 1280×720.
+- `tools/smoke_skill_lessons.gd` exercises the ten ordered lessons, prerequisite gates, distinct first-three programs, and evaluable completion contracts.
+- `tools/smoke_lesson_completion.gd` exercises a real Workbench compile, pending run, world mutation, honest receipt, lesson unlock, and exact compiled-program save/load.
+- `tools/smoke_player_progress.gd` exercises fresh defaults, immediate JSON persistence, program replacement, duplicate lesson hardening, and malformed progress recovery.
+- `tools/smoke_tutor_copy.gd` exercises deterministic parser, validator, drift, guard, lifecycle, and check teaching copy plus three-step hint escalation.
+- `tools/walkthrough_skill_lessons.gd` records the two-process Session 2 cold-start acceptance: `-- fresh` completes lessons 1–3 and persists an exact saved program/view state, then `-- verify` proves restart restoration and cleans its isolated progress file.
 - `tools/smoke_tile_micro_detail_grid.gd` exercises the packed visual-only 4x4 tile surface, terrain/content-specific coverage and row direction, support-plane contact, internal and cross-tile seams, coherent palette grouping, deterministic refreshes, varied dirt-road detail signatures, and original-grid gameplay targeting through till, plant, erase, and decor actions.
 - `tools/smoke_work_orders.gd` exercises blocked fence placement, marked fence orders, order pins, clearing/dropping order rows, gather-craft-build support, clear orders, harvest orders, tend orders, and plant orders.
 - `tools/capture_crafting.gd` captures `artifacts/screenshots/agentville-crafting.png`.
@@ -272,6 +281,8 @@ Small Godot 4 vertical slice for a cozy isometric voxel farm builder.
 - `tools/capture_adversarial_reaction.gd` captures `artifacts/screenshots/agentville-adversarial-reaction.png`.
 - `tools/capture_adversarial_session.gd` captures `artifacts/screenshots/agentville-adversarial-session.png`.
 - `tools/capture_megavox_starter_map.gd` captures `artifacts/screenshots/agentville-megavox-starter-map.png` plus a starter-catalog manifest at `artifacts/screenshots/agentville-megavox-starter-map.json` with the normal renderer for visual review.
+- `tools/capture_camera_navigation.gd` captures `artifacts/screenshots/agentville-camera-navigation.png` at 1600×900 with a formerly obscured corner centered above the Workbench and the `WORLD` camera commands visible.
+- `tools/capture_skill_lessons.gd` captures `artifacts/screenshots/agentville-skill-lessons.png` at 1600×900 with the lesson ladder, current goal, tutor layer, and technical trace.
 - `tools/capture_workbench_compile.gd` captures `artifacts/screenshots/agentville-workbench-compile.png` at 1600×900 with a selected ready crop and the real pending compiler trace.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
 - `tools/capture_npc_work.gd` captures `artifacts/screenshots/agentville-npc-work.png`.
