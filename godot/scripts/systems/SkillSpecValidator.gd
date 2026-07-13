@@ -195,7 +195,7 @@ func _validate_steps(spec: Dictionary, errors: Array, warnings: Array) -> void:
 		if condition == "":
 			condition = "always"
 		if not SUPPORTED_CONDITIONS.has(condition):
-			_add_issue(warnings, "preview_condition_only", "%s.when" % field_prefix, "Unsupported conditions are preview-only until the run harness exists.")
+			_add_issue(errors, "unsupported_condition", "%s.when" % field_prefix, "Use a supported condition so the local runtime can check it safely.")
 
 
 func _validate_success_check(spec: Dictionary, errors: Array, warnings: Array) -> void:

@@ -10,6 +10,7 @@ const AgentMemoryScript := preload("res://scripts/ai/AgentMemory.gd")
 const UtilityAgentDecisionModelScript := preload("res://scripts/ai/UtilityAgentDecisionModel.gd")
 const AgentReactionModelScript := preload("res://scripts/ai/AgentReactionModel.gd")
 const AgentDialogueLibraryScript := preload("res://scripts/ai/AgentDialogueLibrary.gd")
+const SkillCheckEvaluatorScript := preload("res://scripts/systems/SkillCheckEvaluator.gd")
 const ARRIVAL_DISTANCE := 0.04
 const WORK_SECONDS := 0.58
 const FEET_LOCAL_BOTTOM := 0.02
@@ -36,6 +37,7 @@ var memory = AgentMemoryScript.new()
 var decision_model = UtilityAgentDecisionModelScript.new()
 var reaction_model = AgentReactionModelScript.new()
 var dialogue_library = AgentDialogueLibraryScript.new()
+var skill_check_evaluator = SkillCheckEvaluatorScript.new()
 var move_speed: float = 1.35
 
 var grid_manager
@@ -215,6 +217,8 @@ func start_work_order(order: Dictionary) -> void:
 		extra["skill_name"] = skill_name
 		extra["directive_id"] = str(order.get("directive_id", ""))
 		extra["directive_kind"] = str(order.get("directive_kind", ""))
+		extra["guard_condition"] = str(order.get("guard_condition", "always"))
+		extra["guard_action"] = str(order.get("guard_action", order.get("action", "build_fence")))
 		var source_context = order.get("source_context", {})
 		if typeof(source_context) == TYPE_DICTIONARY and not source_context.is_empty():
 			extra["forge_source_context"] = source_context.duplicate(true)
@@ -243,6 +247,18 @@ func start_directive(action_name: String, target_tile: Vector2i, reason: String,
 
 func is_available() -> bool:
 	return _active_decision.is_empty()
+
+
+func cancel_forge_run(run_id: String) -> bool:
+	if run_id.strip_edges() == "" or str(_active_decision.get("forge_run_id", "")) != run_id:
+		return false
+	_movement_path.clear()
+	_route_reachable = true
+	_movement_active = false
+	_target_position = position
+	target_grid_pos = current_grid_pos
+	_complete_active_decision()
+	return true
 
 
 func _choose_next_action() -> void:
@@ -761,6 +777,8 @@ func _update_active_decision(delta: float) -> void:
 func _execute_arrival_action(decision: Dictionary) -> void:
 	var action := str(decision.get("action", "idle"))
 	var tile_pos: Vector2i = _validated_tile(decision.get("target_tile", target_grid_pos))
+	if _skill_forge_guard_blocks(decision, action, tile_pos):
+		return
 
 	match action:
 		"harvest_crop":
@@ -781,6 +799,31 @@ func _execute_arrival_action(decision: Dictionary) -> void:
 			_build_fence_order_at(tile_pos, decision.get("work_order", {}))
 		_:
 			pass
+
+
+func _skill_forge_guard_blocks(decision: Dictionary, action: String, tile_pos: Vector2i) -> bool:
+	var run_id := str(decision.get("forge_run_id", "")).strip_edges()
+	var guard_action := str(decision.get("guard_action", "")).strip_edges()
+	if run_id == "" or guard_action == "" or action != guard_action:
+		return false
+	var condition := str(decision.get("guard_condition", "always")).strip_edges()
+	var tile = grid_manager.get_tile(tile_pos) if grid_manager else null
+	var current: Dictionary = skill_check_evaluator.snapshot(tile, {}, tile_pos)
+	var verdict: Dictionary = skill_check_evaluator.evaluate_guard(condition, current)
+	if bool(verdict.get("allowed", false)):
+		return false
+
+	var work_order_id := str(decision.get("work_order_id", ""))
+	if work_order_id == "":
+		var order = decision.get("work_order", {})
+		if typeof(order) == TYPE_DICTIONARY:
+			work_order_id = str(order.get("id", ""))
+	var detail := str(verdict.get("result_detail", "Runtime guard blocked the crew action."))
+	_emit_world_action(action, tile_pos, false, "%s: %s" % [display_name, detail], 0, "guard", [], {}, {}, work_order_id, {
+		"blocked_condition": condition,
+		"block_detail": detail
+	})
+	return true
 
 
 func _complete_active_decision() -> void:
@@ -953,7 +996,7 @@ func _build_fence_order_at(tile_pos: Vector2i, order: Dictionary) -> void:
 	)
 
 
-func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, message: String, value: int = 0, subject: String = "", stamps: Array = [], resources: Dictionary = {}, crafted_cost: Dictionary = {}, work_order_id: String = "") -> void:
+func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, message: String, value: int = 0, subject: String = "", stamps: Array = [], resources: Dictionary = {}, crafted_cost: Dictionary = {}, work_order_id: String = "", extra_payload: Dictionary = {}) -> void:
 	var world_action := {
 		"actor": "agent",
 		"agent_id": agent_id,
@@ -971,6 +1014,8 @@ func _emit_world_action(action_name: String, tile_pos: Vector2i, success: bool, 
 		"crafted_cost": crafted_cost,
 		"work_order_id": work_order_id
 	}
+	for key in extra_payload.keys():
+		world_action[key] = extra_payload[key]
 	_add_social_preference_metadata(world_action, _active_decision)
 	_add_skill_forge_metadata(world_action, _active_decision)
 	_add_daily_intention_metadata(world_action, _active_decision)

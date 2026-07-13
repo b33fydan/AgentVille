@@ -21,6 +21,7 @@ signal crafting_demand_requested(demand_id: String)
 signal skill_forge_run_requested(template_id: String)
 signal skill_forge_review_requested(template_id: String)
 signal skill_forge_revision_requested(template_id: String)
+signal workbench_compile_requested(source_text: String)
 
 const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
 const VoxelIconScript := preload("res://scripts/ui/VoxelIcon.gd")
@@ -41,6 +42,7 @@ var _code_workbench: PanelContainer
 var _code_editor: CodeEdit
 var _compiler_output: RichTextLabel
 var _workbench_runtime_label: Label
+var _workbench_compile_button: Button
 var _crew_rows: Dictionary = {}
 var _crew_signal_labels: Dictionary = {}
 var _field_log_stack: VBoxContainer
@@ -183,6 +185,100 @@ func set_inventory(resources: Dictionary, crafted_items: Dictionary) -> void:
 	_set_craft_button_state("fence_kit", int(resources.get("fiber", 0)) >= 2 and int(resources.get("grain", 0)) >= 1)
 	_set_craft_button_state("seed_bundle", int(resources.get("grain", 0)) >= 2)
 	_set_craft_button_state("rush_kit", int(resources.get("fiber", 0)) >= 1 and int(resources.get("stone", 0)) >= 1)
+
+
+func set_workbench_runtime_status(status_text: String, color: Color = Color("#e4ae35")) -> void:
+	if _workbench_runtime_label == null:
+		return
+	_workbench_runtime_label.text = status_text.strip_edges().to_upper()
+	_workbench_runtime_label.add_theme_color_override("font_color", color)
+
+
+func set_workbench_trace(trace: Dictionary) -> void:
+	if _compiler_output == null:
+		return
+
+	var output_lines := PackedStringArray(["COMPILER TRACE"])
+	var stage := str(trace.get("stage", "")).strip_edges()
+	var status := str(trace.get("status", "")).strip_edges()
+	var agent_name := str(trace.get("agent_name", "")).strip_edges()
+	var target_source := str(trace.get("target_source", "")).strip_edges()
+	if stage != "":
+		output_lines.append("stage     %s" % stage)
+	if status != "":
+		output_lines.append("status    %s" % status)
+	if agent_name != "":
+		output_lines.append("agent     %s" % agent_name)
+	if trace.has("target_tile"):
+		var target_label := _workbench_target_label(trace.get("target_tile"))
+		if target_label != "":
+			var source_suffix := " · %s" % target_source if target_source != "" else ""
+			output_lines.append("target    %s%s" % [target_label, source_suffix])
+
+	_append_workbench_trace_issues(output_lines, "error", trace.get("issues", trace.get("errors", [])))
+	_append_workbench_trace_issues(output_lines, "warning", trace.get("warnings", []))
+
+	var drift = trace.get("drift", {})
+	if typeof(drift) == TYPE_DICTIONARY:
+		var drift_level := str(drift.get("level", "")).strip_edges()
+		if drift_level != "":
+			output_lines.append("drift     %s" % drift_level)
+
+	for line in trace.get("lines", []):
+		var detail := str(line).strip_edges()
+		if detail != "":
+			output_lines.append(detail)
+
+	for key in ["run_id", "order_id"]:
+		var identifier := str(trace.get(key, "")).strip_edges()
+		if identifier != "":
+			output_lines.append("%s  %s" % [str(key).replace("_", " ").rpad(9), identifier])
+
+	# Player-authored labels and parser messages are always rendered as plain text.
+	_compiler_output.bbcode_enabled = false
+	_compiler_output.text = "\n".join(output_lines)
+	if trace.has("runtime_status"):
+		var runtime_color = trace.get("runtime_color", Color("#e4ae35"))
+		if typeof(runtime_color) != TYPE_COLOR:
+			runtime_color = Color("#e4ae35")
+		set_workbench_runtime_status(str(trace.get("runtime_status", "")), runtime_color)
+
+
+func _append_workbench_trace_issues(output_lines: PackedStringArray, label: String, issues) -> void:
+	if typeof(issues) != TYPE_ARRAY:
+		return
+	for issue_value in issues:
+		if typeof(issue_value) != TYPE_DICTIONARY:
+			var issue_text := str(issue_value).strip_edges()
+			if issue_text != "":
+				output_lines.append("%s  %s" % [label.rpad(9), issue_text])
+			continue
+		var issue: Dictionary = issue_value
+		var location := ""
+		var line_number := int(issue.get("line", 0))
+		var column_number := int(issue.get("col", issue.get("column", 0)))
+		if line_number > 0:
+			location = "line %s" % line_number
+			if column_number > 0:
+				location += ":%s" % column_number
+			location += " · "
+		var message := str(issue.get("message", "Needs revision.")).strip_edges()
+		output_lines.append("%s  %s%s" % [label.rpad(9), location, message])
+		var suggestion := str(issue.get("suggestion", "")).strip_edges()
+		if suggestion != "":
+			output_lines.append("fix       %s" % suggestion)
+
+
+func _workbench_target_label(value) -> String:
+	if typeof(value) == TYPE_VECTOR2I:
+		return "(%s, %s)" % [value.x, value.y]
+	if typeof(value) == TYPE_VECTOR2:
+		return "(%s, %s)" % [int(value.x), int(value.y)]
+	if typeof(value) == TYPE_DICTIONARY:
+		return "(%s, %s)" % [int(value.get("x", -1)), int(value.get("y", -1))]
+	if typeof(value) == TYPE_ARRAY and value.size() >= 2:
+		return "(%s, %s)" % [int(value[0]), int(value[1])]
+	return ""
 
 
 func set_skill_forge_templates(previews: Array) -> void:
@@ -1318,12 +1414,25 @@ func _build_code_workbench() -> void:
 
 	_workbench_runtime_label = Label.new()
 	_workbench_runtime_label.name = "WorkbenchRuntimeStatus"
-	_workbench_runtime_label.text = "DRAFT  ·  TUTOR RUNTIME OFFLINE"
+	_workbench_runtime_label.text = "READY  ·  LOCAL COMPILER"
 	_workbench_runtime_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_workbench_runtime_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_workbench_runtime_label.add_theme_font_size_override("font_size", 10)
 	_workbench_runtime_label.add_theme_color_override("font_color", Color("#e4ae35"))
 	header.add_child(_workbench_runtime_label)
+
+	_workbench_compile_button = Button.new()
+	_workbench_compile_button.name = "WorkbenchCompileButton"
+	_workbench_compile_button.text = "COMPILE"
+	_workbench_compile_button.tooltip_text = "Compile and run · Cmd/Ctrl+Enter"
+	_workbench_compile_button.custom_minimum_size = Vector2(82, 18)
+	_workbench_compile_button.add_theme_font_size_override("font_size", 10)
+	_workbench_compile_button.add_theme_color_override("font_color", Color("#f0e6c9"))
+	_workbench_compile_button.add_theme_stylebox_override("normal", _workbench_chip_style(Color("#8a5735")))
+	_workbench_compile_button.add_theme_stylebox_override("hover", _workbench_chip_style(Color("#a96b43")))
+	_workbench_compile_button.add_theme_stylebox_override("pressed", _workbench_chip_style(Color("#6d422c")))
+	_workbench_compile_button.pressed.connect(_request_workbench_compile)
+	header.add_child(_workbench_compile_button)
 
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 8)
@@ -1351,6 +1460,7 @@ func _build_code_workbench() -> void:
 	_code_editor.add_theme_color_override("line_number_color", Color("#70816f"))
 	_code_editor.add_theme_stylebox_override("normal", _code_editor_style())
 	_code_editor.text_changed.connect(_on_workbench_text_changed)
+	_code_editor.gui_input.connect(_on_workbench_editor_gui_input)
 	body.add_child(_code_editor)
 
 	var highlighter := CodeHighlighter.new()
@@ -1379,19 +1489,37 @@ func _build_code_workbench() -> void:
 
 	_compiler_output = RichTextLabel.new()
 	_compiler_output.name = "CompilerOutput"
-	_compiler_output.bbcode_enabled = true
+	_compiler_output.bbcode_enabled = false
 	_compiler_output.fit_content = false
 	_compiler_output.scroll_active = true
-	_compiler_output.text = "[color=#9ac76e]COMPILER TRACE[/color]\n[color=#70816f]runtime[/color]  tutor bridge offline\n[color=#70816f]target[/color]   selected_tile\n[color=#70816f]tools[/color]    inspect_tile → harvest_crop\n[color=#70816f]check[/color]    inventory_delta\n[color=#70816f]receipt[/color]  Harvest Crops run\n\n[color=#e4ae35]Draft freely. Game state is disconnected.[/color]"
+	_compiler_output.text = "COMPILER TRACE\nruntime   local deterministic compiler ready\ntarget    select a farm tile, then compile\nshortcut  Cmd/Ctrl+Enter"
 	_compiler_output.add_theme_font_size_override("normal_font_size", 11)
 	_compiler_output.add_theme_color_override("default_color", Color("#d7cbb0"))
 	output_margin.add_child(_compiler_output)
 
 
 func _on_workbench_text_changed() -> void:
-	if _workbench_runtime_label:
-		_workbench_runtime_label.text = "UNSAVED  ·  TUTOR RUNTIME OFFLINE"
-		_workbench_runtime_label.add_theme_color_override("font_color", Color("#e7785b"))
+	set_workbench_runtime_status("UNSAVED  ·  READY TO COMPILE", Color("#e7785b"))
+
+
+func _on_workbench_editor_gui_input(event: InputEvent) -> void:
+	if not event is InputEventKey:
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo or (not key_event.meta_pressed and not key_event.ctrl_pressed):
+		return
+	var keycode := key_event.keycode if key_event.keycode != KEY_NONE else key_event.physical_keycode
+	if keycode not in [KEY_ENTER, KEY_KP_ENTER]:
+		return
+	_code_editor.accept_event()
+	_request_workbench_compile()
+
+
+func _request_workbench_compile() -> void:
+	if _code_editor == null:
+		return
+	set_workbench_runtime_status("COMPILING  ·  LOCAL", Color("#e4ae35"))
+	workbench_compile_requested.emit(_code_editor.text)
 
 
 func _build_view_controls(parent: VBoxContainer) -> void:
@@ -1989,7 +2117,7 @@ func _set_skill_forge_revision_button_enabled(is_enabled: bool) -> void:
 func _refresh_skill_forge_action_tooltips(has_active: bool) -> void:
 	if _skill_forge_run_button:
 		if has_active:
-			_skill_forge_run_button.tooltip_text = "Run the selected starter spec through the local harness | Stage: Spec Preview -> Harness Receipt"
+			_skill_forge_run_button.tooltip_text = "Draft a crew order, then verify the real farm result | Stage: Spec Preview -> Crew Order -> World Check"
 		else:
 			_skill_forge_run_button.tooltip_text = "Load a starter spec before running the harness"
 	if _skill_forge_review_button:
@@ -2213,7 +2341,7 @@ func _skill_forge_result_trace_text(result: Dictionary) -> String:
 	var has_order := str(result.get("drafted_order_id", "")).strip_edges() != ""
 	if directive_kind == "work_order_directive":
 		if has_order:
-			return "Spec > Directive > Work Order > Harness Receipt" if status in ["passed", "failed"] else "Spec > Directive > Work Order"
+			return "Spec > Directive > Work Order > World Check" if status in ["passed", "failed"] else "Spec > Directive > Work Order"
 		return "Spec > Directive > Order Blocked"
 	return "Spec > Directive > Forge Receipt"
 
@@ -2230,7 +2358,7 @@ func _skill_forge_result_route_line_text(result: Dictionary) -> String:
 	var has_order := str(result.get("drafted_order_id", "")).strip_edges() != ""
 	if directive_kind == "work_order_directive":
 		if has_order:
-			return "Spec > Crew Order > Harness Receipt" if status in ["passed", "failed"] else "Spec > Crew Order"
+			return "Spec > Crew Order > World Check" if status in ["passed", "failed"] else "Spec > Crew Order"
 		return "Spec > Order Blocked"
 	if directive_kind == "skill_directive":
 		return "Spec > Forge Receipt"
@@ -2438,7 +2566,7 @@ func _skill_forge_result_history_stage(result: Dictionary) -> String:
 
 	var directive_kind := str(directive.get("kind", "")).strip_edges()
 	if directive_kind == "work_order_directive" and str(result.get("drafted_order_id", "")).strip_edges() != "":
-		return "Harness Receipt" if status in ["passed", "failed"] else "Work Order"
+		return "World Check" if status in ["passed", "failed"] else "Work Order"
 	if directive_kind == "skill_directive":
 		return "Forge Receipt"
 	return "Forge Receipt" if directive_kind != "" else ""
@@ -2461,12 +2589,12 @@ func _skill_forge_result_next_line_text(result: Dictionary) -> String:
 	if status == "failed":
 		return "Revise and rerun"
 	if status == "started":
-		return "Harness Receipt"
+		return "Send crew order"
 
 	var directive: Dictionary = result.get("directive", {})
 	var directive_kind := str(directive.get("kind", "")).strip_edges()
 	if status == "passed" and directive_kind == "work_order_directive" and str(result.get("drafted_order_id", "")).strip_edges() != "":
-		return "Send crew order"
+		return "Review verified receipt"
 	if status == "passed" and directive_kind == "skill_directive":
 		return "Field Log receipt"
 	return ""
@@ -2487,8 +2615,8 @@ func _skill_forge_result_lesson_text(result: Dictionary) -> String:
 	var has_order := str(result.get("drafted_order_id", "")).strip_edges() != ""
 	if directive_kind == "work_order_directive" and has_order:
 		if status == "started":
-			return "Lesson Spec -> crew work order; wait for harness receipt."
-		return "Lesson Spec -> crew work order; send for agent receipt."
+			return "Lesson Spec -> crew work order; send it, then wait for the world check."
+		return "Lesson Spec -> world change checked against the success condition."
 	if directive_kind == "skill_directive":
 		return "Lesson Spec -> Forge-only receipt; field log keeps receipt."
 	if status == "started":
@@ -2526,15 +2654,15 @@ func _skill_forge_result_trace_scan_text(result: Dictionary) -> String:
 	if status == "blocked":
 		return "Spec blocked | Next use Fix"
 	if status == "failed":
-		return "Spec checked | Harness failed | Next revise"
+		return "World check failed | Next revise"
 
 	var directive: Dictionary = result.get("directive", {})
 	var directive_kind := str(directive.get("kind", "")).strip_edges()
 	var has_order := str(result.get("drafted_order_id", "")).strip_edges() != ""
 	if directive_kind == "work_order_directive" and has_order:
 		if status == "started":
-			return "Spec checked | Crew order drafted | Next harness receipt"
-		return "Spec checked | Crew order drafted | Next send order"
+			return "Spec checked | Crew order drafted | Next send order"
+		return "Crew action observed | World check recorded"
 	if directive_kind == "skill_directive":
 		return "Spec checked | Forge receipt only | Next field log"
 	if status == "started":
@@ -2554,7 +2682,7 @@ func _skill_forge_result_receipt_line_text(result: Dictionary) -> String:
 	if status == "blocked":
 		return _skill_forge_first_issue_text(result)
 	if status == "started":
-		return "harness started"
+		return "order drafted; verification pending"
 	return ""
 
 
@@ -2892,8 +3020,8 @@ func _skill_forge_current_history_next_step_text(text: String) -> String:
 		return "Use Fix"
 	if text.begins_with("Passed "):
 		match _skill_forge_parenthetical_history_stage(text):
-			"Harness Receipt":
-				return "Send crew order"
+			"World Check":
+				return "Review verified receipt"
 			"Forge Receipt":
 				return "Field Log receipt"
 	return ""
@@ -2910,13 +3038,13 @@ func _skill_forge_current_history_trace_scan_text(text: String) -> String:
 	if text.begins_with("Agent Receipt "):
 		return "Agent receipt logged | Next day summary"
 	if text.begins_with("Failed "):
-		return "Spec checked | Harness failed | Next revise"
+		return "World check failed | Next revise"
 	if text.begins_with("Blocked "):
 		return "Spec blocked | Next use Fix"
 	if text.begins_with("Passed "):
 		match _skill_forge_parenthetical_history_stage(text):
-			"Harness Receipt":
-				return "Spec checked | Crew order drafted | Next send order"
+			"World Check":
+				return "Crew action observed | World check recorded"
 			"Forge Receipt":
 				return "Spec checked | Forge receipt only | Next field log"
 	return ""
@@ -3561,7 +3689,7 @@ func _skill_forge_work_order_next_tooltip(order: Dictionary) -> String:
 func _skill_forge_work_order_lesson_tooltip(order: Dictionary) -> String:
 	match str(order.get("status", "ready")).strip_edges():
 		"ready":
-			return "Spec became a crew work order; send for agent receipt."
+			return "Spec became a crew work order; send it, then wait for the world check."
 		"queued":
 			return "Crew queued the work order; wait for agent receipt."
 		"waiting":

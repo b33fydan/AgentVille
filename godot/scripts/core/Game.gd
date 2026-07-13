@@ -3,8 +3,10 @@ extends Node
 const GameEventLogScript: Script = preload("res://scripts/ai/GameEventLog.gd")
 const AgentManagerScript: Script = preload("res://scripts/ai/AgentManager.gd")
 const AdversarialSessionManagerScript: Script = preload("res://scripts/ai/AdversarialSessionManager.gd")
+const SkillCheckEvaluatorScript: Script = preload("res://scripts/systems/SkillCheckEvaluator.gd")
 const SkillForgeRunHarnessScript: Script = preload("res://scripts/systems/SkillForgeRunHarness.gd")
 const SkillForgeTemplateLibraryScript: Script = preload("res://scripts/systems/SkillForgeTemplateLibrary.gd")
+const SkillScriptParserScript: Script = preload("res://scripts/systems/SkillScriptParser.gd")
 const RECIPES: Dictionary = {
 	"fence_kit": {
 		"label": "Fence Kit",
@@ -105,6 +107,9 @@ var _agent_manager
 var _adversarial_session
 var _skill_forge_templates = SkillForgeTemplateLibraryScript.new()
 var _skill_forge_run_harness = SkillForgeRunHarnessScript.new()
+var _skill_check_evaluator = SkillCheckEvaluatorScript.new()
+var _skill_script_parser = SkillScriptParserScript.new()
+var _pending_skill_forge_run: Dictionary = {}
 var _crew_priority_timer: float = 0.0
 var _next_work_order_number: int = 1
 var _next_crafting_demand_number: int = 1
@@ -155,6 +160,7 @@ func _connect_systems() -> void:
 	placement_tool.sound_requested.connect(sound_manager.play_stamp)
 	placement_tool.action_logged.connect(_on_player_action_logged)
 	placement_tool.crew_order_targeted.connect(_on_crew_order_targeted)
+	placement_tool.selected_tile_changed.connect(_on_selected_tile_changed)
 
 	game_ui.tool_selected.connect(_on_tool_selected)
 	game_ui.item_selected.connect(_on_palette_item_selected)
@@ -176,6 +182,7 @@ func _connect_systems() -> void:
 	game_ui.skill_forge_run_requested.connect(_on_skill_forge_run_requested)
 	game_ui.skill_forge_review_requested.connect(_on_skill_forge_review_requested)
 	game_ui.skill_forge_revision_requested.connect(_on_skill_forge_revision_requested)
+	game_ui.workbench_compile_requested.connect(_on_workbench_compile_requested)
 
 	if _agent_manager:
 		_agent_manager.agent_comment.connect(game_ui.show_message)
@@ -301,11 +308,11 @@ func _on_work_order_tool_selected(action_id: String) -> void:
 
 
 func _on_skill_forge_run_requested(template_id: String) -> void:
-	_run_skill_forge_template(template_id, _skill_forge_completion_detail(template_id), "Skill Forge run recorded.")
+	_run_skill_forge_template(template_id, "Skill Forge order drafted.")
 
 
 func _on_skill_forge_revision_requested(template_id: String) -> void:
-	_run_skill_forge_template(template_id, _skill_forge_revision_completion_detail(template_id), "Skill Forge revision recorded.")
+	_run_skill_forge_template(template_id, "Skill Forge revision compiled.")
 
 
 func _on_skill_forge_review_requested(template_id: String) -> void:
@@ -329,7 +336,7 @@ func _on_skill_forge_review_requested(template_id: String) -> void:
 	game_ui.show_message("Skill Forge draft passed.")
 
 
-func _run_skill_forge_template(template_id: String, result_detail: String, success_message: String) -> void:
+func _run_skill_forge_template(template_id: String, success_message: String) -> void:
 	if _skill_forge_templates == null or _skill_forge_run_harness == null:
 		return
 
@@ -339,18 +346,349 @@ func _run_skill_forge_template(template_id: String, result_detail: String, succe
 		sound_manager.play_stamp("error_soft")
 		return
 
-	var start_result: Dictionary = _skill_forge_run_harness.start_manual_run(spec, _skill_forge_request_for_template(template_id))
-	_apply_skill_forge_result(start_result)
-	if str(start_result.get("status", "")) != "started":
-		game_ui.show_message("Skill Forge blocked the run.")
+	var start_result := _start_skill_forge_spec(spec, _skill_forge_request_for_template(template_id), "skill_forge")
+	if str(start_result.get("status", "")) == "started":
+		game_ui.show_message("%s Send the drafted crew order to verify it." % success_message)
+
+
+func _on_selected_tile_changed(grid_pos: Vector2i) -> void:
+	game_ui.set_workbench_trace({
+		"stage": "TARGET SELECTED",
+		"status": "READY",
+		"runtime_status": "READY  ·  LOCAL COMPILER",
+		"target_tile": grid_pos,
+		"target_source": "selected_tile",
+		"lines": ["selected_tile -> (%s,%s)" % [grid_pos.x, grid_pos.y], "Press COMPILE or Cmd/Ctrl+Enter."]
+	})
+
+
+func _on_workbench_compile_requested(source_text: String) -> void:
+	if _skill_script_parser == null:
+		return
+	var parsed: Dictionary = _skill_script_parser.parse(source_text)
+	if not bool(parsed.get("ok", false)):
+		var parse_error: Dictionary = parsed.get("error", {})
+		game_ui.set_workbench_trace({
+			"stage": "PARSE ERROR",
+			"status": "BLOCKED",
+			"runtime_status": "BLOCKED  ·  FIX LINE %s" % int(parse_error.get("line", 1)),
+			"runtime_color": Color("#e7785b"),
+			"issues": [parse_error],
+			"lines": ["Parser stopped before validation."]
+		})
+		game_ui.show_message("Workbench parse stopped at line %s." % int(parse_error.get("line", 1)))
 		sound_manager.play_stamp("error_soft")
 		return
 
-	var completion_result: Dictionary = _skill_forge_run_harness.complete_run(start_result, true, {
-		"result_detail": result_detail
+	var spec: Dictionary = parsed.get("spec", {})
+	var request: Dictionary = parsed.get("request", {}).duplicate(true)
+	var target_info := _workbench_target_for_spec(spec)
+	request["target_tile"] = target_info.get("target_tile", Vector2i(-1, -1))
+	request["target_source"] = str(target_info.get("target_source", "template_fallback"))
+	request["day"] = grid_manager.day
+	request["source_context"] = {
+		"source": "skill_forge",
+		"label": "Agent Workbench"
+	}
+	_start_skill_forge_spec(spec, request, "workbench")
+
+
+func _workbench_target_for_spec(spec: Dictionary) -> Dictionary:
+	if placement_tool != null and placement_tool.has_method("has_selected_tile") and bool(placement_tool.call("has_selected_tile")):
+		return {
+			"target_tile": placement_tool.call("get_selected_grid_pos"),
+			"target_source": "selected_tile"
+		}
+	var action := _skill_forge_primary_action(spec)
+	var template_by_action := {
+		"build_fence": "build_fence_starter",
+		"clear_brush": "clear_patch_starter",
+		"harvest_crop": "harvest_crops_starter",
+		"plant_seed": "plant_seed_starter",
+		"tend_crop": "tend_crops_starter"
+	}
+	return {
+		"target_tile": _skill_forge_target_for_template(str(template_by_action.get(action, ""))),
+		"target_source": "template_fallback"
+	}
+
+
+func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: String) -> Dictionary:
+	_cancel_pending_skill_forge_run("order never completed; replaced by a newer compile", true)
+	var start_result: Dictionary = _skill_forge_run_harness.start_manual_run(spec, request)
+	var validation: Dictionary = start_result.get("validation", {})
+	var target: Vector2i = request.get("target_tile", Vector2i(-1, -1))
+	if str(start_result.get("status", "")) != "started":
+		_apply_skill_forge_result(start_result)
+		if origin == "workbench":
+			game_ui.set_workbench_trace({
+				"stage": "VALIDATION BLOCKED",
+				"status": "BLOCKED",
+				"runtime_status": "BLOCKED  ·  VALIDATION",
+				"runtime_color": Color("#e7785b"),
+				"agent_name": str(request.get("agent_name", "Crew")),
+				"target_tile": target,
+				"target_source": str(request.get("target_source", "selected_tile")),
+				"issues": validation.get("errors", []),
+				"warnings": validation.get("warnings", []),
+				"drift": validation.get("drift", {}),
+				"lines": ["Parse passed.", "Validator rejected the Skill Spec."]
+			})
+		game_ui.show_message("Workbench validation blocked the run.")
+		sound_manager.play_stamp("error_soft")
+		return start_result
+
+	var before := _skill_forge_snapshot(target)
+	var guard_condition := _skill_forge_guard_condition(spec)
+	var guard_result: Dictionary = _skill_check_evaluator.evaluate_guard(guard_condition, before)
+	if not bool(guard_result.get("allowed", false)):
+		var blocked_result: Dictionary = _skill_forge_run_harness.block_run(start_result, {
+			"result_detail": str(guard_result.get("result_detail", "Runtime guard blocked the run.")),
+			"day": grid_manager.day
+		})
+		_apply_skill_forge_result(blocked_result)
+		if origin == "workbench":
+			game_ui.set_workbench_trace({
+				"stage": "RUNTIME GUARD",
+				"status": "BLOCKED",
+				"runtime_status": "BLOCKED  ·  GUARD",
+				"runtime_color": Color("#e7785b"),
+				"agent_name": str(request.get("agent_name", "Crew")),
+				"target_tile": target,
+				"target_source": str(request.get("target_source", "selected_tile")),
+				"drift": validation.get("drift", {}),
+				"lines": ["Parse passed.", "Validation passed.", str(guard_result.get("result_detail", "Guard blocked."))]
+			})
+		game_ui.show_message(str(guard_result.get("result_detail", "Workbench guard blocked the run.")))
+		sound_manager.play_stamp("error_soft")
+		return blocked_result
+
+	_apply_skill_forge_result(start_result)
+	var order_id := str(start_result.get("drafted_order_id", ""))
+	if order_id == "":
+		var failure_detail := str(start_result.get("drafted_order_blocked_detail", "order never completed because no crew order could be drafted"))
+		var failed_result: Dictionary = _skill_forge_run_harness.complete_run(start_result, false, {
+			"result_detail": failure_detail,
+			"day": grid_manager.day
+		})
+		_apply_skill_forge_result(failed_result)
+		if origin == "workbench":
+			game_ui.set_workbench_trace({
+				"stage": "ORDER BLOCKED",
+				"status": "FAILED",
+				"runtime_status": "FAILED  ·  ORDER BLOCKED",
+				"runtime_color": Color("#e7785b"),
+				"agent_name": str(request.get("agent_name", "Crew")),
+				"target_tile": target,
+				"target_source": str(request.get("target_source", "selected_tile")),
+				"issues": validation.get("errors", []),
+				"warnings": validation.get("warnings", []),
+				"drift": validation.get("drift", {}),
+				"lines": ["Parse passed.", "Validation passed.", failure_detail]
+			})
+		return failed_result
+
+	_pending_skill_forge_run = {
+		"run_id": str(start_result.get("run", {}).get("id", "")),
+		"start_result": start_result.duplicate(true),
+		"order_id": order_id,
+		"target_tile": target,
+		"agent_id": str(request.get("agent_id", "")),
+		"agent_name": str(request.get("agent_name", "Crew")),
+		"success_check": spec.get("success_check", {}).duplicate(true),
+		"guard_condition": guard_condition,
+		"guard_action": str(work_orders.get(order_id, {}).get("agent_action", _skill_forge_primary_action(spec))),
+		"before_snapshot": before.duplicate(true),
+		"started_day": grid_manager.day,
+		"day_advances": 0,
+		"origin": origin,
+		"target_source": str(request.get("target_source", "selected_tile"))
+	}
+	if origin == "workbench":
+		game_ui.set_workbench_trace({
+			"stage": "ORDER DRAFTED",
+			"status": "PENDING WORLD CHECK",
+			"runtime_status": "PENDING  ·  WORLD CHECK",
+			"agent_name": str(request.get("agent_name", "Crew")),
+			"target_tile": target,
+			"target_source": str(request.get("target_source", "selected_tile")),
+			"warnings": validation.get("warnings", []),
+			"drift": validation.get("drift", {}),
+			"run_id": str(_pending_skill_forge_run.get("run_id", "")),
+			"order_id": order_id,
+			"lines": ["Parse passed.", "Validation passed.", str(guard_result.get("result_detail", "Guard passed.")), "Crew order drafted; verification is pending."]
+		})
+	return start_result
+
+
+func _skill_forge_primary_action(spec: Dictionary) -> String:
+	var steps = spec.get("steps", [])
+	if typeof(steps) == TYPE_ARRAY:
+		for index in range(steps.size() - 1, -1, -1):
+			var step = steps[index]
+			if typeof(step) != TYPE_DICTIONARY:
+				continue
+			var tool_name := str(step.get("tool", "")).strip_edges()
+			if tool_name != "" and tool_name != "inspect_tile":
+				return tool_name
+	return ""
+
+
+func _skill_forge_guard_condition(spec: Dictionary) -> String:
+	var action := _skill_forge_primary_action(spec)
+	var steps = spec.get("steps", [])
+	if typeof(steps) == TYPE_ARRAY:
+		for step in steps:
+			if typeof(step) == TYPE_DICTIONARY and str(step.get("tool", "")) == action:
+				var condition := str(step.get("when", "always")).strip_edges()
+				return condition if condition != "" else "always"
+	return "always"
+
+
+func _skill_forge_snapshot(target: Vector2i) -> Dictionary:
+	var tile = grid_manager.get_tile(target) if grid_manager != null else null
+	return _skill_check_evaluator.snapshot(tile, {
+		"resources": resources.duplicate(true),
+		"crafted_items": crafted_items.duplicate(true),
+		"money": money
+	}, target)
+
+
+func _cancel_pending_skill_forge_run(reason: String, remove_order: bool) -> bool:
+	if _pending_skill_forge_run.is_empty():
+		return false
+	var pending := _pending_skill_forge_run.duplicate(true)
+	_pending_skill_forge_run.clear()
+	var run_id := str(pending.get("run_id", ""))
+	if _agent_manager != null and _agent_manager.has_method("cancel_forge_run"):
+		_agent_manager.call("cancel_forge_run", run_id)
+	var order_id := str(pending.get("order_id", ""))
+	if remove_order and work_orders.has(order_id):
+		var order: Dictionary = work_orders[order_id]
+		_release_order_reservation(order)
+		work_orders.erase(order_id)
+		work_order_ids.erase(order_id)
+		_record_removed_work_order_event(order, "forge_cancelled")
+		_refresh_inventory_and_orders()
+	var failure: Dictionary = _skill_forge_run_harness.complete_run(pending.get("start_result", {}), false, {
+		"result_detail": reason,
+		"day": grid_manager.day
 	})
-	_apply_skill_forge_result(completion_result)
-	game_ui.show_message(success_message)
+	_apply_skill_forge_result(failure)
+	if str(pending.get("origin", "")) == "workbench":
+		game_ui.set_workbench_trace({
+			"stage": "WORLD CHECK",
+			"status": "FAILED",
+			"runtime_status": "FAILED",
+			"runtime_color": Color("#e7785b"),
+			"agent_name": str(pending.get("agent_name", "Crew")),
+			"target_tile": pending.get("target_tile", Vector2i(-1, -1)),
+			"target_source": str(pending.get("target_source", "selected_tile")),
+			"run_id": run_id,
+			"order_id": order_id,
+			"lines": [reason]
+		})
+	return true
+
+
+func _finish_pending_skill_forge_run(event: Dictionary) -> void:
+	if _pending_skill_forge_run.is_empty():
+		return
+	var run_id := str(event.get("forge_run_id", ""))
+	var order_id := str(event.get("work_order_id", ""))
+	if run_id == "" or run_id != str(_pending_skill_forge_run.get("run_id", "")):
+		return
+	if order_id == "" or order_id != str(_pending_skill_forge_run.get("order_id", "")):
+		return
+	if str(event.get("action", "")) != str(_pending_skill_forge_run.get("guard_action", "")):
+		return
+	if _demand_target_from_value(event.get("grid_pos", Vector2i(-1, -1))) != _pending_skill_forge_run.get("target_tile", Vector2i(-1, -1)):
+		return
+
+	var pending := _pending_skill_forge_run.duplicate(true)
+	if str(event.get("blocked_condition", "")) != "":
+		_pending_skill_forge_run.clear()
+		var blocked: Dictionary = _skill_forge_run_harness.block_run(pending.get("start_result", {}), {
+			"result_detail": str(event.get("block_detail", "Runtime guard blocked the crew action.")),
+			"day": grid_manager.day
+		})
+		_remove_skill_forge_order(order_id, "guard_blocked")
+		_apply_skill_forge_result(blocked)
+		_update_workbench_terminal_trace(pending, blocked)
+		return
+	if not bool(event.get("success", false)):
+		return
+
+	var after := _skill_forge_snapshot(pending.get("target_tile", Vector2i(-1, -1)))
+	var verdict: Dictionary = _skill_check_evaluator.evaluate(
+		pending.get("success_check", {}),
+		pending.get("before_snapshot", {}),
+		after
+	)
+	_pending_skill_forge_run.clear()
+	var completion: Dictionary = _skill_forge_run_harness.complete_run(pending.get("start_result", {}), bool(verdict.get("passed", false)), {
+		"result_detail": str(verdict.get("result_detail", "World check did not report a result.")),
+		"day": grid_manager.day
+	})
+	_apply_skill_forge_result(completion)
+	_update_workbench_terminal_trace(pending, completion, verdict)
+
+
+func _update_workbench_terminal_trace(pending: Dictionary, result: Dictionary, verdict: Dictionary = {}) -> void:
+	if str(pending.get("origin", "")) != "workbench":
+		return
+	var status := str(result.get("status", "failed")).to_upper()
+	var detail := str(verdict.get("result_detail", result.get("run", {}).get("result_detail", "World check finished.")))
+	game_ui.set_workbench_trace({
+		"stage": "WORLD CHECK",
+		"status": status,
+		"agent_name": str(pending.get("agent_name", "Crew")),
+		"target_tile": pending.get("target_tile", Vector2i(-1, -1)),
+		"target_source": str(pending.get("target_source", "selected_tile")),
+		"run_id": str(pending.get("run_id", "")),
+		"order_id": str(pending.get("order_id", "")),
+		"runtime_status": status,
+		"runtime_color": Color("#8fbe67") if status == "PASSED" else Color("#e7785b"),
+		"lines": [detail]
+	})
+
+
+func _remove_skill_forge_order(order_id: String, removal_status: String) -> void:
+	if not work_orders.has(order_id):
+		return
+	var order: Dictionary = work_orders[order_id]
+	_release_order_reservation(order)
+	work_orders.erase(order_id)
+	work_order_ids.erase(order_id)
+	_record_removed_work_order_event(order, removal_status)
+	_refresh_inventory_and_orders()
+
+
+func _block_pending_skill_forge_target(order_id: String) -> bool:
+	if _pending_skill_forge_run.is_empty() or order_id != str(_pending_skill_forge_run.get("order_id", "")):
+		return false
+	var pending := _pending_skill_forge_run.duplicate(true)
+	_pending_skill_forge_run.clear()
+	var target: Vector2i = pending.get("target_tile", Vector2i(-1, -1))
+	var guard_result: Dictionary = _skill_check_evaluator.evaluate_guard(
+		str(pending.get("guard_condition", "always")),
+		_skill_forge_snapshot(target)
+	)
+	var detail := str(guard_result.get("result_detail", "")).strip_edges()
+	if bool(guard_result.get("allowed", false)):
+		detail = "Crew order blocked at tile (%s,%s): the target no longer accepts %s." % [target.x, target.y, str(work_orders.get(order_id, {}).get("action", "this action"))]
+	if _agent_manager != null and _agent_manager.has_method("cancel_forge_run"):
+		_agent_manager.call("cancel_forge_run", str(pending.get("run_id", "")))
+	var blocked: Dictionary = _skill_forge_run_harness.block_run(pending.get("start_result", {}), {
+		"result_detail": detail,
+		"day": grid_manager.day
+	})
+	_remove_skill_forge_order(order_id, "target_blocked")
+	_apply_skill_forge_result(blocked)
+	_update_workbench_terminal_trace(pending, blocked)
+	game_ui.show_message(detail)
+	sound_manager.play_stamp("error_soft")
+	return true
 
 
 func _skill_forge_blocked_draft_for_template(template_id: String, spec: Dictionary) -> Dictionary:
@@ -436,6 +774,8 @@ func _skill_forge_agent_for_template(template_id: String) -> Dictionary:
 
 
 func _skill_forge_target_for_template(template_id: String) -> Vector2i:
+	if placement_tool != null and placement_tool.has_method("has_selected_tile") and bool(placement_tool.call("has_selected_tile")):
+		return placement_tool.call("get_selected_grid_pos")
 	match template_id:
 		"build_fence_starter":
 			var fence_target := _find_demand_target_tile({"kind": "build_fence"})
@@ -491,36 +831,6 @@ func _first_tend_crop_order_tile() -> Vector2i:
 			if _can_target_crew_order("tend_crop", grid_pos):
 				return grid_pos
 	return Vector2i(-1, -1)
-
-
-func _skill_forge_completion_detail(template_id: String) -> String:
-	match template_id:
-		"build_fence_starter":
-			return "manual harness receipt confirmed fence-building checks"
-		"clear_patch_starter":
-			return "manual harness receipt confirmed clear-patch checks"
-		"harvest_crops_starter":
-			return "manual harness receipt confirmed harvest-crop checks"
-		"plant_seed_starter":
-			return "manual harness receipt confirmed seed-planting checks"
-		"tend_crops_starter":
-			return "manual harness receipt confirmed crop-tending checks"
-	return "manual harness receipt recorded"
-
-
-func _skill_forge_revision_completion_detail(template_id: String) -> String:
-	match template_id:
-		"build_fence_starter":
-			return "replaced summon_rain with build_fence"
-		"clear_patch_starter":
-			return "replaced summon_rain with clear_brush"
-		"harvest_crops_starter":
-			return "replaced summon_rain with harvest_crop"
-		"plant_seed_starter":
-			return "replaced summon_rain with plant_seed"
-		"tend_crops_starter":
-			return "replaced summon_rain with tend_crop"
-	return "starter spec revised and rerun"
 
 
 func _skill_forge_expected_revision_tool(template_id: String, spec: Dictionary) -> String:
@@ -629,7 +939,12 @@ func _maybe_draft_skill_forge_work_order(result: Dictionary) -> String:
 		"agent_name": str(directive.get("agent_name", "")),
 		"directive_id": str(directive.get("id", "")),
 		"directive_kind": str(directive.get("kind", "")),
-		"source_context": directive.get("source_context", {})
+		"source_context": directive.get("source_context", {}),
+		"steps": directive.get("steps", []).duplicate(true),
+		"success_check": directive.get("success_check", {}).duplicate(true),
+		"failure_handling": directive.get("failure_handling", {}).duplicate(true),
+		"guard_condition": _skill_forge_guard_condition_from_directive(directive),
+		"guard_action": str(directive.get("agent_action", action.get("agent_action", action_id)))
 	}
 	work_orders[order_id] = order
 	work_order_ids.append(order_id)
@@ -637,6 +952,18 @@ func _maybe_draft_skill_forge_work_order(result: Dictionary) -> String:
 	game_ui.add_field_log("Forge order drafted: %s -> %s." % [skill_name, base_label])
 	_record_work_order_event(order_id, "forge_drafted")
 	return order_id
+
+
+func _skill_forge_guard_condition_from_directive(directive: Dictionary) -> String:
+	var action := str(directive.get("action", ""))
+	var steps = directive.get("steps", [])
+	if typeof(steps) == TYPE_ARRAY:
+		for step in steps:
+			if typeof(step) != TYPE_DICTIONARY or str(step.get("tool", "")) != action:
+				continue
+			var condition := str(step.get("when", "always")).strip_edges()
+			return condition if condition != "" else "always"
+	return "always"
 
 
 func _has_skill_forge_work_order(forge_run_id: String) -> bool:
@@ -2144,6 +2471,10 @@ func _on_advance_day_requested() -> void:
 		})
 	_age_open_crafting_demands()
 	_escalate_ignored_npc_authored_orders()
+	if not _pending_skill_forge_run.is_empty():
+		_pending_skill_forge_run["day_advances"] = int(_pending_skill_forge_run.get("day_advances", 0)) + 1
+		if int(_pending_skill_forge_run.get("day_advances", 0)) >= 2:
+			_cancel_pending_skill_forge_run("order never completed after two day advances", true)
 	game_ui.show_message("A warm morning rolls in. Crops advanced one stage.")
 
 
@@ -2194,6 +2525,7 @@ func _on_agent_world_action(event: Dictionary) -> void:
 		_maybe_update_skill_forge_receipt_trace(payload, receipt)
 		if bool(payload.get("success", false)):
 			game_ui.show_message(receipt)
+	_finish_pending_skill_forge_run(payload)
 
 
 func _on_craft_requested(recipe_id: String) -> void:
@@ -2261,6 +2593,8 @@ func _on_work_order_requested(order_id: String) -> void:
 		return
 
 	if not _can_order_target(order):
+		if _block_pending_skill_forge_target(order_id):
+			return
 		game_ui.show_message(_targeting_error_message(str(order.get("action", "build_fence"))))
 		sound_manager.play_stamp("error_soft")
 		return
@@ -2292,6 +2626,13 @@ func _on_work_order_cancel_requested(order_id: String) -> void:
 		return
 
 	var order: Dictionary = work_orders[order_id]
+	if not _pending_skill_forge_run.is_empty() and order_id == str(_pending_skill_forge_run.get("order_id", "")):
+		var label := str(order.get("label", "Work order"))
+		_cancel_pending_skill_forge_run("order never completed; player cancelled %s" % label, true)
+		game_ui.show_message("Cancelled pending Forge run: %s." % label)
+		game_ui.add_field_log("Cancelled pending Forge run: %s." % label)
+		sound_manager.play_stamp("erase_puff")
+		return
 	var status := str(order.get("status", "ready"))
 	if status in ["queued", "gathering"]:
 		game_ui.show_message("%s is already with the crew." % str(order.get("label", "Work order")))
@@ -2360,7 +2701,7 @@ func _craft_recipe(recipe_id: String, source: String = "player") -> bool:
 
 func _queue_build_order(order_id: String, quiet: bool = false) -> bool:
 	var order: Dictionary = work_orders[order_id]
-	if _agent_manager == null or not bool(_agent_manager.call("has_available_agent")):
+	if _agent_manager == null or not bool(_agent_manager.call("has_available_agent", str(order.get("agent_id", "")))):
 		if not quiet:
 			game_ui.show_message("Crew is busy; order is waiting.")
 			sound_manager.play_stamp("ui_click")
@@ -2395,7 +2736,7 @@ func _queue_build_order(order_id: String, quiet: bool = false) -> bool:
 
 func _queue_directive_order(order_id: String, quiet: bool = false) -> bool:
 	var order: Dictionary = work_orders[order_id]
-	if _agent_manager == null or not bool(_agent_manager.call("has_available_agent")):
+	if _agent_manager == null or not bool(_agent_manager.call("has_available_agent", str(order.get("agent_id", "")))):
 		if not quiet:
 			game_ui.show_message("Crew is busy; order is waiting.")
 			sound_manager.play_stamp("ui_click")
@@ -2431,7 +2772,7 @@ func _queue_directive_order(order_id: String, quiet: bool = false) -> bool:
 
 func _queue_supply_for_order(order_id: String, quiet: bool = false) -> bool:
 	var order: Dictionary = work_orders[order_id]
-	if _agent_manager == null or not bool(_agent_manager.call("has_available_agent")):
+	if _agent_manager == null or not bool(_agent_manager.call("has_available_agent", str(order.get("agent_id", "")))):
 		if not quiet:
 			game_ui.show_message("Crew is busy; order is waiting.")
 			sound_manager.play_stamp("ui_click")
@@ -2488,6 +2829,8 @@ func _continue_resource_orders(quiet: bool = false) -> void:
 		if status not in ["waiting", "gathering"]:
 			continue
 		if not _can_order_target(order):
+			if _block_pending_skill_forge_target(str(order_id)):
+				continue
 			order["status"] = "ready"
 			order["status_text"] = "Target changed"
 			work_orders[order_id] = order
@@ -2527,7 +2870,10 @@ func _add_resources(gains) -> Dictionary:
 
 func _work_order_directive_extra(order_id: String, order: Dictionary) -> Dictionary:
 	var extra := {
-		"work_order_id": order_id
+		"work_order_id": order_id,
+		"agent_id": str(order.get("agent_id", "")),
+		"guard_condition": str(order.get("guard_condition", "always")),
+		"guard_action": str(order.get("guard_action", order.get("action", "")))
 	}
 	var social_context := _work_order_social_preference_context(order)
 	for key in social_context.keys():

@@ -8,6 +8,7 @@ signal harvest_collected(amount: int)
 signal sound_requested(stamp_name: String)
 signal action_logged(event: Dictionary)
 signal crew_order_targeted(action_id: String, grid_pos: Vector2i)
+signal selected_tile_changed(grid_pos: Vector2i)
 
 enum Tool { PLACE, TILL, PLANT, HARVEST, ERASE, PAN, SELECT }
 
@@ -21,6 +22,8 @@ var crew_order_target_checker: Callable
 var agent_occupancy_checker: Callable
 
 var _hovered_tile
+var _selected_tile
+var _selected_grid_pos: Vector2i = Vector2i(-1, -1)
 var _preview
 var _crew_order_action_id: String = ""
 var _crew_order_preview_item_id: String = ""
@@ -77,6 +80,26 @@ func set_crew_order_target_checker(checker: Callable) -> void:
 func set_agent_occupancy_checker(checker: Callable) -> void:
 	agent_occupancy_checker = checker
 	_update_preview_visibility()
+
+
+func get_selected_tile():
+	if _selected_tile != null and is_instance_valid(_selected_tile):
+		return _selected_tile
+	return null
+
+
+func get_selected_grid_pos() -> Vector2i:
+	if get_selected_tile() == null:
+		return Vector2i(-1, -1)
+	return _selected_grid_pos
+
+
+func has_selected_tile() -> bool:
+	return get_selected_grid_pos() != Vector2i(-1, -1)
+
+
+func clear_selected_tile() -> void:
+	_set_selected_tile(null)
 
 
 func set_crew_order_targeting(action_id: String, preview_item_id: String) -> void:
@@ -152,6 +175,20 @@ func _set_hovered_tile(tile) -> void:
 		_hovered_tile.set_hovered(true)
 
 
+func _set_selected_tile(tile) -> void:
+	if _selected_tile == tile:
+		return
+	if _selected_tile != null and is_instance_valid(_selected_tile) and _selected_tile.has_method("set_selected"):
+		_selected_tile.call("set_selected", false)
+	_selected_tile = tile
+	_selected_grid_pos = Vector2i(-1, -1)
+	if _selected_tile != null and is_instance_valid(_selected_tile):
+		_selected_grid_pos = _selected_tile.grid_pos
+		if _selected_tile.has_method("set_selected"):
+			_selected_tile.call("set_selected", true)
+	selected_tile_changed.emit(_selected_grid_pos)
+
+
 func _apply_to_tile(tile) -> void:
 	var success := false
 	var message := ""
@@ -196,7 +233,8 @@ func _apply_to_tile(tile) -> void:
 				sound_requested.emit(stamp)
 		Tool.SELECT:
 			success = true
-			message = _describe_tile(tile)
+			_set_selected_tile(tile)
+			message = "Selected (%s, %s): %s" % [tile.grid_pos.x, tile.grid_pos.y, _describe_tile(tile)]
 			sound_requested.emit("ui_click")
 		_:
 			pass

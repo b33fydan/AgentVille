@@ -22,6 +22,7 @@ var _top_mesh: MeshInstance3D
 var _soil_mesh: MeshInstance3D
 var _grid_root: Node3D
 var _hover_root: Node3D
+var _selected_root: Node3D
 var _terrain_detail_root: Node3D
 var _decor_root: Node3D
 var _structure_root: Node3D
@@ -64,6 +65,11 @@ func set_grid_visible(is_visible: bool) -> void:
 func set_hovered(is_hovered: bool) -> void:
 	if _hover_root:
 		_hover_root.visible = is_hovered
+
+
+func set_selected(is_selected: bool) -> void:
+	if _selected_root:
+		_selected_root.visible = is_selected
 
 
 func set_order_marker(marker: Dictionary) -> void:
@@ -359,6 +365,12 @@ func _build_static() -> void:
 	add_child(_hover_root)
 	_build_frame(_hover_root, Color("#fff1a8"), 0.055, 0.19)
 	_hover_root.visible = false
+
+	_selected_root = Node3D.new()
+	_selected_root.name = "SelectedFrame"
+	add_child(_selected_root)
+	_build_frame(_selected_root, Color("#79d8c0"), 0.072, 0.215)
+	_selected_root.visible = false
 
 	_terrain_detail_root = Node3D.new()
 	_terrain_detail_root.name = "TerrainDetails"

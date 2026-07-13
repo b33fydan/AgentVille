@@ -50,6 +50,8 @@ func complete_run(start_result: Dictionary, passed: bool, details: Dictionary = 
 	var run: Dictionary = start_result.get("run", start_result).duplicate(true)
 	var status_text := "passed" if passed else "failed"
 	run["status"] = status_text
+	if details.has("day"):
+		run["day"] = int(details.get("day", run.get("day", 1)))
 	run["result_detail"] = str(details.get("result_detail", "pass/fail recorded")).strip_edges()
 	if run["result_detail"] == "":
 		run["result_detail"] = "pass/fail recorded"
@@ -61,6 +63,21 @@ func complete_run(start_result: Dictionary, passed: bool, details: Dictionary = 
 
 	var directive: Dictionary = start_result.get("directive", {})
 	return _result_from_run(run, directive, status_text, _completion_field_log_line(run, passed), start_result.get("validation", {}))
+
+
+func block_run(start_result: Dictionary, details: Dictionary = {}) -> Dictionary:
+	var run: Dictionary = start_result.get("run", start_result).duplicate(true)
+	run["status"] = "blocked"
+	if details.has("day"):
+		run["day"] = int(details.get("day", run.get("day", 1)))
+	run["result_detail"] = str(details.get("result_detail", "runtime guard blocked the run")).strip_edges()
+	if run["result_detail"] == "":
+		run["result_detail"] = "runtime guard blocked the run"
+	var drift: Dictionary = run.get("drift", {})
+	drift["level"] = str(details.get("drift_level", "steady"))
+	run["drift"] = drift
+	var directive: Dictionary = start_result.get("directive", {})
+	return _result_from_run(run, directive, "blocked", _runtime_blocked_field_log_line(run), start_result.get("validation", {}))
 
 
 func _base_run(spec: Dictionary, validation: Dictionary, request: Dictionary) -> Dictionary:
@@ -120,6 +137,7 @@ func _build_directive(run: Dictionary, spec: Dictionary, request: Dictionary) ->
 		"agent_name": str(run.get("agent_name", "Crew")),
 		"steps": spec.get("steps", []).duplicate(true) if typeof(spec.get("steps", [])) == TYPE_ARRAY else [],
 		"success_check": spec.get("success_check", {}).duplicate(true),
+		"failure_handling": spec.get("failure_handling", {}).duplicate(true),
 		"receipt": spec.get("receipt", {}).duplicate(true),
 		"source_context": run.get("source_context", {}).duplicate(true)
 	}
@@ -226,6 +244,20 @@ func _completion_field_log_line(run: Dictionary, passed: bool) -> String:
 		if suggestion != "":
 			line += " %s" % suggestion
 	return line
+
+
+func _runtime_blocked_field_log_line(run: Dictionary) -> String:
+	var detail := str(run.get("result_detail", "runtime guard blocked the run")).strip_edges()
+	var line := "Skill Forge blocked %s for %s at %s: %s" % [
+		str(run.get("skill_name", "Skill Run")),
+		str(run.get("agent_name", "Crew")),
+		_format_tile(run.get("target_tile", Vector2i(-1, -1))),
+		detail
+	]
+	var suggestion := str(run.get("failure_suggestion", "")).strip_edges()
+	if suggestion != "":
+		line += " %s" % suggestion
+	return "%s." % line.trim_suffix(".")
 
 
 func _first_issue_message(issues) -> String:

@@ -225,11 +225,21 @@ func apply_crew_boost(seconds: float, multiplier: float = 1.28) -> void:
 	crew_updated.emit(get_agent_snapshots())
 
 
+func cancel_forge_run(run_id: String) -> bool:
+	var cancelled := false
+	for agent in agents:
+		if agent.has_method("cancel_forge_run") and bool(agent.call("cancel_forge_run", run_id)):
+			cancelled = true
+	if cancelled:
+		crew_updated.emit(get_agent_snapshots())
+	return cancelled
+
+
 func assign_work_order(order: Dictionary) -> bool:
 	if agents.is_empty():
 		return false
 
-	var agent = _next_available_agent()
+	var agent = _available_agent(str(order.get("agent_id", "")))
 	if agent == null:
 		return false
 
@@ -242,7 +252,7 @@ func assign_directive(action_name: String, target_tile: Vector2i, reason: String
 	if agents.is_empty():
 		return false
 
-	var agent = _next_available_agent()
+	var agent = _available_agent(str(extra.get("agent_id", "")))
 	if agent == null:
 		return false
 
@@ -251,8 +261,24 @@ func assign_directive(action_name: String, target_tile: Vector2i, reason: String
 	return true
 
 
-func has_available_agent() -> bool:
-	return _next_available_agent(false) != null
+func has_available_agent(preferred_agent_id: String = "") -> bool:
+	return _available_agent(preferred_agent_id, false) != null
+
+
+func _available_agent(preferred_agent_id: String = "", advance_index: bool = true):
+	var normalized_id := preferred_agent_id.strip_edges().to_lower()
+	if normalized_id != "":
+		for index in range(agents.size()):
+			var candidate = agents[index]
+			if str(candidate.get("agent_id")).to_lower() != normalized_id:
+				continue
+			if not bool(candidate.call("is_available")):
+				return null
+			if advance_index:
+				_focused_agent_index = index + 1
+			return candidate
+		return null
+	return _next_available_agent(advance_index)
 
 
 func _next_available_agent(advance_index: bool = true):
