@@ -22,6 +22,9 @@ signal skill_forge_run_requested(template_id: String)
 signal skill_forge_review_requested(template_id: String)
 signal skill_forge_revision_requested(template_id: String)
 signal workbench_compile_requested(source_text: String)
+signal lesson_selected(lesson_id: String)
+signal program_save_requested(program_name: String, source_text: String)
+signal program_load_requested(program_name: String)
 
 const BuildPaletteScene := preload("res://scenes/ui/BuildPalette.tscn")
 const VoxelIconScript := preload("res://scripts/ui/VoxelIcon.gd")
@@ -43,6 +46,9 @@ var _code_editor: CodeEdit
 var _compiler_output: RichTextLabel
 var _workbench_runtime_label: Label
 var _workbench_compile_button: Button
+var _workbench_filename_label: Label
+var _workbench_lesson_goal_label: Label
+var _suppress_workbench_text_changed: bool = false
 var _crew_rows: Dictionary = {}
 var _crew_signal_labels: Dictionary = {}
 var _field_log_stack: VBoxContainer
@@ -92,6 +98,16 @@ var _skill_forge_review_button: Button
 var _skill_forge_revision_button: Button
 var _skill_forge_last_blocked_template_id: String = ""
 var _skill_forge_history_entries: Array[String] = []
+var _lesson_list_stack: VBoxContainer
+var _lesson_buttons: Dictionary = {}
+var _lesson_rows: Array = []
+var _current_lesson_id: String = ""
+var _completed_lesson_ids: Array[String] = []
+var _program_name_edit: LineEdit
+var _program_picker: OptionButton
+var _program_save_button: Button
+var _program_load_button: Button
+var _view_toggle_buttons: Dictionary = {}
 var _crew_status_label: Label
 var _parley_button: Button
 var _parley_prompt_active: bool = false
@@ -194,11 +210,101 @@ func set_workbench_runtime_status(status_text: String, color: Color = Color("#e4
 	_workbench_runtime_label.add_theme_color_override("font_color", color)
 
 
+func set_workbench_source(source_text: String, source_label: String = "lesson.agent") -> void:
+	if _code_editor == null:
+		return
+	_suppress_workbench_text_changed = true
+	_code_editor.text = source_text
+	_suppress_workbench_text_changed = false
+	if _workbench_filename_label:
+		var clean_label := source_label.strip_edges()
+		_workbench_filename_label.text = "  %s  " % (clean_label if clean_label != "" else "lesson.agent")
+	set_workbench_runtime_status("READY  ·  LOCAL COMPILER", Color("#e4ae35"))
+
+
+func get_workbench_source() -> String:
+	return _code_editor.text if _code_editor else ""
+
+
+func set_lesson_ladder(lessons: Array, current_lesson_id: String, completed_lesson_ids: Array) -> void:
+	_lesson_rows = lessons.duplicate(true)
+	_current_lesson_id = current_lesson_id
+	_completed_lesson_ids.clear()
+	for lesson_id in completed_lesson_ids:
+		_completed_lesson_ids.append(str(lesson_id))
+	_rebuild_lesson_buttons()
+
+
+func set_current_lesson_goal(lesson: Dictionary) -> void:
+	if _workbench_lesson_goal_label == null:
+		return
+	if lesson.is_empty():
+		_workbench_lesson_goal_label.text = "CURRICULUM COMPLETE\nEvery lesson receipt is in your field log."
+		_workbench_lesson_goal_label.tooltip_text = "All AgentVille lessons are complete."
+		return
+	var ordinal := int(lesson.get("order", 0))
+	var title := str(lesson.get("title", "Current lesson")).strip_edges()
+	var goal := str(lesson.get("goal", "Read the goal in the AGENT tab.")).strip_edges()
+	_workbench_lesson_goal_label.text = "LESSON %02d · %s\n%s" % [ordinal, title, goal]
+	_workbench_lesson_goal_label.tooltip_text = "%s | Concept: %s" % [goal, str(lesson.get("concept", "agent workflow"))]
+
+
+func set_saved_programs(programs: Array) -> void:
+	if _program_picker == null:
+		return
+	var names: Array[String] = []
+	for program in programs:
+		var program_name := ""
+		if typeof(program) == TYPE_DICTIONARY:
+			program_name = str(program.get("name", "")).strip_edges()
+		else:
+			program_name = str(program).strip_edges()
+		if program_name != "" and not names.has(program_name):
+			names.append(program_name)
+	names.sort()
+	_program_picker.clear()
+	for program_name in names:
+		_program_picker.add_item(program_name)
+	var has_programs := not names.is_empty()
+	if _program_load_button:
+		_program_load_button.disabled = not has_programs
+	if has_programs and _program_name_edit and _program_name_edit.text.strip_edges() == "":
+		_program_name_edit.text = names[0]
+
+
+func set_view_toggle_states(settings: Dictionary) -> void:
+	for key in ["ambient_occlusion", "grid", "shadows"]:
+		var button = _view_toggle_buttons.get(key, null) as Button
+		if button == null:
+			continue
+		var is_on := bool(settings.get(key, button.button_pressed))
+		button.set_pressed_no_signal(is_on)
+		_update_toggle_text(button, _view_toggle_label(key))
+		button.add_theme_stylebox_override("normal", _toggle_style(is_on))
+
+
+func get_view_toggle_states() -> Dictionary:
+	var states := {}
+	for key in ["ambient_occlusion", "grid", "shadows"]:
+		var button = _view_toggle_buttons.get(key, null) as Button
+		if button:
+			states[key] = button.button_pressed
+	return states
+
+
 func set_workbench_trace(trace: Dictionary) -> void:
 	if _compiler_output == null:
 		return
 
 	var output_lines := PackedStringArray(["COMPILER TRACE"])
+	var tutor_lines = trace.get("tutor_lines", [])
+	if typeof(tutor_lines) == TYPE_ARRAY and not tutor_lines.is_empty():
+		output_lines.append("TUTOR")
+		for tutor_line in tutor_lines:
+			var mentor_text := str(tutor_line).strip_edges()
+			if mentor_text != "":
+				output_lines.append("mentor    %s" % mentor_text)
+		output_lines.append("TECHNICAL")
 	var stage := str(trace.get("stage", "")).strip_edges()
 	var status := str(trace.get("status", "")).strip_edges()
 	var agent_name := str(trace.get("agent_name", "")).strip_edges()
@@ -1001,8 +1107,12 @@ func _add_crew_signal_control(parent: VBoxContainer, agent_id: String, agent_nam
 
 
 func _build_agent_command_page(page: VBoxContainer) -> void:
+	page.add_child(_command_section_label("LESSON LADDER", "Master each real Workbench run to unlock the next lesson"))
+	_build_lesson_controls(page)
 	page.add_child(_command_section_label("AGENT RECIPES", "Load, run, check, and revise a starter workflow"))
 	_build_skill_forge_controls(page)
+	page.add_child(_command_section_label("PROGRAM SHELF", "Name compiled programs and load them back into the editor"))
+	_build_program_shelf(page)
 
 
 func _build_world_command_page(page: VBoxContainer) -> void:
@@ -1405,12 +1515,12 @@ func _build_code_workbench() -> void:
 	title.add_theme_color_override("font_color", Color("#f0e6c9"))
 	header.add_child(title)
 
-	var filename := Label.new()
-	filename.text = "  tend_crops.agent  "
-	filename.add_theme_font_size_override("font_size", 11)
-	filename.add_theme_color_override("font_color", Color("#9ac76e"))
-	filename.add_theme_stylebox_override("normal", _workbench_chip_style(Color("#2f4635")))
-	header.add_child(filename)
+	_workbench_filename_label = Label.new()
+	_workbench_filename_label.text = "  lesson.agent  "
+	_workbench_filename_label.add_theme_font_size_override("font_size", 11)
+	_workbench_filename_label.add_theme_color_override("font_color", Color("#9ac76e"))
+	_workbench_filename_label.add_theme_stylebox_override("normal", _workbench_chip_style(Color("#2f4635")))
+	header.add_child(_workbench_filename_label)
 
 	_workbench_runtime_label = Label.new()
 	_workbench_runtime_label.name = "WorkbenchRuntimeStatus"
@@ -1487,18 +1597,34 @@ func _build_code_workbench() -> void:
 	output_margin.add_theme_constant_override("margin_bottom", 8)
 	output_panel.add_child(output_margin)
 
+	var output_stack := VBoxContainer.new()
+	output_stack.add_theme_constant_override("separation", 5)
+	output_margin.add_child(output_stack)
+
+	_workbench_lesson_goal_label = Label.new()
+	_workbench_lesson_goal_label.name = "WorkbenchLessonGoal"
+	_workbench_lesson_goal_label.text = "LESSON 01 · Loading curriculum\nRead the goal, then compile a real farm run."
+	_workbench_lesson_goal_label.custom_minimum_size = Vector2(0, 38)
+	_workbench_lesson_goal_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_workbench_lesson_goal_label.add_theme_font_size_override("font_size", 10)
+	_workbench_lesson_goal_label.add_theme_color_override("font_color", Color("#9ac76e"))
+	output_stack.add_child(_workbench_lesson_goal_label)
+
 	_compiler_output = RichTextLabel.new()
 	_compiler_output.name = "CompilerOutput"
 	_compiler_output.bbcode_enabled = false
 	_compiler_output.fit_content = false
 	_compiler_output.scroll_active = true
+	_compiler_output.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_compiler_output.text = "COMPILER TRACE\nruntime   local deterministic compiler ready\ntarget    select a farm tile, then compile\nshortcut  Cmd/Ctrl+Enter"
 	_compiler_output.add_theme_font_size_override("normal_font_size", 11)
 	_compiler_output.add_theme_color_override("default_color", Color("#d7cbb0"))
-	output_margin.add_child(_compiler_output)
+	output_stack.add_child(_compiler_output)
 
 
 func _on_workbench_text_changed() -> void:
+	if _suppress_workbench_text_changed:
+		return
 	set_workbench_runtime_status("UNSAVED  ·  READY TO COMPILE", Color("#e7785b"))
 
 
@@ -1538,18 +1664,21 @@ func _build_view_controls(parent: VBoxContainer) -> void:
 	ao_toggle.name = "AmbientOcclusionToggle"
 	ao_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(ao_toggle)
+	_view_toggle_buttons["ambient_occlusion"] = ao_toggle
 	_attach_voxel_icon(ao_toggle, "view_ao", Vector2(20, 18), true, 0.0)
 
 	var grid_toggle := _make_toggle("Grid", false, grid_visibility_changed)
 	grid_toggle.name = "GridToggle"
 	grid_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(grid_toggle)
+	_view_toggle_buttons["grid"] = grid_toggle
 	_attach_voxel_icon(grid_toggle, "view_grid", Vector2(20, 18), true, 0.0)
 
 	var shadows_toggle := _make_toggle("Shadows", true, shadows_changed)
 	shadows_toggle.name = "ShadowsToggle"
 	shadows_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(shadows_toggle)
+	_view_toggle_buttons["shadows"] = shadows_toggle
 	_attach_voxel_icon(shadows_toggle, "view_shadows", Vector2(20, 18), true, 0.0)
 
 
@@ -1570,6 +1699,164 @@ func _build_inventory_strip(parent: VBoxContainer) -> void:
 	row.add_child(_make_inventory_pill("fence_kit", "KIT 0", Color("#e8f0ff"), true))
 	row.add_child(_make_inventory_pill("seed_bundle", "SBD 0", Color("#e8f6cf"), true))
 	row.add_child(_make_inventory_pill("rush_kit", "RSH 0", Color("#f0e5ff"), true))
+
+
+func _build_lesson_controls(parent: VBoxContainer) -> void:
+	var card := PanelContainer.new()
+	card.name = "LessonLadderCard"
+	card.add_theme_stylebox_override("panel", _soft_box(Color("#f5efdc"), 10, 1))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	card.add_child(margin)
+
+	_lesson_list_stack = VBoxContainer.new()
+	_lesson_list_stack.name = "LessonList"
+	_lesson_list_stack.add_theme_constant_override("separation", 4)
+	margin.add_child(_lesson_list_stack)
+	_rebuild_lesson_buttons()
+
+
+func _rebuild_lesson_buttons() -> void:
+	if _lesson_list_stack == null:
+		return
+	for child in _lesson_list_stack.get_children():
+		child.queue_free()
+	_lesson_buttons.clear()
+	if _lesson_rows.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "Curriculum loading"
+		empty_label.add_theme_font_size_override("font_size", 9)
+		empty_label.add_theme_color_override("font_color", Color("#756f64"))
+		_lesson_list_stack.add_child(empty_label)
+		return
+
+	for lesson_value in _lesson_rows:
+		if typeof(lesson_value) != TYPE_DICTIONARY:
+			continue
+		var lesson: Dictionary = lesson_value
+		var lesson_id := str(lesson.get("id", "")).strip_edges()
+		if lesson_id == "":
+			continue
+		var is_complete := _completed_lesson_ids.has(lesson_id)
+		var is_current := lesson_id == _current_lesson_id
+		var is_locked := not is_complete and not is_current
+		var ordinal := int(lesson.get("order", 0))
+		var state_mark := "LOCK" if is_locked else ("DONE" if is_complete else "NOW")
+		var button := Button.new()
+		button.name = "Lesson_%s" % lesson_id
+		button.text = "%s  %02d · %s" % [state_mark, ordinal, str(lesson.get("title", "Lesson"))]
+		button.tooltip_text = "%s | Concept: %s" % [str(lesson.get("goal", "")), str(lesson.get("concept", "agent workflow"))]
+		button.custom_minimum_size = Vector2(0, 30)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.focus_mode = Control.FOCUS_NONE
+		button.disabled = is_locked
+		button.add_theme_font_size_override("font_size", 9)
+		button.add_theme_color_override("font_color", Color("#23331a") if is_current else Color("#4b4337"))
+		button.add_theme_color_override("font_disabled_color", Color("#9a9286"))
+		button.add_theme_stylebox_override("normal", _crew_order_button_style(is_current))
+		button.add_theme_stylebox_override("hover", _crew_order_button_style(true))
+		button.add_theme_stylebox_override("pressed", _crew_order_button_style(true))
+		button.pressed.connect(_on_lesson_button_pressed.bind(lesson_id))
+		_lesson_list_stack.add_child(button)
+		_lesson_buttons[lesson_id] = button
+
+
+func _on_lesson_button_pressed(lesson_id: String) -> void:
+	if not _lesson_buttons.has(lesson_id):
+		return
+	sound_requested.emit("ui_click")
+	lesson_selected.emit(lesson_id)
+
+
+func _build_program_shelf(parent: VBoxContainer) -> void:
+	var card := PanelContainer.new()
+	card.name = "ProgramShelfCard"
+	card.add_theme_stylebox_override("panel", _soft_box(Color("#eef2f8"), 10, 1))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	card.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 5)
+	margin.add_child(stack)
+
+	_program_name_edit = LineEdit.new()
+	_program_name_edit.name = "ProgramName"
+	_program_name_edit.placeholder_text = "Program name"
+	_program_name_edit.custom_minimum_size = Vector2(0, 30)
+	_program_name_edit.text_changed.connect(_on_program_name_changed)
+	stack.add_child(_program_name_edit)
+
+	_program_picker = OptionButton.new()
+	_program_picker.name = "ProgramPicker"
+	_program_picker.custom_minimum_size = Vector2(0, 30)
+	_program_picker.tooltip_text = "Choose a saved program"
+	_program_picker.item_selected.connect(_on_program_picker_selected)
+	stack.add_child(_program_picker)
+
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 6)
+	stack.add_child(actions)
+
+	_program_save_button = Button.new()
+	_program_save_button.name = "SaveProgramButton"
+	_program_save_button.text = "Save compiled"
+	_program_save_button.disabled = true
+	_program_save_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_program_save_button.focus_mode = Control.FOCUS_NONE
+	_program_save_button.pressed.connect(_on_program_save_pressed)
+	actions.add_child(_program_save_button)
+
+	_program_load_button = Button.new()
+	_program_load_button.name = "LoadProgramButton"
+	_program_load_button.text = "Load"
+	_program_load_button.disabled = true
+	_program_load_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_program_load_button.focus_mode = Control.FOCUS_NONE
+	_program_load_button.pressed.connect(_on_program_load_pressed)
+	actions.add_child(_program_load_button)
+
+
+func _on_program_name_changed(program_name: String) -> void:
+	if _program_save_button:
+		_program_save_button.disabled = program_name.strip_edges() == ""
+
+
+func _on_program_picker_selected(index: int) -> void:
+	if _program_picker == null or index < 0 or index >= _program_picker.item_count:
+		return
+	if _program_name_edit:
+		_program_name_edit.text = _program_picker.get_item_text(index)
+
+
+func _on_program_save_pressed() -> void:
+	if _program_name_edit == null:
+		return
+	var program_name := _program_name_edit.text.strip_edges()
+	if program_name == "":
+		return
+	sound_requested.emit("ui_click")
+	program_save_requested.emit(program_name, get_workbench_source())
+
+
+func _on_program_load_pressed() -> void:
+	if _program_picker == null or _program_picker.item_count == 0:
+		return
+	var index := _program_picker.selected
+	if index < 0 or index >= _program_picker.item_count:
+		return
+	sound_requested.emit("ui_click")
+	program_load_requested.emit(_program_picker.get_item_text(index))
 
 
 func _build_status_queue_summary(parent: VBoxContainer) -> void:
@@ -4023,6 +4310,17 @@ func _on_item_selected(item_id: String) -> void:
 
 func _update_toggle_text(button: Button, label: String) -> void:
 	button.text = "%s  %s" % [label, "ON" if button.button_pressed else "OFF"]
+
+
+func _view_toggle_label(key: String) -> String:
+	match key:
+		"ambient_occlusion":
+			return "AO"
+		"grid":
+			return "Grid"
+		"shadows":
+			return "Shadows"
+	return key.capitalize()
 
 
 func _format_reaction_action(expression: String, fallback: String) -> String:

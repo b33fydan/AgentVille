@@ -527,12 +527,46 @@ func _set_error_from_token(token: Dictionary, message: String, suggestion: Strin
 func _set_error(line: int, column: int, message: String, suggestion: String) -> void:
 	if not _parse_error.is_empty():
 		return
+	var classification := _classify_parse_error(message)
 	_parse_error = {
 		"line": max(line, 1),
 		"col": max(column, 1),
+		"code": str(classification.get("code", "syntax_error")),
+		"class": str(classification.get("class", "syntax")),
 		"message": message,
 		"suggestion": suggestion
 	}
+
+
+func _classify_parse_error(message: String) -> Dictionary:
+	var normalized := message.to_lower()
+	if normalized.contains("unexpected character"):
+		return {"code": "unexpected_character", "class": "lexical"}
+	if normalized.contains("unterminated string escape"):
+		return {"code": "unterminated_escape", "class": "lexical"}
+	if normalized.contains("unterminated string"):
+		return {"code": "unterminated_string", "class": "lexical"}
+	if normalized.contains("unsupported string escape"):
+		return {"code": "unsupported_escape", "class": "lexical"}
+	if normalized.contains("unknown agent"):
+		return {"code": "unknown_agent", "class": "identity"}
+	if normalized.contains("receipt labels cannot be blank"):
+		return {"code": "blank_receipt", "class": "identity"}
+	if normalized.contains("more than one"):
+		return {"code": "duplicate_statement", "class": "structure"}
+	if normalized.contains("supports exactly one use"):
+		return {"code": "multiple_use", "class": "structure"}
+	if normalized.contains("missing an observe") or normalized.contains("missing a use") or normalized.contains("missing a verify") or normalized.contains("missing a receipt"):
+		return {"code": "missing_statement", "class": "structure"}
+	if normalized.contains("when block has no use") or normalized.contains("when block can only contain"):
+		return {"code": "invalid_when_body", "class": "structure"}
+	if normalized.contains("unknown statement"):
+		return {"code": "unknown_statement", "class": "syntax"}
+	if normalized.contains("unexpected text after"):
+		return {"code": "trailing_text", "class": "syntax"}
+	if normalized.contains("newline or semicolon"):
+		return {"code": "missing_separator", "class": "syntax"}
+	return {"code": "expected_token", "class": "syntax"}
 
 
 func _failure_result() -> Dictionary:

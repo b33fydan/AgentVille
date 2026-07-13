@@ -6,7 +6,11 @@ const AdversarialSessionManagerScript: Script = preload("res://scripts/ai/Advers
 const SkillCheckEvaluatorScript: Script = preload("res://scripts/systems/SkillCheckEvaluator.gd")
 const SkillForgeRunHarnessScript: Script = preload("res://scripts/systems/SkillForgeRunHarness.gd")
 const SkillForgeTemplateLibraryScript: Script = preload("res://scripts/systems/SkillForgeTemplateLibrary.gd")
+const SkillLessonLibraryScript: Script = preload("res://scripts/systems/SkillLessonLibrary.gd")
 const SkillScriptParserScript: Script = preload("res://scripts/systems/SkillScriptParser.gd")
+const SkillSpecValidatorScript: Script = preload("res://scripts/systems/SkillSpecValidator.gd")
+const SkillTutorLibraryScript: Script = preload("res://scripts/systems/SkillTutorLibrary.gd")
+const PlayerProgressScript: Script = preload("res://scripts/systems/PlayerProgress.gd")
 const RECIPES: Dictionary = {
 	"fence_kit": {
 		"label": "Fence Kit",
@@ -70,6 +74,8 @@ const SPRING_HANDS_SECONDS := 12.0
 const FENCE_HANDS_SECONDS := 12.0
 const HUSTLE_HANDS_SECONDS := 12.0
 
+@export var progress_storage_path: String = ""
+
 @onready var camera_controller = $CameraController
 @onready var farm_world: Node3D = $FarmWorld
 @onready var grid_manager = $FarmWorld/GridManager
@@ -110,6 +116,14 @@ var _skill_forge_run_harness = SkillForgeRunHarnessScript.new()
 var _skill_check_evaluator = SkillCheckEvaluatorScript.new()
 var _skill_script_parser = SkillScriptParserScript.new()
 var _pending_skill_forge_run: Dictionary = {}
+var _player_progress
+var _skill_lesson_library = SkillLessonLibraryScript.new()
+var _skill_tutor_library = SkillTutorLibraryScript.new()
+var _last_valid_compiled_source: String = ""
+var _last_valid_compiled_spec: Dictionary = {}
+var _active_lesson_id: String = ""
+var _lesson_failure_counts: Dictionary = {}
+var _lesson_failure_keys: Dictionary = {}
 var _crew_priority_timer: float = 0.0
 var _next_work_order_number: int = 1
 var _next_crafting_demand_number: int = 1
@@ -131,11 +145,13 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color("#f6f3ec"))
 	_setup_environment()
 	_setup_ai_layer()
+	_setup_player_progress()
 	_connect_systems()
 	camera_controller.center_on_farm()
 	game_ui.set_day(grid_manager.day)
 	game_ui.set_money(money)
 	game_ui.set_skill_forge_templates(_skill_forge_templates.list_template_previews())
+	_apply_player_progress(true)
 	_refresh_inventory_and_orders()
 
 
@@ -165,9 +181,9 @@ func _connect_systems() -> void:
 	game_ui.tool_selected.connect(_on_tool_selected)
 	game_ui.item_selected.connect(_on_palette_item_selected)
 	game_ui.advance_day_requested.connect(_on_advance_day_requested)
-	game_ui.grid_visibility_changed.connect(grid_manager.set_grid_visible)
-	game_ui.shadows_changed.connect(_set_shadows_enabled)
-	game_ui.ambient_occlusion_changed.connect(_set_ambient_occlusion_enabled)
+	game_ui.grid_visibility_changed.connect(_on_grid_visibility_changed)
+	game_ui.shadows_changed.connect(_on_shadows_changed)
+	game_ui.ambient_occlusion_changed.connect(_on_ambient_occlusion_changed)
 	game_ui.camera_zoom_requested.connect(camera_controller.adjust_zoom)
 	game_ui.camera_recenter_requested.connect(camera_controller.center_on_farm)
 	game_ui.sound_requested.connect(sound_manager.play_stamp)
@@ -183,6 +199,9 @@ func _connect_systems() -> void:
 	game_ui.skill_forge_review_requested.connect(_on_skill_forge_review_requested)
 	game_ui.skill_forge_revision_requested.connect(_on_skill_forge_revision_requested)
 	game_ui.workbench_compile_requested.connect(_on_workbench_compile_requested)
+	game_ui.lesson_selected.connect(_on_lesson_selected)
+	game_ui.program_save_requested.connect(_on_program_save_requested)
+	game_ui.program_load_requested.connect(_on_program_load_requested)
 
 	if _agent_manager:
 		_agent_manager.agent_comment.connect(game_ui.show_message)
@@ -243,6 +262,153 @@ func _setup_ai_layer() -> void:
 	_agent_manager.name = "AgentManager"
 	_agent_manager.call("configure", grid_manager, _event_log)
 	farm_world.add_child(_agent_manager)
+
+
+func _setup_player_progress() -> void:
+	var storage_path := progress_storage_path.strip_edges()
+	var disk_enabled := storage_path != "" or not OS.has_feature("headless")
+	if storage_path == "":
+		storage_path = PlayerProgressScript.DEFAULT_PATH
+	_player_progress = PlayerProgressScript.new(storage_path, disk_enabled, _skill_lesson_library.first_lesson_id())
+	_player_progress.load()
+	_normalize_current_lesson()
+
+
+func _normalize_current_lesson() -> void:
+	if _player_progress == null:
+		return
+	var lesson_ids: Array = _skill_lesson_library.get_lesson_ids()
+	_player_progress.normalize_lesson_sequence(lesson_ids)
+	_active_lesson_id = str(_player_progress.get_current_lesson())
+
+
+func _apply_player_progress(load_lesson_source: bool = false) -> void:
+	if _player_progress == null:
+		return
+	var completed: Array = _player_progress.get_completed_lessons()
+	var current: String = str(_player_progress.get_current_lesson())
+	game_ui.set_lesson_ladder(_skill_lesson_library.list_lessons(completed), current, completed)
+	var displayed_lesson_id: String = _active_lesson_id if _active_lesson_id != "" else current
+	var lesson: Dictionary = _skill_lesson_library.get_lesson(displayed_lesson_id)
+	game_ui.set_current_lesson_goal(lesson)
+	game_ui.set_saved_programs(_player_progress.list_programs())
+
+	var view_toggles: Dictionary = _player_progress.get_view_toggles()
+	game_ui.set_view_toggle_states(view_toggles)
+	grid_manager.set_grid_visible(bool(view_toggles.get("grid", false)))
+	_set_shadows_enabled(bool(view_toggles.get("shadows", true)), false)
+	_set_ambient_occlusion_enabled(bool(view_toggles.get("ambient_occlusion", true)), false)
+
+	if load_lesson_source and not lesson.is_empty():
+		game_ui.set_workbench_source(
+			str(lesson.get("starting_editor_text", "")),
+			"lesson_%02d.agent" % int(lesson.get("order", 0))
+		)
+
+
+func _pipeline_tutor_line(state_key: String, detail_key: String = "", context: Dictionary = {}) -> String:
+	if _skill_tutor_library == null:
+		return ""
+	return str(_skill_tutor_library.line_for(state_key, detail_key, context)).strip_edges()
+
+
+func _lesson_failure_tutor(
+	lesson_id: String,
+	failure_key: String,
+	state_key: String,
+	detail_key: String = "",
+	context: Dictionary = {}
+) -> Array[String]:
+	var lines: Array[String] = []
+	var pipeline_line := _pipeline_tutor_line(state_key, detail_key, context)
+	if pipeline_line != "":
+		lines.append(pipeline_line)
+	var lesson: Dictionary = _skill_lesson_library.get_lesson(lesson_id)
+	if lesson.is_empty():
+		return lines
+
+	var failures: Array = _lesson_failure_keys.get(lesson_id, [])
+	if failure_key != "" and not failures.has(failure_key):
+		failures.append(failure_key)
+	_lesson_failure_keys[lesson_id] = failures
+	var attempt := int(_lesson_failure_counts.get(lesson_id, 0)) + 1
+	_lesson_failure_counts[lesson_id] = attempt
+	for hint_line in _skill_tutor_library.lesson_hint_lines(lesson, attempt, false):
+		var clean_line := str(hint_line).strip_edges()
+		if clean_line != "" and not lines.has(clean_line):
+			lines.append(clean_line)
+	return lines
+
+
+func _lesson_evidence(pending: Dictionary, result: Dictionary, verdict: Dictionary = {}) -> Dictionary:
+	var run: Dictionary = result.get("run", {}) if typeof(result.get("run", {})) == TYPE_DICTIONARY else {}
+	var lesson_id := str(pending.get("lesson_id", ""))
+	return {
+		"lesson_id": lesson_id,
+		"player_initiated": str(pending.get("origin", "")) == "workbench",
+		"origin": str(pending.get("origin", "")),
+		"source_text": str(pending.get("source_text", "")),
+		"spec": pending.get("compiled_spec", {}).duplicate(true),
+		"status": str(result.get("status", run.get("status", ""))),
+		"run": run.duplicate(true),
+		"action": _skill_forge_primary_action(pending.get("compiled_spec", {})),
+		"agent_id": str(pending.get("agent_id", run.get("agent_id", ""))),
+		"guard_condition": str(pending.get("guard_condition", "")),
+		"check_type": str(verdict.get("check_type", run.get("success_check_type", ""))),
+		"check_passed": bool(verdict.get("passed", false)),
+		"check_verdict": verdict.duplicate(true),
+		"receipt_label": str(run.get("receipt_label", "")),
+		"target_tile": pending.get("target_tile", Vector2i(-1, -1)),
+		"target_source": str(pending.get("target_source", "")),
+		"failure_keys": (_lesson_failure_keys.get(lesson_id, []) as Array).duplicate()
+	}
+
+
+func _evaluate_lesson_terminal(pending: Dictionary, result: Dictionary, verdict: Dictionary = {}) -> Array[String]:
+	var lesson_id := str(pending.get("lesson_id", ""))
+	var check_type := str(verdict.get("check_type", result.get("run", {}).get("success_check_type", "")))
+	if lesson_id == "" or str(pending.get("origin", "")) != "workbench":
+		return [_pipeline_tutor_line("check", check_type, {"passed": bool(verdict.get("passed", false))})]
+
+	var lesson: Dictionary = _skill_lesson_library.get_lesson(lesson_id)
+	var evidence := _lesson_evidence(pending, result, verdict)
+	var evaluation: Dictionary = _skill_lesson_library.evaluate_completion(lesson_id, evidence)
+	if bool(evaluation.get("complete", false)):
+		var tutor_lines: Array[String] = []
+		var check_line := _pipeline_tutor_line("check", check_type, {"passed": true})
+		if check_line != "":
+			tutor_lines.append(check_line)
+		for hint_line in _skill_tutor_library.lesson_hint_lines(lesson, 0, true):
+			var clean_line := str(hint_line).strip_edges()
+			if clean_line != "" and not tutor_lines.has(clean_line):
+				tutor_lines.append(clean_line)
+
+		if not _player_progress.is_lesson_completed(lesson_id):
+			var next_lesson_id: String = _skill_lesson_library.next_lesson_id(lesson_id)
+			_player_progress.complete_lesson(lesson_id, next_lesson_id)
+			if next_lesson_id == "":
+				_player_progress.set_current_lesson("")
+			_lesson_failure_counts.erase(lesson_id)
+			_lesson_failure_keys.erase(lesson_id)
+			_active_lesson_id = next_lesson_id
+			var receipt := "Lesson complete: %02d · %s. Concept: %s." % [
+				int(lesson.get("order", 0)),
+				str(lesson.get("title", "Lesson")),
+				str(lesson.get("concept", "agent workflow"))
+			]
+			game_ui.add_field_log(receipt)
+			game_ui.show_message(receipt)
+			_apply_player_progress(false)
+		return tutor_lines
+
+	var failure_key := "check.%s.failed" % (check_type if check_type != "" else "lesson")
+	return _lesson_failure_tutor(
+		lesson_id,
+		failure_key,
+		"check",
+		check_type,
+		{"passed": bool(verdict.get("passed", false)), "mismatches": evaluation.get("mismatches", [])}
+	)
 
 
 func _apply_reference_contrast_atmosphere() -> void:
@@ -352,14 +518,74 @@ func _run_skill_forge_template(template_id: String, success_message: String) -> 
 
 
 func _on_selected_tile_changed(grid_pos: Vector2i) -> void:
+	var tutor_lines: Array[String] = []
+	var lesson: Dictionary = _skill_lesson_library.get_lesson(_active_lesson_id)
+	if not lesson.is_empty():
+		var first_hint := str(lesson.get("tutor", {}).get("first_hint", "")).strip_edges()
+		if first_hint != "":
+			tutor_lines.append(first_hint)
 	game_ui.set_workbench_trace({
 		"stage": "TARGET SELECTED",
 		"status": "READY",
 		"runtime_status": "READY  ·  LOCAL COMPILER",
 		"target_tile": grid_pos,
 		"target_source": "selected_tile",
+		"tutor_lines": tutor_lines,
 		"lines": ["selected_tile -> (%s,%s)" % [grid_pos.x, grid_pos.y], "Press COMPILE or Cmd/Ctrl+Enter."]
 	})
+
+
+func _on_lesson_selected(lesson_id: String) -> void:
+	if _player_progress == null:
+		return
+	var lesson: Dictionary = _skill_lesson_library.get_lesson(lesson_id)
+	var completed: Array = _player_progress.get_completed_lessons()
+	if lesson.is_empty() or not _skill_lesson_library.is_unlocked(lesson_id, completed):
+		game_ui.show_message("That lesson is still locked by the previous receipt.")
+		sound_manager.play_stamp("error_soft")
+		return
+	_active_lesson_id = lesson_id
+	game_ui.set_current_lesson_goal(lesson)
+	game_ui.set_workbench_source(
+		str(lesson.get("starting_editor_text", "")),
+		"lesson_%02d.agent" % int(lesson.get("order", 0))
+	)
+	var mode := "Review" if completed.has(lesson_id) else "Current"
+	game_ui.show_message("%s lesson loaded: %s." % [mode, str(lesson.get("title", "Lesson"))])
+
+
+func _on_program_save_requested(program_name: String, source_text: String) -> void:
+	if _player_progress == null:
+		return
+	if source_text != _last_valid_compiled_source or _last_valid_compiled_spec.is_empty():
+		game_ui.show_message("Compile this exact source before saving it to the shelf.")
+		sound_manager.play_stamp("error_soft")
+		return
+	if not _player_progress.save_program(program_name, source_text):
+		game_ui.show_message("Program shelf could not save that name.")
+		sound_manager.play_stamp("error_soft")
+		return
+	game_ui.set_saved_programs(_player_progress.list_programs())
+	game_ui.add_field_log("Program saved: %s." % program_name.strip_edges())
+	game_ui.show_message("Program saved: %s." % program_name.strip_edges())
+
+
+func _on_program_load_requested(program_name: String) -> void:
+	if _player_progress == null:
+		return
+	var source_text: String = str(_player_progress.get_program(program_name))
+	if source_text == "":
+		game_ui.show_message("That saved program is empty or missing.")
+		sound_manager.play_stamp("error_soft")
+		return
+	game_ui.set_workbench_source(source_text, "%s.agent" % program_name.to_snake_case())
+	var parsed: Dictionary = _skill_script_parser.parse(source_text)
+	if bool(parsed.get("ok", false)):
+		var loaded_spec: Dictionary = parsed.get("spec", {})
+		if bool(SkillSpecValidatorScript.new().validate(loaded_spec).get("valid", false)):
+			_last_valid_compiled_source = source_text
+			_last_valid_compiled_spec = loaded_spec.duplicate(true)
+	game_ui.show_message("Program loaded: %s." % program_name)
 
 
 func _on_workbench_compile_requested(source_text: String) -> void:
@@ -368,12 +594,21 @@ func _on_workbench_compile_requested(source_text: String) -> void:
 	var parsed: Dictionary = _skill_script_parser.parse(source_text)
 	if not bool(parsed.get("ok", false)):
 		var parse_error: Dictionary = parsed.get("error", {})
+		var parse_class := str(parse_error.get("class", "syntax"))
+		var tutor_lines := _lesson_failure_tutor(
+			_active_lesson_id,
+			"parse.%s" % parse_class,
+			"parse",
+			parse_class,
+			{"code": str(parse_error.get("code", "expected_token"))}
+		)
 		game_ui.set_workbench_trace({
 			"stage": "PARSE ERROR",
 			"status": "BLOCKED",
 			"runtime_status": "BLOCKED  ·  FIX LINE %s" % int(parse_error.get("line", 1)),
 			"runtime_color": Color("#e7785b"),
 			"issues": [parse_error],
+			"tutor_lines": tutor_lines,
 			"lines": ["Parser stopped before validation."]
 		})
 		game_ui.show_message("Workbench parse stopped at line %s." % int(parse_error.get("line", 1)))
@@ -390,7 +625,7 @@ func _on_workbench_compile_requested(source_text: String) -> void:
 		"source": "skill_forge",
 		"label": "Agent Workbench"
 	}
-	_start_skill_forge_spec(spec, request, "workbench")
+	_start_skill_forge_spec(spec, request, "workbench", source_text)
 
 
 func _workbench_target_for_spec(spec: Dictionary) -> Dictionary:
@@ -413,7 +648,8 @@ func _workbench_target_for_spec(spec: Dictionary) -> Dictionary:
 	}
 
 
-func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: String) -> Dictionary:
+func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: String, source_text: String = "") -> Dictionary:
+	var lesson_id_for_run := _active_lesson_id if origin == "workbench" else ""
 	_cancel_pending_skill_forge_run("order never completed; replaced by a newer compile", true)
 	var start_result: Dictionary = _skill_forge_run_harness.start_manual_run(spec, request)
 	var validation: Dictionary = start_result.get("validation", {})
@@ -421,6 +657,16 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 	if str(start_result.get("status", "")) != "started":
 		_apply_skill_forge_result(start_result)
 		if origin == "workbench":
+			var validation_errors: Array = validation.get("errors", [])
+			var first_issue: Dictionary = validation_errors[0] if not validation_errors.is_empty() and typeof(validation_errors[0]) == TYPE_DICTIONARY else {}
+			var issue_code := str(first_issue.get("code", "validator_error"))
+			var tutor_lines := _lesson_failure_tutor(
+				lesson_id_for_run,
+				"validation.%s" % issue_code,
+				"validator",
+				issue_code,
+				{"drift": str(validation.get("drift", {}).get("level", "hallucinating"))}
+			)
 			game_ui.set_workbench_trace({
 				"stage": "VALIDATION BLOCKED",
 				"status": "BLOCKED",
@@ -429,14 +675,19 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				"agent_name": str(request.get("agent_name", "Crew")),
 				"target_tile": target,
 				"target_source": str(request.get("target_source", "selected_tile")),
-				"issues": validation.get("errors", []),
+				"issues": validation_errors,
 				"warnings": validation.get("warnings", []),
 				"drift": validation.get("drift", {}),
+				"tutor_lines": tutor_lines,
 				"lines": ["Parse passed.", "Validator rejected the Skill Spec."]
 			})
 		game_ui.show_message("Workbench validation blocked the run.")
 		sound_manager.play_stamp("error_soft")
 		return start_result
+
+	if origin == "workbench":
+		_last_valid_compiled_source = source_text
+		_last_valid_compiled_spec = spec.duplicate(true)
 
 	var before := _skill_forge_snapshot(target)
 	var guard_condition := _skill_forge_guard_condition(spec)
@@ -448,6 +699,13 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 		})
 		_apply_skill_forge_result(blocked_result)
 		if origin == "workbench":
+			var tutor_lines := _lesson_failure_tutor(
+				lesson_id_for_run,
+				"guard.%s" % guard_condition,
+				"guard",
+				guard_condition,
+				{"allowed": false, "observed": guard_result.get("observed", "")}
+			)
 			game_ui.set_workbench_trace({
 				"stage": "RUNTIME GUARD",
 				"status": "BLOCKED",
@@ -457,6 +715,7 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				"target_tile": target,
 				"target_source": str(request.get("target_source", "selected_tile")),
 				"drift": validation.get("drift", {}),
+				"tutor_lines": tutor_lines,
 				"lines": ["Parse passed.", "Validation passed.", str(guard_result.get("result_detail", "Guard blocked."))]
 			})
 		game_ui.show_message(str(guard_result.get("result_detail", "Workbench guard blocked the run.")))
@@ -473,6 +732,13 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 		})
 		_apply_skill_forge_result(failed_result)
 		if origin == "workbench":
+			var tutor_lines := _lesson_failure_tutor(
+				lesson_id_for_run,
+				"order.blocked",
+				"order",
+				"blocked",
+				{"detail": failure_detail}
+			)
 			game_ui.set_workbench_trace({
 				"stage": "ORDER BLOCKED",
 				"status": "FAILED",
@@ -484,6 +750,7 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				"issues": validation.get("errors", []),
 				"warnings": validation.get("warnings", []),
 				"drift": validation.get("drift", {}),
+				"tutor_lines": tutor_lines,
 				"lines": ["Parse passed.", "Validation passed.", failure_detail]
 			})
 		return failed_result
@@ -502,9 +769,18 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 		"started_day": grid_manager.day,
 		"day_advances": 0,
 		"origin": origin,
+		"lesson_id": lesson_id_for_run,
+		"source_text": source_text,
+		"compiled_spec": spec.duplicate(true),
 		"target_source": str(request.get("target_source", "selected_tile"))
 	}
 	if origin == "workbench":
+		var tutor_lines: Array[String] = [
+			_pipeline_tutor_line("lifecycle", "pending")
+		]
+		var drift_level := str(validation.get("drift", {}).get("level", "steady"))
+		if drift_level != "steady":
+			tutor_lines.push_front(_pipeline_tutor_line("drift", drift_level))
 		game_ui.set_workbench_trace({
 			"stage": "ORDER DRAFTED",
 			"status": "PENDING WORLD CHECK",
@@ -516,6 +792,7 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 			"drift": validation.get("drift", {}),
 			"run_id": str(_pending_skill_forge_run.get("run_id", "")),
 			"order_id": order_id,
+			"tutor_lines": tutor_lines,
 			"lines": ["Parse passed.", "Validation passed.", str(guard_result.get("result_detail", "Guard passed.")), "Crew order drafted; verification is pending."]
 		})
 	return start_result
@@ -576,6 +853,18 @@ func _cancel_pending_skill_forge_run(reason: String, remove_order: bool) -> bool
 	})
 	_apply_skill_forge_result(failure)
 	if str(pending.get("origin", "")) == "workbench":
+		var lifecycle_state := "cancelled"
+		if reason.contains("replaced"):
+			lifecycle_state = "replaced"
+		elif reason.contains("two day"):
+			lifecycle_state = "timeout"
+		var tutor_lines := _lesson_failure_tutor(
+			str(pending.get("lesson_id", "")),
+			"lifecycle.%s" % lifecycle_state,
+			"lifecycle",
+			lifecycle_state,
+			{"detail": reason}
+		)
 		game_ui.set_workbench_trace({
 			"stage": "WORLD CHECK",
 			"status": "FAILED",
@@ -586,6 +875,7 @@ func _cancel_pending_skill_forge_run(reason: String, remove_order: bool) -> bool
 			"target_source": str(pending.get("target_source", "selected_tile")),
 			"run_id": run_id,
 			"order_id": order_id,
+			"tutor_lines": tutor_lines,
 			"lines": [reason]
 		})
 	return true
@@ -639,6 +929,26 @@ func _update_workbench_terminal_trace(pending: Dictionary, result: Dictionary, v
 		return
 	var status := str(result.get("status", "failed")).to_upper()
 	var detail := str(verdict.get("result_detail", result.get("run", {}).get("result_detail", "World check finished.")))
+	var tutor_lines: Array[String] = []
+	if not verdict.is_empty():
+		tutor_lines = _evaluate_lesson_terminal(pending, result, verdict)
+	elif status == "BLOCKED":
+		var guard_condition := str(pending.get("guard_condition", "always"))
+		tutor_lines = _lesson_failure_tutor(
+			str(pending.get("lesson_id", "")),
+			"guard.%s" % guard_condition,
+			"guard",
+			guard_condition,
+			{"allowed": false, "detail": detail}
+		)
+	else:
+		tutor_lines = _lesson_failure_tutor(
+			str(pending.get("lesson_id", "")),
+			"check.failed",
+			"check",
+			str(result.get("run", {}).get("success_check_type", "")),
+			{"passed": false, "detail": detail}
+		)
 	game_ui.set_workbench_trace({
 		"stage": "WORLD CHECK",
 		"status": status,
@@ -649,6 +959,7 @@ func _update_workbench_terminal_trace(pending: Dictionary, result: Dictionary, v
 		"order_id": str(pending.get("order_id", "")),
 		"runtime_status": status,
 		"runtime_color": Color("#8fbe67") if status == "PASSED" else Color("#e7785b"),
+		"tutor_lines": tutor_lines,
 		"lines": [detail]
 	})
 
@@ -3253,6 +3564,21 @@ func _update_work_order_from_agent_action(event: Dictionary) -> void:
 		if str(order.get("source", "")) == "npc_demand" and _agent_manager:
 			_agent_manager.call("acknowledge_completed_authored_order", str(order.get("author_agent_id", "")), _work_order_label(action_id, order.get("target_tile", Vector2i.ZERO)))
 	_refresh_work_orders()
+	if not success and not _pending_skill_forge_run.is_empty():
+		var pending_order_id := str(_pending_skill_forge_run.get("order_id", ""))
+		if pending_order_id == order_id and str(_pending_skill_forge_run.get("origin", "")) == "workbench":
+			game_ui.set_workbench_trace({
+				"stage": "CREW RETRY",
+				"status": "PENDING WORLD CHECK",
+				"runtime_status": "PENDING  ·  RETRY READY",
+				"agent_name": str(_pending_skill_forge_run.get("agent_name", "Crew")),
+				"target_tile": _pending_skill_forge_run.get("target_tile", Vector2i(-1, -1)),
+				"target_source": str(_pending_skill_forge_run.get("target_source", "selected_tile")),
+				"run_id": str(_pending_skill_forge_run.get("run_id", "")),
+				"order_id": order_id,
+				"tutor_lines": [_pipeline_tutor_line("lifecycle", "retrying")],
+				"lines": ["Crew attempt failed; the correlated order returned to ready."]
+			})
 
 	_record_work_order_event(order_id, str(order.get("status", "ready")))
 
@@ -3972,13 +4298,34 @@ func _pretty_item_name(item_id: String) -> String:
 	return item_id.replace("_", " ")
 
 
-func _set_shadows_enabled(is_enabled: bool) -> void:
+func _on_grid_visibility_changed(is_visible: bool) -> void:
+	grid_manager.set_grid_visible(is_visible)
+	if _player_progress != null:
+		_player_progress.set_view_toggle("grid", is_visible)
+	game_ui.show_message("Grid on." if is_visible else "Grid off.")
+
+
+func _on_shadows_changed(is_enabled: bool) -> void:
+	_set_shadows_enabled(is_enabled)
+	if _player_progress != null:
+		_player_progress.set_view_toggle("shadows", is_enabled)
+
+
+func _on_ambient_occlusion_changed(is_enabled: bool) -> void:
+	_set_ambient_occlusion_enabled(is_enabled)
+	if _player_progress != null:
+		_player_progress.set_view_toggle("ambient_occlusion", is_enabled)
+
+
+func _set_shadows_enabled(is_enabled: bool, announce: bool = true) -> void:
 	if _sun:
 		_sun.shadow_enabled = is_enabled
-	game_ui.show_message("Soft shadows on." if is_enabled else "Soft shadows off.")
+	if announce:
+		game_ui.show_message("Soft shadows on." if is_enabled else "Soft shadows off.")
 
 
-func _set_ambient_occlusion_enabled(is_enabled: bool) -> void:
+func _set_ambient_occlusion_enabled(is_enabled: bool, announce: bool = true) -> void:
 	if _environment:
 		_environment.ssao_enabled = is_enabled
-	game_ui.show_message("Ambient occlusion on." if is_enabled else "Ambient occlusion off.")
+	if announce:
+		game_ui.show_message("Ambient occlusion on." if is_enabled else "Ambient occlusion off.")
