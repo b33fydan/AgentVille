@@ -58,7 +58,7 @@ If a Forge concept can map to missions, work orders, Field Log receipts, day sum
 
 ## Shipped Authoring Surfaces
 
-The primary product surface is the bottom-center Agent Workbench. The player selects a farm tile, writes or modifies a Skill Script v1 program, presses `COMPILE`, and then sends the drafted crew order. Parse and validation failures stop safely with teaching diagnostics. A valid run stays pending until its named NPC performs the action and the post-action world check passes or fails.
+The primary product surface is the bottom-center Agent Workbench. The player selects a farm tile and writes or modifies a Skill Script v1 program. Without an `on` statement, `COMPILE` preserves the manual route and the player sends the drafted crew order. With `on day_start`, Compile validates and arms one in-memory activation against the selected tile; the next End Day advances the world, consumes the arm, and auto-dispatches valid work without Send. Parse and validation failures stop safely with teaching diagnostics. A valid run stays pending until its named NPC performs the action and the post-action world check passes or fails.
 
 The `AGENT` command tab also contains five starter templates—Tend Crops, Plant Seed, Clear Patch, Harvest Crops, and Build Fence—with readable contract previews and a bounded Check/Fix revision loop. Both surfaces route through the same validator, run harness, work-order system, Field Log, and day-summary receipts.
 
@@ -70,7 +70,8 @@ Skill Script v1 is hand-tokenized and parsed by `scripts/systems/SkillScriptPars
 program       = separators, "agent", string, "{", separators,
                 statement, { separators, statement }, separators,
                 "}", separators ;
-statement     = observe | use | guarded_use | verify | receipt ;
+statement     = trigger | observe | use | guarded_use | verify | receipt ;
+trigger       = "on", identifier ;
 observe       = "observe", identifier ;
 use           = "use", identifier, "(", identifier, ")" ;
 guarded_use   = "when", identifier, "{", separators,
@@ -87,13 +88,14 @@ letter        = "A" ... "Z" | "a" ... "z" ;
 digit         = "0" ... "9" ;
 ```
 
-Each program must contain exactly one `observe`, one `use`, one `verify`, and one `receipt`. The single `use` may appear directly, which implies the `always` guard, or inside one `when` block. Statement order is not otherwise significant. Keywords are lowercase and case-sensitive. Crew names are quoted and resolve case-insensitively to `Bert`, `Marigold`, or `Chuck`. Strings stay on one line and only escaped quotes (`\"`) and backslashes (`\\`) are supported. Comments, variables, arithmetic, user-defined functions, loops, and nested control flow are not part of v1.
+Each program must contain exactly one `observe`, one `use`, one `verify`, and one `receipt`. A program may also contain zero or one `on` statement. Omitting `on` compiles to the existing `manual` trigger; the only authored event accepted by the validator is `on day_start`. The single `use` may appear directly, which implies the `always` guard, or inside one `when` block. Statement order is not otherwise significant. Keywords are lowercase and case-sensitive. Crew names are quoted and resolve case-insensitively to `Bert`, `Marigold`, or `Chuck`. Strings stay on one line and only escaped quotes (`\"`) and backslashes (`\\`) are supported. Comments, variables, arithmetic, user-defined functions, loops, and nested control flow are not part of v1.
 
 ### Shipped vocabulary
 
 | Role | Accepted v1 values |
 | --- | --- |
 | Crew | `Bert`, `Marigold`, `Chuck` |
+| Trigger | implicit `manual`, authored `day_start` |
 | Context and call target | `selected_tile` |
 | Farm action tools | `clear_brush`, `harvest_crop`, `plant_seed`, `tend_crop`, `build_fence` |
 | Guards | `always`, `inspect.has_brush`, `crop.needs_tending`, `crop.ready`, `tile.empty` |
@@ -125,6 +127,22 @@ agent "Marigold" {
 ```
 
 This source compiles to a manual, selected-tile Skill Spec for Marigold. It does not pass merely because compilation succeeds: the guard must pass, the crew order must complete, and the inventory delta must be observed after the correlated NPC action.
+
+A one-shot reactive program adds one statement:
+
+```text
+agent "Marigold" {
+  on day_start
+  observe selected_tile
+  when tile.empty {
+    use plant_seed(selected_tile)
+  }
+  verify crop_state
+  receipt "Morning Plant run"
+}
+```
+
+Compile validates this source and captures the selected tile, but performs no guard check, creates no work order, and mutates no world state. After the next End Day advances and grows the farm, the runtime consumes the arm, checks the guard against that new-day state, and auto-dispatches valid work through the same named-NPC route without Send.
 
 ## Compiled Skill Spec v1
 
@@ -184,7 +202,7 @@ Player-facing label. Should be short enough to fit in compact UI rows.
 
 ### trigger
 
-Skill Script v1 accepts only `{ "type": "manual" }`. Day-start, Mission Momentum, inventory-threshold, and crop-ready triggers are deferred.
+Skill Script v1 accepts `{ "type": "manual" }` and `{ "type": "day_start" }`. `manual` is implicit when source has no `on` statement. `day_start` is an explicit, session-local, one-shot arm: Compile captures the current `selected_tile`; End Day advances the world first and then consumes the arm whether it passes, blocks, or skips because another Forge run is pending. Arms never persist, repeat, or restore merely because saved source is loaded. Mission Momentum, inventory-threshold, crop-ready, and every other trigger remain unsupported.
 
 ### context
 
@@ -216,7 +234,7 @@ What gets written to the Field Log and day summary.
 | --- | --- | --- |
 | Skill source | `SkillScriptParser` | Hand-written parser emits a data-only Skill Spec and source map. |
 | Skill spec | `SkillSpecValidator` | Schema and allowlists hard-block unsupported behavior. |
-| Trigger | Compile/Run player action | v1 is manual-only. |
+| Trigger | Compile/Run player action plus `SkillTriggerScheduler` | Manual source drafts on Compile; `on day_start` holds one immutable in-memory arm until a later day begins. |
 | Context | Persistent `selected_tile` | One explicit farm tile flows into the order and verifier. |
 | Tool call | Crew work order and `AgentActor` directive | Named NPC walks to and performs the requested farm action. |
 | Guard | `SkillCheckEvaluator` | Checked before drafting and again when the agent arrives. |
@@ -229,13 +247,14 @@ What gets written to the Field Log and day summary.
 
 1. On a fresh profile, the current lesson source and goal appear in the open Workbench.
 2. The player selects one farm tile and edits the program.
-3. `COMPILE` or Cmd/Ctrl+Enter runs parser → validator → runtime guard.
-4. A valid program drafts one named-NPC crew order; compilation alone is not success.
-5. The player sends the order and the named farmhand walks to the target.
-6. The guard is checked again on arrival before the farm action executes.
-7. A correlated action event triggers the concrete after-state check.
-8. The trace and Field Log record `PASSED`, `FAILED`, or `BLOCKED`; eligible player-authored passes advance lesson mastery.
-9. Exact parser/validator-valid source can be saved to and restored from the local program shelf without executing it.
+3. `COMPILE` or Cmd/Ctrl+Enter runs the parser and validator.
+4. Manual source continues through the existing runtime guard and drafts one named-NPC crew order; compilation alone is not success.
+5. The player sends a manual order and the named farmhand walks to the target.
+6. `on day_start` source instead deep-copies the selected target and source evidence into one in-memory arm. Compile performs no guard check, drafts no order, and mutates no world state; a visible `DISARM` control can consume it deliberately.
+7. End Day grows and advances the farm first, then consumes the arm once. If another Forge run is pending, the activation records a skipped receipt and cannot cancel or replace that run. Otherwise its new-day guard runs and valid work auto-dispatches without Send.
+8. The guard is checked again on arrival before either route's farm action executes. A correlated action event triggers the concrete after-state check; automatic crew-action failure is terminal for that activation.
+9. The trace and Field Log record `PASSED`, `FAILED`, `BLOCKED`, `SKIPPED`, `REPLACED`, or `DISARMED` as appropriate. Automatic activations do not complete the ten manual lessons.
+10. Exact parser/validator-valid source can be saved to and restored from the local program shelf without executing or arming it.
 
 ## Starter Templates
 
@@ -267,7 +286,7 @@ Compact template panel with contract preview, validation warnings, Check/Fix rev
 
 ### Agent Workbench
 
-Editable Skill Script v1 source, Compile control, current lesson goal, deterministic tutor layer, technical trace, exact-source save/load controls, and pending/terminal run state.
+Editable Skill Script v1 source, Compile control, current lesson goal, deterministic tutor layer, technical trace, exact-source save/load controls, pending/terminal run state, and the visible `ARMED ONCE · DAY START`/captured-target/`DISARM` state.
 
 ### Run Preview
 
@@ -290,7 +309,7 @@ Includes compact terminal Forge run recaps.
 The validator rejects:
 
 - Missing or malformed skill identity.
-- Non-manual triggers.
+- Missing, malformed, or unsupported triggers; only `manual` and `day_start` are allowed.
 - Missing or unsupported context and step targets.
 - Empty, unknown, or unlisted tools.
 - Missing steps or unsupported guard conditions.
@@ -329,6 +348,8 @@ Skill Script v1 is safe by construction.
 - A player can type, compile, save, reload, and execute a bounded agent program.
 - Parser and validator failures stop before world mutation and return actionable diagnostics.
 - A valid run uses the selected tile, named NPC, real crew-order route, arrival-time guard, and observed after-state check.
+- A valid `on day_start` program captures its target without guard/order/mutation at Compile, fires once only after the next End Day advances the world, and never requires Send.
+- A busy Forge runtime is never replaced by the activation; the arm records one skip and is consumed. Moving selection after Compile cannot retarget it, and loading saved source cannot restore it.
 - A compiled or drafted order never fabricates a pass; only correlated world evidence closes the run.
 - Field Log, technical trace, tutor copy, and day summary expose the run lifecycle and final outcome.
 - Ten ordered lessons grant mastery only from qualifying player-authored terminal Workbench runs.
@@ -343,16 +364,16 @@ These are product boundaries for Skill Script v1, not a rejection of code author
 - Variables, arithmetic, loops, recursion, exceptions, or general expression evaluation.
 - Branching beyond one optional `when` guard around the single `use` statement.
 - More than one farm action, selected tile, or executing agent in one player program.
-- Automatic/day/event triggers; v1 runs are manually compiled and dispatched.
+- Repeating schedules, persisted arms, arbitrary timers, or any event trigger besides the one-shot `day_start` activation.
 - Multi-agent planning, multi-tile targets, or long-running autonomous programs.
 - Player-authored file/network access, persistent cloud sync, a skill marketplace, or program sharing.
-- New lesson tiers, export templates, and distribution builds in the current Session 3 scope.
+- New lesson tiers, export templates, and distribution builds in the current Session 4 scope.
 
 ## Deferred Product Questions
 
 - Should the Workbench eventually gain a physical in-world workshop or remain a UI surface?
 - How should NPC personality alter future program critique without changing deterministic semantics?
-- When should non-manual triggers, multi-tile programs, and multi-agent coordination unlock?
+- When should additional event triggers, multi-tile programs, and multi-agent coordination unlock?
 - Should programs become collectible notebook objects or shareable artifacts?
 - Where should the optional future LLM-observer seam add commentary without entering the deterministic execution path?
 
@@ -388,9 +409,9 @@ Mitigation: make every run leave a visible trace.
 
 ### Too Broad
 
-If v1 expands beyond one action, target, agent, and manual trigger, its teaching contract may blur before the fundamentals are solid.
+If v1 expands beyond one action, target, agent, and the documented manual/one-shot trigger boundary, its teaching contract may blur before the fundamentals are solid.
 
-Mitigation: preserve the documented v1 boundary; add future capabilities as explicit new language/runtime versions with their own smokes and lessons.
+Mitigation: preserve the documented v1 boundary; add future capabilities as explicit bounded slices with their own smokes and teaching contract.
 
 ## Shipped Implementation Map
 
@@ -469,6 +490,13 @@ Mitigation: preserve the documented v1 boundary; add future capabilities as expl
 - Implemented in `scripts/systems/SkillLessonLibrary.gd`, `scripts/systems/SkillTutorLibrary.gd`, and `scripts/systems/PlayerProgress.gd` with `Game.gd`/`GameUI.gd` integration.
 - Adds ten ordered mastery-gated lessons, deterministic three-stage hints, exact-source program saving, and safe local resume behavior.
 - Covered by `tools/smoke_skill_lessons.gd`, `tools/smoke_lesson_completion.gd`, `tools/smoke_tutor_copy.gd`, `tools/smoke_player_progress.gd`, and the two-process lesson walkthrough.
+
+### Slice 12: One-Shot Day-Start Trigger
+
+- Implemented in `scripts/systems/SkillTriggerScheduler.gd`, `SkillScriptParser.gd`, `SkillSpecValidator.gd`, `SkillForgeRunHarness.gd`, `Game.gd`, and `GameUI.gd`.
+- Adds optional `on day_start` syntax while preserving implicit `manual`; Compile captures one immutable selected-tile activation without a guard, order, or mutation, and End Day advances the world before consuming and auto-dispatching it once.
+- A pending Forge run causes a truthful consumed skip instead of replacement. Explicit disarm, replacement, guard block, action failure, and pass states remain deterministic and receipt-backed; arms are not persisted and cannot complete manual lessons.
+- Covered by `tools/smoke_skill_trigger_scheduler.gd`, `tools/smoke_workbench_trigger_controls.gd`, `tools/smoke_day_start_trigger.gd`, and `tools/capture_day_start_trigger.gd`.
 
 ## Historical Discovery Questionnaire
 
@@ -584,5 +612,6 @@ These questions drove the original Forge design session. They remain as decision
 - Failure copy: deterministic tutor guidance plus exact technical diagnostics and one repair suggestion.
 - Raw data: players author the bounded language and read contract previews, not arbitrary runtime dictionaries.
 - Mission Momentum: optional source context for relevant templates, not a prerequisite for Workbench programs.
+- Triggers: implicit manual dispatch plus one optional, in-memory `on day_start` activation; no repeats, restoration, or other events.
 - Receipts: immediate compiler/Field Log feedback plus terminal day-summary recaps.
 - Original foundation slice: `SkillSpecValidator.gd` and `smoke_skill_forge_spec_validator.gd`; both shipped and became the base for the implementation map above.

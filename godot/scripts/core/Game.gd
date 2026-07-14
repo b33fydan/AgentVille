@@ -9,6 +9,7 @@ const SkillForgeTemplateLibraryScript: Script = preload("res://scripts/systems/S
 const SkillLessonLibraryScript: Script = preload("res://scripts/systems/SkillLessonLibrary.gd")
 const SkillScriptParserScript: Script = preload("res://scripts/systems/SkillScriptParser.gd")
 const SkillSpecValidatorScript: Script = preload("res://scripts/systems/SkillSpecValidator.gd")
+const SkillTriggerSchedulerScript: Script = preload("res://scripts/systems/SkillTriggerScheduler.gd")
 const SkillTutorLibraryScript: Script = preload("res://scripts/systems/SkillTutorLibrary.gd")
 const PlayerProgressScript: Script = preload("res://scripts/systems/PlayerProgress.gd")
 const RECIPES: Dictionary = {
@@ -115,6 +116,7 @@ var _skill_forge_templates = SkillForgeTemplateLibraryScript.new()
 var _skill_forge_run_harness = SkillForgeRunHarnessScript.new()
 var _skill_check_evaluator = SkillCheckEvaluatorScript.new()
 var _skill_script_parser = SkillScriptParserScript.new()
+var _skill_trigger_scheduler = SkillTriggerSchedulerScript.new()
 var _pending_skill_forge_run: Dictionary = {}
 var _player_progress
 var _skill_lesson_library = SkillLessonLibraryScript.new()
@@ -201,6 +203,7 @@ func _connect_systems() -> void:
 	game_ui.skill_forge_review_requested.connect(_on_skill_forge_review_requested)
 	game_ui.skill_forge_revision_requested.connect(_on_skill_forge_revision_requested)
 	game_ui.workbench_compile_requested.connect(_on_workbench_compile_requested)
+	game_ui.workbench_trigger_disarm_requested.connect(_on_workbench_trigger_disarm_requested)
 	game_ui.lesson_selected.connect(_on_lesson_selected)
 	game_ui.program_save_requested.connect(_on_program_save_requested)
 	game_ui.program_load_requested.connect(_on_program_load_requested)
@@ -628,6 +631,25 @@ func _run_skill_forge_template(template_id: String, success_message: String) -> 
 
 
 func _on_selected_tile_changed(grid_pos: Vector2i) -> void:
+	if _skill_trigger_scheduler != null and _skill_trigger_scheduler.has_armed():
+		var armed: Dictionary = _skill_trigger_scheduler.snapshot()
+		var captured_request: Dictionary = armed.get("request", {})
+		var captured_target: Vector2i = captured_request.get("target_tile", Vector2i(-1, -1))
+		game_ui.set_workbench_trace({
+			"stage": "TRIGGER ARMED",
+			"status": "WAITING FOR DAY START",
+			"runtime_status": "ARMED ONCE  ·  DAY START",
+			"runtime_color": Color("#9ac76e"),
+			"agent_name": str(captured_request.get("agent_name", "Crew")),
+			"target_tile": captured_target,
+			"target_source": "captured selected_tile",
+			"tutor_lines": [_pipeline_tutor_line("lifecycle", "armed")],
+			"lines": [
+				"Selection moved to (%s,%s); the armed target remains (%s,%s)." % [grid_pos.x, grid_pos.y, captured_target.x, captured_target.y],
+				"No crew order exists yet. End Day fires this program once."
+			]
+		})
+		return
 	var tutor_lines: Array[String] = []
 	var lesson: Dictionary = _skill_lesson_library.get_lesson(_active_lesson_id)
 	if not lesson.is_empty():
@@ -655,6 +677,7 @@ func _on_lesson_selected(lesson_id: String) -> void:
 		sound_manager.play_stamp("error_soft")
 		return
 	_active_lesson_id = lesson_id
+	_disarm_workbench_trigger("lesson_loaded", false)
 	game_ui.set_current_lesson_goal(lesson)
 	game_ui.set_workbench_source(
 		str(lesson.get("starting_editor_text", "")),
@@ -688,6 +711,7 @@ func _on_program_load_requested(program_name: String) -> void:
 		game_ui.show_message("That saved program is empty or missing.")
 		sound_manager.play_stamp("error_soft")
 		return
+	_disarm_workbench_trigger("program_loaded", false)
 	game_ui.set_workbench_source(source_text, "%s.agent" % program_name.to_snake_case())
 	var parsed: Dictionary = _skill_script_parser.parse(source_text)
 	if bool(parsed.get("ok", false)):
@@ -703,6 +727,7 @@ func _on_workbench_compile_requested(source_text: String) -> void:
 		return
 	var parsed: Dictionary = _skill_script_parser.parse(source_text)
 	if not bool(parsed.get("ok", false)):
+		_disarm_workbench_trigger("compile_replaced", false)
 		var parse_error: Dictionary = parsed.get("error", {})
 		var parse_class := str(parse_error.get("class", "syntax"))
 		var tutor_lines := _lesson_failure_tutor(
@@ -735,7 +760,230 @@ func _on_workbench_compile_requested(source_text: String) -> void:
 		"source": "skill_forge",
 		"label": "Agent Workbench"
 	}
-	_start_skill_forge_spec(spec, request, "workbench", source_text, parsed.get("source_map", {}))
+	var source_map: Dictionary = parsed.get("source_map", {})
+	var trigger_type := str(spec.get("trigger", {}).get("type", "manual")).strip_edges()
+	if trigger_type == "day_start":
+		_arm_workbench_day_start(spec, request, source_text, source_map)
+		return
+	_disarm_workbench_trigger("compile_replaced", false)
+	_start_skill_forge_spec(spec, request, "workbench", source_text, source_map, "manual")
+
+
+func _arm_workbench_day_start(
+	spec: Dictionary,
+	request: Dictionary,
+	source_text: String,
+	source_map: Dictionary
+) -> void:
+	var validation: Dictionary = SkillSpecValidatorScript.new().validate(spec)
+	if not bool(validation.get("valid", false)):
+		_disarm_workbench_trigger("compile_replaced", false)
+		_start_skill_forge_spec(spec, request, "workbench", source_text, source_map, "day_start")
+		return
+	if str(request.get("target_source", "")) != "selected_tile":
+		_disarm_workbench_trigger("compile_replaced", false)
+		var target_detail := "A day-start program needs a tile selected at Compile so its future target is explicit."
+		game_ui.set_workbench_trigger_armed(false)
+		game_ui.set_workbench_trace({
+			"stage": "TRIGGER ARM BLOCKED",
+			"status": "SELECT A TILE",
+			"runtime_status": "BLOCKED  ·  TARGET REQUIRED",
+			"runtime_color": Color("#e7785b"),
+			"agent_name": str(request.get("agent_name", "Crew")),
+			"issues": [_workbench_runtime_issue(
+				source_map,
+				"context.target",
+				"trigger_target_required",
+				target_detail,
+				"Select one compatible farm tile, then compile again to capture it."
+			)],
+			"lines": ["No trigger armed, crew order drafted, or farm tile changed."]
+		})
+		game_ui.show_message("DAY START NEEDS A TARGET  ·  Select one farm tile first.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var arm_result: Dictionary = _skill_trigger_scheduler.arm(
+		spec,
+		request,
+		source_text,
+		source_map,
+		grid_manager.day
+	)
+	if str(arm_result.get("status", "")) not in ["armed", "replaced"]:
+		game_ui.set_workbench_trigger_armed(false)
+		game_ui.show_message("That trigger could not be armed by the local scheduler.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	var arm: Dictionary = arm_result.get("arm", {})
+	var captured_request: Dictionary = arm.get("request", {})
+	var target: Vector2i = captured_request.get("target_tile", Vector2i(-1, -1))
+	_last_valid_compiled_source = source_text
+	_last_valid_compiled_spec = spec.duplicate(true)
+	game_ui.set_workbench_trigger_armed(true)
+	game_ui.pulse_workbench_compile()
+	sound_manager.play_stamp("compile_success")
+	if bool(arm_result.get("replaced", false)):
+		var previous: Dictionary = arm_result.get("previous_arm", {})
+		_record_skill_trigger_event("replaced", previous, "A newer day-start compile replaced this arm.")
+		game_ui.add_field_log("Day-start trigger replaced: %s." % str(previous.get("id", "previous arm")))
+	_record_skill_trigger_event("armed", arm, "Captured at Compile; no crew order drafted.")
+	game_ui.add_field_log("Day-start trigger armed once: %s for %s at (%s,%s)." % [
+		str(arm.get("id", "day_start_arm")),
+		str(captured_request.get("agent_name", "Crew")),
+		target.x,
+		target.y
+	])
+	game_ui.set_workbench_trace({
+		"stage": "TRIGGER ARMED",
+		"status": "WAITING FOR DAY START",
+		"runtime_status": "ARMED ONCE  ·  DAY START",
+		"runtime_color": Color("#9ac76e"),
+		"agent_name": str(captured_request.get("agent_name", "Crew")),
+		"target_tile": target,
+		"target_source": "captured selected_tile",
+		"run_id": str(arm.get("id", "")),
+		"tutor_lines": [_pipeline_tutor_line("lifecycle", "armed")],
+		"lines": [
+			"Parse passed. Validation passed.",
+			"No guard checked, crew order drafted, or farm tile changed at Compile.",
+			"End Day advances the farm, then fires this program once."
+		]
+	})
+	game_ui.show_message("DAY START ARMED ONCE  ·  End Day will wake %s." % str(captured_request.get("agent_name", "Crew")))
+
+
+func _on_workbench_trigger_disarm_requested() -> void:
+	var result := _disarm_workbench_trigger("player_requested", true)
+	if result.is_empty():
+		game_ui.show_message("No day-start trigger is armed.")
+		sound_manager.play_stamp("ui_click")
+
+
+func _disarm_workbench_trigger(reason: String, announce: bool) -> Dictionary:
+	if _skill_trigger_scheduler == null:
+		return {}
+	var result: Dictionary = _skill_trigger_scheduler.disarm(reason)
+	if not bool(result.get("disarmed", false)):
+		return {}
+	var arm: Dictionary = result.get("arm", {})
+	var status := "replaced" if reason == "compile_replaced" else "disarmed"
+	var detail := "A newer compile replaced the one-shot arm." if status == "replaced" else "The one-shot arm was removed before day start."
+	_record_skill_trigger_event(status, arm, detail)
+	game_ui.set_workbench_trigger_armed(false)
+	game_ui.add_field_log("Day-start trigger %s: %s." % [status, str(arm.get("id", "day_start_arm"))])
+	if announce:
+		var captured_request: Dictionary = arm.get("request", {})
+		game_ui.set_workbench_trace({
+			"stage": "TRIGGER DISARMED",
+			"status": "READY",
+			"runtime_status": "READY  ·  LOCAL COMPILER",
+			"agent_name": str(captured_request.get("agent_name", "Crew")),
+			"target_tile": captured_request.get("target_tile", Vector2i(-1, -1)),
+			"target_source": "captured selected_tile",
+			"tutor_lines": [_pipeline_tutor_line("lifecycle", "disarmed")],
+			"lines": [detail, "The source remains in the editor and can be armed again."]
+		})
+		game_ui.show_message("DAY START DISARMED  ·  No automatic run is scheduled.")
+		sound_manager.play_stamp("ui_click")
+	return result
+
+
+func _fire_workbench_day_start() -> void:
+	if _skill_trigger_scheduler == null:
+		return
+	var activation: Dictionary = _skill_trigger_scheduler.consume_day_start(grid_manager.day)
+	if not bool(activation.get("fired", false)):
+		return
+	var arm: Dictionary = activation.get("arm", {})
+	var request: Dictionary = arm.get("request", {}).duplicate(true)
+	var target: Vector2i = request.get("target_tile", Vector2i(-1, -1))
+	game_ui.set_workbench_trigger_armed(false)
+	_record_skill_trigger_event("fired", arm, "Day %s began; automatic dispatch requested." % grid_manager.day)
+	game_ui.add_field_log("Day-start trigger fired: %s on Day %s for %s at (%s,%s)." % [
+		str(arm.get("id", "day_start_arm")),
+		grid_manager.day,
+		str(request.get("agent_name", "Crew")),
+		target.x,
+		target.y
+	])
+
+	if not _pending_skill_forge_run.is_empty():
+		var busy_detail := "Day-start trigger skipped because another Forge world check is still pending; the active run was not replaced."
+		_record_skill_trigger_event("skipped", arm, busy_detail)
+		game_ui.add_field_log("Day-start trigger skipped: Forge pipeline busy; arm consumed without replacement.")
+		game_ui.set_workbench_trace({
+			"stage": "TRIGGER SKIPPED",
+			"status": "PIPELINE BUSY",
+			"runtime_status": "SKIPPED  ·  PIPELINE BUSY",
+			"runtime_color": Color("#e7785b"),
+			"agent_name": str(request.get("agent_name", "Crew")),
+			"target_tile": target,
+			"target_source": "captured selected_tile",
+			"run_id": str(_pending_skill_forge_run.get("run_id", "")),
+			"order_id": str(_pending_skill_forge_run.get("order_id", "")),
+			"issues": [_workbench_runtime_issue(
+				arm.get("source_map", {}),
+				"trigger.type",
+				"trigger_runtime_busy",
+				busy_detail,
+				_pipeline_tutor_line("lifecycle", "skipped")
+			)],
+			"tutor_lines": [_pipeline_tutor_line("lifecycle", "skipped")],
+			"lines": ["The existing run and crew order remain authoritative."]
+		})
+		game_ui.show_message("DAY START SKIPPED  ·  Forge pipeline was already busy.")
+		sound_manager.play_stamp("error_soft")
+		return
+
+	request["day"] = grid_manager.day
+	request["run_id"] = "%s_day_%03d" % [str(arm.get("id", "day_start_arm")), grid_manager.day]
+	request["trigger_arm_id"] = str(arm.get("id", ""))
+	request["target_source"] = "captured selected_tile"
+	request["source_context"] = {
+		"source": "day_start",
+		"label": "One-shot Workbench trigger"
+	}
+	var result := _start_skill_forge_spec(
+		arm.get("spec", {}),
+		request,
+		"workbench_trigger",
+		str(arm.get("source", "")),
+		arm.get("source_map", {}),
+		"day_start",
+		false
+	)
+	if str(result.get("status", "")) != "started":
+		var detail := str(result.get("run", {}).get("result_detail", "Day-start activation was blocked before dispatch."))
+		_record_skill_trigger_event(str(result.get("status", "blocked")), arm, detail)
+		return
+	var order_id := str(result.get("drafted_order_id", ""))
+	if order_id == "":
+		return
+	_on_work_order_requested(order_id)
+	if str(work_orders.get(order_id, {}).get("status", "")) == "waiting":
+		game_ui.pulse_workbench_run(order_id)
+		sound_manager.play_stamp("run_dispatch")
+
+
+func _record_skill_trigger_event(status: String, arm: Dictionary, detail: String) -> void:
+	if _event_log == null or arm.is_empty():
+		return
+	var request: Dictionary = arm.get("request", {})
+	var spec: Dictionary = arm.get("spec", {})
+	_event_log.record_event("skill_trigger_%s" % status.to_snake_case(), {
+		"day": grid_manager.day,
+		"status": status,
+		"arm_id": str(arm.get("id", "")),
+		"trigger_type": str(arm.get("trigger_type", spec.get("trigger", {}).get("type", "day_start"))),
+		"skill_id": str(spec.get("id", "")),
+		"skill_name": str(spec.get("name", "Skill Run")),
+		"agent_id": str(request.get("agent_id", "")),
+		"agent_name": str(request.get("agent_name", "Crew")),
+		"target_tile": request.get("target_tile", Vector2i(-1, -1)),
+		"detail": detail
+	})
 
 
 func _workbench_target_for_spec(spec: Dictionary) -> Dictionary:
@@ -758,15 +1006,31 @@ func _workbench_target_for_spec(spec: Dictionary) -> Dictionary:
 	}
 
 
-func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: String, source_text: String = "", source_map: Dictionary = {}) -> Dictionary:
-	var lesson_id_for_run := _active_lesson_id if origin == "workbench" else ""
-	_cancel_pending_skill_forge_run("order never completed; replaced by a newer compile", true)
-	var start_result: Dictionary = _skill_forge_run_harness.start_manual_run(spec, request)
+func _start_skill_forge_spec(
+	spec: Dictionary,
+	request: Dictionary,
+	origin: String,
+	source_text: String = "",
+	source_map: Dictionary = {},
+	fired_trigger: String = "manual",
+	replace_pending: bool = true
+) -> Dictionary:
+	var is_workbench_origin := origin in ["workbench", "workbench_trigger"]
+	var lesson_id_for_run := _active_lesson_id if origin == "workbench" and fired_trigger == "manual" else ""
+	if replace_pending:
+		_cancel_pending_skill_forge_run("order never completed; replaced by a newer compile", true)
+	elif not _pending_skill_forge_run.is_empty():
+		return {
+			"status": "runtime_busy",
+			"can_run": false,
+			"run": {"result_detail": "Another Forge world check is still pending."}
+		}
+	var start_result: Dictionary = _skill_forge_run_harness.start_run(spec, request, fired_trigger)
 	var validation: Dictionary = start_result.get("validation", {})
 	var target: Vector2i = request.get("target_tile", Vector2i(-1, -1))
 	if str(start_result.get("status", "")) != "started":
 		_apply_skill_forge_result(start_result)
-		if origin == "workbench":
+		if is_workbench_origin:
 			var validation_errors: Array = _workbench_diagnostics(validation.get("errors", []), source_map)
 			var validation_warnings: Array = _workbench_diagnostics(validation.get("warnings", []), source_map)
 			var first_issue: Dictionary = validation_errors[0] if not validation_errors.is_empty() and typeof(validation_errors[0]) == TYPE_DICTIONARY else {}
@@ -796,7 +1060,7 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 		sound_manager.play_stamp("error_soft")
 		return start_result
 
-	if origin == "workbench":
+	if is_workbench_origin:
 		_last_valid_compiled_source = source_text
 		_last_valid_compiled_spec = spec.duplicate(true)
 
@@ -810,7 +1074,7 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 			"day": grid_manager.day
 		})
 		_apply_skill_forge_result(blocked_result)
-		if origin == "workbench":
+		if is_workbench_origin:
 			var tutor_lines := _lesson_failure_tutor(
 				lesson_id_for_run,
 				"guard.%s" % guard_condition,
@@ -819,9 +1083,9 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				{"allowed": false, "observed": guard_result.get("observed", "")}
 			)
 			game_ui.set_workbench_trace({
-				"stage": "RUNTIME GUARD",
+				"stage": "TRIGGER BLOCKED" if origin == "workbench_trigger" else "RUNTIME GUARD",
 				"status": "BLOCKED",
-				"runtime_status": "BLOCKED  ·  GUARD",
+				"runtime_status": "BLOCKED  ·  DAY START" if origin == "workbench_trigger" else "BLOCKED  ·  GUARD",
 				"runtime_color": Color("#e7785b"),
 				"agent_name": str(request.get("agent_name", "Crew")),
 				"target_tile": target,
@@ -835,7 +1099,11 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				)],
 				"drift": validation.get("drift", {}),
 				"tutor_lines": tutor_lines,
-				"lines": ["Parse passed.", "Validation passed.", guard_detail]
+				"lines": [
+					"Day %s began; the one-shot trigger checked its captured target." % grid_manager.day if origin == "workbench_trigger" else "Parse passed.",
+					"Validation passed.",
+					guard_detail
+				]
 			})
 		game_ui.show_message(str(guard_result.get("result_detail", "Workbench guard blocked the run.")))
 		sound_manager.play_stamp("error_soft")
@@ -850,7 +1118,7 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 			"day": grid_manager.day
 		})
 		_apply_skill_forge_result(failed_result)
-		if origin == "workbench":
+		if is_workbench_origin:
 			var tutor_lines := _lesson_failure_tutor(
 				lesson_id_for_run,
 				"order.blocked",
@@ -859,9 +1127,9 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 				{"detail": failure_detail}
 			)
 			game_ui.set_workbench_trace({
-				"stage": "ORDER BLOCKED",
+				"stage": "TRIGGER FAILED" if origin == "workbench_trigger" else "ORDER BLOCKED",
 				"status": "FAILED",
-				"runtime_status": "FAILED  ·  ORDER BLOCKED",
+				"runtime_status": "FAILED  ·  DAY START" if origin == "workbench_trigger" else "FAILED  ·  ORDER BLOCKED",
 				"runtime_color": Color("#e7785b"),
 				"agent_name": str(request.get("agent_name", "Crew")),
 				"target_tile": target,
@@ -894,25 +1162,28 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 		"started_day": grid_manager.day,
 		"day_advances": 0,
 		"origin": origin,
+		"trigger_type": fired_trigger,
+		"trigger_arm_id": str(request.get("trigger_arm_id", "")),
 		"lesson_id": lesson_id_for_run,
 		"source_text": source_text,
 		"compiled_spec": spec.duplicate(true),
 		"target_source": str(request.get("target_source", "selected_tile")),
 		"source_map": source_map.duplicate(true)
 	}
-	if origin == "workbench":
-		game_ui.pulse_workbench_compile()
-		sound_manager.play_stamp("compile_success")
+	if is_workbench_origin:
+		if fired_trigger == "manual":
+			game_ui.pulse_workbench_compile()
+			sound_manager.play_stamp("compile_success")
 		var tutor_lines: Array[String] = [
-			_pipeline_tutor_line("lifecycle", "pending")
+			_pipeline_tutor_line("lifecycle", "fired" if fired_trigger == "day_start" else "pending")
 		]
 		var drift_level := str(validation.get("drift", {}).get("level", "steady"))
 		if drift_level != "steady":
 			tutor_lines.push_front(_pipeline_tutor_line("drift", drift_level))
 		game_ui.set_workbench_trace({
-			"stage": "ORDER DRAFTED",
+			"stage": "TRIGGER FIRED" if fired_trigger == "day_start" else "ORDER DRAFTED",
 			"status": "PENDING WORLD CHECK",
-			"runtime_status": "PENDING  ·  WORLD CHECK",
+			"runtime_status": "RUNNING  ·  DAY START" if fired_trigger == "day_start" else "PENDING  ·  WORLD CHECK",
 			"agent_name": str(request.get("agent_name", "Crew")),
 			"target_tile": target,
 			"target_source": str(request.get("target_source", "selected_tile")),
@@ -921,7 +1192,12 @@ func _start_skill_forge_spec(spec: Dictionary, request: Dictionary, origin: Stri
 			"run_id": str(_pending_skill_forge_run.get("run_id", "")),
 			"order_id": order_id,
 			"tutor_lines": tutor_lines,
-			"lines": ["Parse passed.", "Validation passed.", str(guard_result.get("result_detail", "Guard passed.")), "Crew order drafted; verification is pending."]
+			"lines": [
+				"Day %s began; the one-shot trigger fired without Send." % grid_manager.day if fired_trigger == "day_start" else "Parse passed.",
+				"Validation passed.",
+				str(guard_result.get("result_detail", "Guard passed.")),
+				"Crew order auto-dispatched; verification is pending." if fired_trigger == "day_start" else "Crew order drafted; verification is pending."
+			]
 		})
 	return start_result
 
@@ -1043,7 +1319,7 @@ func _cancel_pending_skill_forge_run(reason: String, remove_order: bool) -> bool
 		"day": grid_manager.day
 	})
 	_apply_skill_forge_result(failure)
-	if str(pending.get("origin", "")) == "workbench":
+	if str(pending.get("origin", "")).begins_with("workbench"):
 		var lifecycle_state := "cancelled"
 		if reason.contains("replaced"):
 			lifecycle_state = "replaced"
@@ -1057,9 +1333,9 @@ func _cancel_pending_skill_forge_run(reason: String, remove_order: bool) -> bool
 			{"detail": reason}
 		)
 		game_ui.set_workbench_trace({
-			"stage": "WORLD CHECK",
+			"stage": "DAY START WORLD CHECK" if str(pending.get("trigger_type", "manual")) == "day_start" else "WORLD CHECK",
 			"status": "FAILED",
-			"runtime_status": "FAILED",
+			"runtime_status": "FAILED  ·  DAY START" if str(pending.get("trigger_type", "manual")) == "day_start" else "FAILED",
 			"runtime_color": Color("#e7785b"),
 			"agent_name": str(pending.get("agent_name", "Crew")),
 			"target_tile": pending.get("target_tile", Vector2i(-1, -1)),
@@ -1076,6 +1352,8 @@ func _cancel_pending_skill_forge_run(reason: String, remove_order: bool) -> bool
 			"tutor_lines": tutor_lines,
 			"lines": [reason]
 		})
+	if str(pending.get("trigger_type", "manual")) == "day_start":
+		_record_pending_skill_trigger_event("failed", pending, reason)
 	return true
 
 
@@ -1102,9 +1380,21 @@ func _finish_pending_skill_forge_run(event: Dictionary) -> void:
 		})
 		_remove_skill_forge_order(order_id, "guard_blocked")
 		_apply_skill_forge_result(blocked)
+		_record_pending_skill_trigger_event("blocked", pending, str(blocked.get("run", {}).get("result_detail", "Runtime guard blocked the trigger.")))
 		_update_workbench_terminal_trace(pending, blocked)
 		return
 	if not bool(event.get("success", false)):
+		if str(pending.get("trigger_type", "manual")) == "day_start":
+			_pending_skill_forge_run.clear()
+			var failure_detail := str(event.get("message", "Crew could not complete the automatic action."))
+			var failed: Dictionary = _skill_forge_run_harness.complete_run(pending.get("start_result", {}), false, {
+				"result_detail": failure_detail,
+				"day": grid_manager.day
+			})
+			_remove_skill_forge_order(order_id, "trigger_action_failed")
+			_apply_skill_forge_result(failed)
+			_record_pending_skill_trigger_event("failed", pending, failure_detail)
+			_update_workbench_terminal_trace(pending, failed)
 		return
 
 	var after := _skill_forge_snapshot(pending.get("target_tile", Vector2i(-1, -1)))
@@ -1119,6 +1409,7 @@ func _finish_pending_skill_forge_run(event: Dictionary) -> void:
 		"day": grid_manager.day
 	})
 	_apply_skill_forge_result(completion)
+	_record_pending_skill_trigger_event("passed" if bool(verdict.get("passed", false)) else "failed", pending, str(verdict.get("result_detail", "World check finished.")))
 	if bool(verdict.get("passed", false)):
 		game_ui.pulse_workbench_receipt_passed()
 		sound_manager.play_stamp("receipt_pass")
@@ -1126,9 +1417,10 @@ func _finish_pending_skill_forge_run(event: Dictionary) -> void:
 
 
 func _update_workbench_terminal_trace(pending: Dictionary, result: Dictionary, verdict: Dictionary = {}) -> void:
-	if str(pending.get("origin", "")) != "workbench":
+	if not str(pending.get("origin", "")).begins_with("workbench"):
 		return
 	var status := str(result.get("status", "failed")).to_upper()
+	var is_day_start := str(pending.get("trigger_type", "manual")) == "day_start"
 	var detail := str(verdict.get("result_detail", result.get("run", {}).get("result_detail", "World check finished.")))
 	var tutor_lines: Array[String] = []
 	var runtime_issues: Array = []
@@ -1176,18 +1468,48 @@ func _update_workbench_terminal_trace(pending: Dictionary, result: Dictionary, v
 			_pipeline_tutor_line("check", check_type, {"passed": false})
 		))
 	game_ui.set_workbench_trace({
-		"stage": "WORLD CHECK",
+		"stage": "DAY START WORLD CHECK" if is_day_start else "WORLD CHECK",
 		"status": status,
 		"agent_name": str(pending.get("agent_name", "Crew")),
 		"target_tile": pending.get("target_tile", Vector2i(-1, -1)),
 		"target_source": str(pending.get("target_source", "selected_tile")),
 		"run_id": str(pending.get("run_id", "")),
 		"order_id": str(pending.get("order_id", "")),
-		"runtime_status": status,
+		"runtime_status": "%s  ·  DAY START" % status if is_day_start else status,
 		"runtime_color": Color("#8fbe67") if status == "PASSED" else Color("#e7785b"),
 		"issues": runtime_issues,
 		"tutor_lines": tutor_lines,
 		"lines": [detail]
+	})
+
+
+func _record_pending_skill_trigger_event(status: String, pending: Dictionary, detail: String) -> void:
+	if str(pending.get("trigger_type", "manual")) != "day_start":
+		return
+	var spec: Dictionary = pending.get("compiled_spec", {})
+	var target: Vector2i = pending.get("target_tile", Vector2i(-1, -1))
+	game_ui.add_field_log("Day-start trigger %s: %s for %s at (%s,%s)." % [
+		status,
+		str(spec.get("name", "Skill Run")),
+		str(pending.get("agent_name", "Crew")),
+		target.x,
+		target.y
+	])
+	if _event_log == null:
+		return
+	_event_log.record_event("skill_trigger_%s" % status.to_snake_case(), {
+		"day": grid_manager.day,
+		"status": status,
+		"arm_id": str(pending.get("trigger_arm_id", "")),
+		"run_id": str(pending.get("run_id", "")),
+		"order_id": str(pending.get("order_id", "")),
+		"trigger_type": "day_start",
+		"skill_id": str(spec.get("id", "")),
+		"skill_name": str(spec.get("name", "Skill Run")),
+		"agent_id": str(pending.get("agent_id", "")),
+		"agent_name": str(pending.get("agent_name", "Crew")),
+		"target_tile": pending.get("target_tile", Vector2i(-1, -1)),
+		"detail": detail
 	})
 
 
@@ -3026,6 +3348,7 @@ func _on_advance_day_requested() -> void:
 		if int(_pending_skill_forge_run.get("day_advances", 0)) >= 2:
 			_cancel_pending_skill_forge_run("order never completed after two day advances", true)
 	game_ui.show_message("A warm morning rolls in. Crops advanced one stage.")
+	_fire_workbench_day_start()
 
 
 func _on_harvest_collected(amount: int) -> void:

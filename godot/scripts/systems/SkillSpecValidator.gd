@@ -12,6 +12,7 @@ const ALLOWED_TOOLS := [
 const SUPPORTED_CONTEXT_TARGETS := ["selected_tile"]
 const SUPPORTED_STEP_TARGETS := ["context.target", "selected_tile"]
 const SUPPORTED_SUCCESS_CHECKS := ["tile_state", "crop_state", "inventory_delta"]
+const SUPPORTED_TRIGGERS := ["manual", "day_start"]
 const SUPPORTED_CONDITIONS := [
 	"always",
 	"inspect.has_brush",
@@ -66,10 +67,19 @@ func supported_success_checks() -> Array:
 	return SUPPORTED_SUCCESS_CHECKS.duplicate()
 
 
+func supported_triggers() -> Array:
+	return SUPPORTED_TRIGGERS.duplicate()
+
+
 func _normalize_spec(spec: Dictionary) -> Dictionary:
 	var normalized := spec.duplicate(true)
 	normalized["id"] = str(normalized.get("id", "")).strip_edges()
 	normalized["name"] = str(normalized.get("name", "")).strip_edges()
+	var trigger = normalized.get("trigger", null)
+	if typeof(trigger) == TYPE_DICTIONARY:
+		var normalized_trigger: Dictionary = trigger.duplicate(true)
+		normalized_trigger["type"] = str(normalized_trigger.get("type", "")).strip_edges()
+		normalized["trigger"] = normalized_trigger
 
 	if normalized.has("receipt_template") and not normalized.has("receipt"):
 		normalized["receipt"] = {
@@ -103,10 +113,11 @@ func _validate_identity(spec: Dictionary, errors: Array, warnings: Array) -> voi
 func _validate_trigger(spec: Dictionary, errors: Array) -> void:
 	var trigger = spec.get("trigger", null)
 	if typeof(trigger) != TYPE_DICTIONARY:
-		_add_issue(errors, "missing_trigger", "trigger", "The MVP Forge needs a manual trigger.")
+		_add_issue(errors, "missing_trigger", "trigger", "Choose manual or day_start so the local runtime knows when to start.")
 		return
-	if str(trigger.get("type", "")).strip_edges() != "manual":
-		_add_issue(errors, "unsupported_trigger", "trigger.type", "Only manual triggers are allowed in the first Forge.")
+	var trigger_type := str(trigger.get("type", "")).strip_edges()
+	if not SUPPORTED_TRIGGERS.has(trigger_type):
+		_add_issue(errors, "unsupported_trigger", "trigger.type", "Use manual or day_start; other events are not allowlisted.")
 
 
 func _validate_context(spec: Dictionary, errors: Array, warnings: Array) -> void:

@@ -1,4 +1,4 @@
-# AgentVille Sessions 1–3 Ship Log
+# AgentVille Sessions 1–4 Ship Log
 
 ## 2026-07-13 — What Shipped
 
@@ -80,20 +80,41 @@ Session 3 adds ship-quality behavior through the existing runtime rather than in
 
 Session 3 passed its release gate on Godot 4.6.3: `godot/tools/run_all_smokes.sh` completed `113/113`, the required second windowed `qa_cold_start.gd` pass exited `0`, the project sanity check exited `0`, and the regenerated cold-start, portfolio, camera, and Drift captures passed visual review at 1600×900. `HANDOFF.md` records the find→fix evidence and exact continuation point.
 
+## 2026-07-14 — Session 4: Wake An Agent On Day Start
+
+Session 4 adds AgentVille's first reactive Skill Script without opening an unbounded automation system. A player can add `on day_start`, select one farm tile, and Compile to arm a single in-memory activation. Compile captures the target and source evidence but performs no guard check, drafts no work order, and mutates no farm state. The next End Day grows and advances the world first, then consumes the arm and auto-dispatches valid named-agent work through the existing crew path without Send.
+
+### Systems Added Or Extended
+
+- `scripts/systems/SkillTriggerScheduler.gd`: one deterministic in-memory arm with immutable Compile-time request/source snapshots, local counter IDs, explicit replacement/disarm results, and exactly-once later-day consumption.
+- Skill Script grammar and validation: optional `on day_start` compiles to the allowlisted `day_start` trigger; omitting `on` preserves the manual route, while every other event is rejected with source-linked teaching guidance.
+- Trigger-aware run harness: matching manual and day-start runs can start through one bounded entry point; trigger mismatches block without drafting a directive, and the existing manual wrapper remains compatible.
+- Workbench lifecycle: the armed-once state, captured tile, explicit Disarm control, fired/blocked/skipped/replaced/disarmed trace, and Field Log evidence stay visible without adding a new lesson or automation panel.
+- End-day integration: the world update remains first. A free runtime checks the authored guard and auto-dispatches through the real work-order/`AgentActor`/world-check route; a busy Forge runtime is never replaced and consumes the arm with one honest skipped receipt. Automatic action failure terminates instead of leaving a stuck order.
+
+### Coverage Added
+
+- `smoke_skill_trigger_scheduler.gd`
+- `smoke_workbench_trigger_controls.gd`
+- `smoke_day_start_trigger.gd`
+- `capture_day_start_trigger.gd` at 1600×900
+
 ## Known Limitations
 
-- Skill Script v1 is intentionally bounded to one named crew member, one selected tile, one farm action, one optional guard, one verification check, one receipt, and a manual compile/dispatch trigger.
+- Skill Script v1 is intentionally bounded to one named crew member, one selected tile, one farm action, one optional guard, one verification check, and one receipt. Its only routes are implicit manual dispatch and one optional, session-local, one-shot `on day_start` activation.
 - Variables, arithmetic, comments, user-defined functions, loops, nested control flow, multi-agent planning, multi-tile programs, and general expression evaluation are not accepted by v1.
 - Player programs cannot evaluate arbitrary code or reach file writes, network calls, or the game loop outside the validator/harness allowlist.
 - Lesson/program/view progress persists locally, but the farm world itself is rebuilt at boot; the graduate stake compensates for that boundary rather than pretending resources persisted.
+- Day-start arms do not persist, repeat, or survive source loading. Re-arming requires an explicit Compile, and passing an automatic activation does not complete the ten manual lessons.
 - The tutor, NPC decisions, Drift cues, and observer-like summaries are deterministic. No LLM, LSTM, HTTP request, or live model participates in execution.
 - Final sound assets are optional `.ogg` files; generated placeholder tones preserve distinct feedback when those files are absent.
 - Licensed MEGAVOX GLBs are local-only and optional. Missing files silently use procedural cube fallbacks, so visual review must note which asset path was available.
-- This three-session package does not include export templates, distribution builds, cloud saves, multiplayer, or a skill marketplace.
+- This four-session package does not include export templates, distribution builds, cloud saves, multiplayer, or a skill marketplace.
 
 ## Next Horizons
 
-- **Non-manual triggers:** add bounded day-start, crop-ready, mission, or inventory triggers without weakening deterministic scheduling or receipt correlation.
+- **Next bounded triggers:** evaluate one explicit crop-ready, mission, or inventory event at a time, with the same deterministic scheduling, target capture, and receipt-correlation standard as `day_start`.
+- **Repeating automation:** only consider opt-in repeat schedules after one-shot arming, cancellation, busy-runtime behavior, and player visibility have held up in real playtests.
 - **Multi-tile targets:** teach iteration and decomposition across a small explicit tile set before considering long-running autonomy.
 - **Program sharing:** export/import safe Skill Script text and metadata, then consider a moderated library once local authorship is solid.
 - **LLM-observer seam:** let an optional observer enrich recaps or coaching from `GameEventLog` evidence while keeping compilation, validation, decisions, and world mutation entirely local and deterministic.

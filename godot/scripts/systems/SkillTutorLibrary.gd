@@ -4,7 +4,7 @@ extends RefCounted
 const PARSE_CLASSES := ["lexical", "syntax", "structure", "identity"]
 const DRIFT_LEVELS := ["steady", "wobbly", "hallucinating"]
 const GUARD_CONDITIONS := ["always", "inspect.has_brush", "crop.needs_tending", "crop.ready", "tile.empty"]
-const LIFECYCLE_STATES := ["order", "order_blocked", "pending", "retrying", "replaced", "cancelled", "timeout"]
+const LIFECYCLE_STATES := ["order", "order_blocked", "pending", "retrying", "replaced", "cancelled", "timeout", "armed", "fired", "skipped", "disarmed"]
 const CHECK_TYPES := ["tile_state", "crop_state", "inventory_delta"]
 
 const PARSE_COPY := {
@@ -43,7 +43,7 @@ const VALIDATOR_COPY := {
 	"missing_success_target": "The success check has no target. Point it at context.target or selected_tile.",
 	"missing_tile_decor": "The tile-state check does not name expected decor. Set decor_id to the state the tool should leave behind.",
 	"missing_tools": "The skill has no tool allowlist. Add the farm tool used by its step.",
-	"missing_trigger": "The skill has no trigger. Use the manual trigger for this lesson.",
+	"missing_trigger": "The skill has no trigger. Use manual, or add on day_start for one reactive run.",
 	"step_tool_not_listed": "The step calls a tool outside its own allowlist. Add that tool to the list or change the step call.",
 	"too_many_steps": "This skill carries more than three steps. Split the job into smaller verifiable skills.",
 	"unknown_source_context": "The source context label is unknown. Replace it with a supported farm history source.",
@@ -53,7 +53,7 @@ const VALIDATOR_COPY := {
 	"unsupported_step_target": "The step target is outside this Forge. Use context.target or selected_tile.",
 	"unsupported_success_check": "The verifier cannot run that check type. Use tile_state, crop_state, or inventory_delta.",
 	"unsupported_success_target": "The verifier cannot read that target. Use context.target or selected_tile.",
-	"unsupported_trigger": "The runtime cannot start that trigger. Use a manual trigger for this lesson.",
+	"unsupported_trigger": "That event is outside the local allowlist. Use manual, or add on day_start for one reactive run.",
 	"vague_receipt_label": "The receipt label is too vague to audit later. Rename it after the result the run proves.",
 	"weak_failure_suggestion": "The blocked-run suggestion does not name a repair. Point to the target, guard, tool, or check to revise."
 }
@@ -62,9 +62,9 @@ const VALIDATOR_FALLBACK := "The validator found an unmapped spec issue. Fix the
 const PIPELINE_FALLBACK := "The local pipeline needs a specific repair before it can continue. Read the technical line, then revise that field."
 
 const DRIFT_COPY := {
-	"steady": "The spec is steady and ready for a farm check. Send the drafted order and read its receipt.",
-	"wobbly": "The spec can run, but a warning makes its contract wobbly. Read the warning before sending the order.",
-	"hallucinating": "A hard validator blocker has pushed the spec into hallucinating drift. Fix the first error before sending any work."
+	"steady": "The spec is steady and ready for its declared trigger. Follow the runtime state to send or fire it.",
+	"wobbly": "The spec can run, but a warning makes its contract wobbly. Read the warning before its trigger continues.",
+	"hallucinating": "A hard validator blocker has pushed the spec into hallucinating drift. Fix the first error before arming or sending work."
 }
 
 const LIFECYCLE_COPY := {
@@ -74,7 +74,11 @@ const LIFECYCLE_COPY := {
 	"retrying": "The crew attempt missed, so the same order returned to ready. Send it again or repair the target condition.",
 	"replaced": "A newer compile replaced the pending run. Use the newest order and ignore the retired receipt.",
 	"cancelled": "The pending order was cancelled before verification. Compile again when a compatible target is selected.",
-	"timeout": "The order never completed within two day advances. Retarget or simplify the run before compiling again."
+	"timeout": "The order never completed within two day advances. Retarget or simplify the run before compiling again.",
+	"armed": "The program captured its selected tile and is armed once. End the day to fire it, or disarm it before then.",
+	"fired": "Day start fired the armed program once. The crew order now follows the same guard and world checks as a manual run.",
+	"skipped": "The day-start program was consumed without replacing active crew work. Compile it again after the current run finishes.",
+	"disarmed": "The one-shot program was disarmed before day start. Its source remains available to revise or arm again."
 }
 
 
@@ -138,7 +142,7 @@ func line_for(state_key: String, detail_key: String = "", context: Dictionary = 
 			return str(LIFECYCLE_COPY.get(detail_key, PIPELINE_FALLBACK))
 		"order":
 			return str(LIFECYCLE_COPY.get("order_blocked" if detail_key == "blocked" else "order", PIPELINE_FALLBACK))
-		"pending", "retrying", "replaced", "cancelled", "timeout", "order_blocked":
+		"pending", "retrying", "replaced", "cancelled", "timeout", "order_blocked", "armed", "fired", "skipped", "disarmed":
 			return str(LIFECYCLE_COPY.get(state_key, PIPELINE_FALLBACK))
 	return PIPELINE_FALLBACK
 

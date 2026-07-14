@@ -22,6 +22,7 @@ signal skill_forge_run_requested(template_id: String)
 signal skill_forge_review_requested(template_id: String)
 signal skill_forge_revision_requested(template_id: String)
 signal workbench_compile_requested(source_text: String)
+signal workbench_trigger_disarm_requested
 signal lesson_selected(lesson_id: String)
 signal program_save_requested(program_name: String, source_text: String)
 signal program_load_requested(program_name: String)
@@ -46,6 +47,7 @@ var _code_editor: CodeEdit
 var _compiler_output: RichTextLabel
 var _workbench_runtime_label: Label
 var _workbench_compile_button: Button
+var _workbench_disarm_button: Button
 var _workbench_filename_label: Label
 var _workbench_lesson_goal_label: Label
 var _workbench_feedback_counts: Dictionary = {}
@@ -216,6 +218,20 @@ func set_workbench_runtime_status(status_text: String, color: Color = Color("#e4
 		return
 	_workbench_runtime_label.text = status_text.strip_edges().to_upper()
 	_workbench_runtime_label.add_theme_color_override("font_color", color)
+
+
+func set_workbench_trigger_armed(is_armed: bool, runtime_status: String = "") -> void:
+	if _workbench_disarm_button == null:
+		return
+	_workbench_disarm_button.visible = is_armed
+	_workbench_disarm_button.disabled = not is_armed
+	if runtime_status.strip_edges() != "":
+		set_workbench_runtime_status(
+			runtime_status,
+			Color("#9ac76e") if is_armed else Color("#e7785b")
+		)
+	elif is_armed:
+		set_workbench_runtime_status("ARMED ONCE  ·  DAY START", Color("#9ac76e"))
 
 
 func set_workbench_source(source_text: String, source_label: String = "lesson.agent") -> void:
@@ -1687,6 +1703,21 @@ func _build_code_workbench() -> void:
 	_workbench_runtime_label.add_theme_color_override("font_color", Color("#e4ae35"))
 	header.add_child(_workbench_runtime_label)
 
+	_workbench_disarm_button = Button.new()
+	_workbench_disarm_button.name = "WorkbenchDisarmButton"
+	_workbench_disarm_button.text = "DISARM"
+	_workbench_disarm_button.tooltip_text = "Disarm the one-shot day-start trigger"
+	_workbench_disarm_button.custom_minimum_size = Vector2(64, 18)
+	_workbench_disarm_button.add_theme_font_size_override("font_size", 10)
+	_workbench_disarm_button.add_theme_color_override("font_color", Color("#f0e6c9"))
+	_workbench_disarm_button.add_theme_stylebox_override("normal", _workbench_chip_style(Color("#6f493e")))
+	_workbench_disarm_button.add_theme_stylebox_override("hover", _workbench_chip_style(Color("#956052")))
+	_workbench_disarm_button.add_theme_stylebox_override("pressed", _workbench_chip_style(Color("#56372f")))
+	_workbench_disarm_button.pressed.connect(_request_workbench_trigger_disarm)
+	_workbench_disarm_button.visible = false
+	_workbench_disarm_button.disabled = true
+	header.add_child(_workbench_disarm_button)
+
 	_workbench_compile_button = Button.new()
 	_workbench_compile_button.name = "WorkbenchCompileButton"
 	_workbench_compile_button.text = "COMPILE"
@@ -1734,7 +1765,7 @@ func _build_code_workbench() -> void:
 	highlighter.symbol_color = Color("#d7b27b")
 	highlighter.function_color = Color("#75b9c8")
 	highlighter.member_variable_color = Color("#c4d894")
-	for keyword in ["agent", "observe", "when", "use", "verify", "receipt"]:
+	for keyword in ["agent", "on", "observe", "when", "use", "verify", "receipt"]:
 		highlighter.add_keyword_color(keyword, Color("#e7785b"))
 	_code_editor.syntax_highlighter = highlighter
 
@@ -1781,7 +1812,10 @@ func _build_code_workbench() -> void:
 func _on_workbench_text_changed() -> void:
 	if _suppress_workbench_text_changed:
 		return
-	set_workbench_runtime_status("UNSAVED  ·  READY TO COMPILE", Color("#e7785b"))
+	if _workbench_disarm_button != null and _workbench_disarm_button.visible:
+		set_workbench_runtime_status("EDITED  ·  TRIGGER STILL ARMED", Color("#e4ae35"))
+	else:
+		set_workbench_runtime_status("UNSAVED  ·  READY TO COMPILE", Color("#e7785b"))
 
 
 func _on_workbench_editor_gui_input(event: InputEvent) -> void:
@@ -1802,6 +1836,10 @@ func _request_workbench_compile() -> void:
 		return
 	set_workbench_runtime_status("COMPILING  ·  LOCAL", Color("#e4ae35"))
 	workbench_compile_requested.emit(_code_editor.text)
+
+
+func _request_workbench_trigger_disarm() -> void:
+	workbench_trigger_disarm_requested.emit()
 
 
 func _build_view_controls(parent: VBoxContainer) -> void:

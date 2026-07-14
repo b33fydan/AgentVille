@@ -175,6 +175,7 @@ func _parse_program() -> Dictionary:
 	var program := {
 		"agent_keyword": agent_keyword,
 		"agent_token": agent_token,
+		"trigger": {},
 		"observe": {},
 		"uses": [],
 		"verify": {},
@@ -204,9 +205,11 @@ func _parse_program() -> Dictionary:
 func _parse_statement(program: Dictionary) -> void:
 	var statement_token := _peek()
 	if str(statement_token.get("kind", "")) != TOKEN_IDENTIFIER:
-		_set_error_from_token(statement_token, "Expected an agent statement.", "Use observe, when, use, verify, or receipt.")
+		_set_error_from_token(statement_token, "Expected an agent statement.", "Use on, observe, when, use, verify, or receipt.")
 		return
 	match str(statement_token.get("lexeme", "")):
+		"on":
+			_parse_on(program)
 		"observe":
 			_parse_observe(program)
 		"when":
@@ -218,7 +221,22 @@ func _parse_statement(program: Dictionary) -> void:
 		"receipt":
 			_parse_receipt(program)
 		_:
-			_set_error_from_token(statement_token, "Unknown statement '%s'." % str(statement_token.get("lexeme", "")), "Use observe, when, use, verify, or receipt.")
+			_set_error_from_token(statement_token, "Unknown statement '%s'." % str(statement_token.get("lexeme", "")), "Use on, observe, when, use, verify, or receipt.")
+
+
+func _parse_on(program: Dictionary) -> void:
+	var keyword := _advance()
+	if not program.get("trigger", {}).is_empty():
+		_set_error_from_token(keyword, "The program has more than one on statement.", "Keep one event trigger, such as on day_start.")
+		return
+	var event := _consume(TOKEN_IDENTIFIER, "Expected an event name after on.", "Write on day_start, or remove the on statement for a manual program.")
+	if event.is_empty():
+		return
+	program["trigger"] = {
+		"keyword": keyword,
+		"event": event
+	}
+	_finish_statement()
 
 
 func _parse_observe(program: Dictionary) -> void:
@@ -366,6 +384,11 @@ func _compile_program(program: Dictionary) -> Dictionary:
 	var condition := str(use_statement.get("condition", "always"))
 	var verify_token: Dictionary = program.get("verify", {})
 	var check_type := str(verify_token.get("lexeme", ""))
+	var trigger_statement: Dictionary = program.get("trigger", {})
+	var trigger_token: Dictionary = trigger_statement.get("event", {})
+	var trigger_type := str(trigger_token.get("lexeme", "manual")).strip_edges()
+	if trigger_type == "":
+		trigger_type = "manual"
 
 	var template_spec: Dictionary = {}
 	var template_id := str(TEMPLATE_BY_TOOL.get(tool_name, ""))
@@ -413,7 +436,7 @@ func _compile_program(program: Dictionary) -> Dictionary:
 	var spec := {
 		"id": skill_id,
 		"name": skill_name,
-		"trigger": {"type": "manual"},
+		"trigger": {"type": trigger_type},
 		"context": context,
 		"tools": [tool_name],
 		"steps": [step],
@@ -434,6 +457,10 @@ func _source_map_for_program(program: Dictionary) -> Dictionary:
 	var source_map := {}
 	var agent_keyword: Dictionary = program.get("agent_keyword", {})
 	var agent_token: Dictionary = program.get("agent_token", {})
+	var trigger_statement: Dictionary = program.get("trigger", {})
+	var trigger_token: Dictionary = trigger_statement.get("event", {})
+	if trigger_token.is_empty():
+		trigger_token = agent_keyword
 	var observe_token: Dictionary = program.get("observe", {})
 	var verify_token: Dictionary = program.get("verify", {})
 	var receipt_token: Dictionary = program.get("receipt", {})
@@ -447,7 +474,7 @@ func _source_map_for_program(program: Dictionary) -> Dictionary:
 		condition_token = use_keyword
 
 	_map_source_fields(source_map, ["agent", "agent.name"], agent_token)
-	_map_source_fields(source_map, ["trigger", "trigger.type"], agent_keyword)
+	_map_source_fields(source_map, ["trigger", "trigger.type"], trigger_token)
 	_map_source_fields(source_map, ["id", "name"], receipt_token)
 	_map_source_fields(source_map, ["context", "context.target", "context.allowed_sources"], observe_token)
 	_map_source_fields(source_map, ["tools", "tools[0]", "steps", "steps[0]", "steps[0].id", "steps[0].tool"], tool_token)

@@ -37,12 +37,27 @@ var _next_run_number: int = 1
 
 
 func start_manual_run(spec: Dictionary, request: Dictionary = {}) -> Dictionary:
+	return start_run(spec, request, "manual")
+
+
+func start_run(spec: Dictionary, request: Dictionary = {}, fired_trigger: String = "manual") -> Dictionary:
 	var validation: Dictionary = _validator.validate(spec)
 	var normalized: Dictionary = validation.get("normalized", spec)
-	var run := _base_run(normalized, validation, request)
+	var normalized_fired_trigger := fired_trigger.strip_edges()
+	var run := _base_run(normalized, validation, request, normalized_fired_trigger)
 	if not bool(validation.get("valid", false)):
 		run["status"] = "blocked"
 		return _result_from_run(run, {}, "blocked", _blocked_field_log_line(run, validation), validation)
+
+	var declared_trigger := str(normalized.get("trigger", {}).get("type", "")).strip_edges()
+	if declared_trigger != normalized_fired_trigger:
+		run["status"] = "blocked"
+		run["block_code"] = "trigger_mismatch"
+		run["result_detail"] = "Declared trigger %s cannot fire as %s." % [
+			_readable_trigger(declared_trigger),
+			_readable_trigger(normalized_fired_trigger)
+		]
+		return _result_from_run(run, {}, "blocked", _trigger_mismatch_field_log_line(run), validation)
 
 	var directive := _build_directive(run, normalized, request)
 	run["status"] = "started"
@@ -94,7 +109,7 @@ func _apply_drift_override(run: Dictionary, details: Dictionary) -> void:
 	run["drift"] = drift
 
 
-func _base_run(spec: Dictionary, validation: Dictionary, request: Dictionary) -> Dictionary:
+func _base_run(spec: Dictionary, validation: Dictionary, request: Dictionary, fired_trigger: String = "manual") -> Dictionary:
 	var run_id := str(request.get("run_id", "")).strip_edges()
 	if run_id == "":
 		run_id = "forge_run_%03d" % _next_run_number
@@ -117,6 +132,7 @@ func _base_run(spec: Dictionary, validation: Dictionary, request: Dictionary) ->
 		"target_tile": target_tile,
 		"day": int(request.get("day", 1)),
 		"trigger_type": str(spec.get("trigger", {}).get("type", "manual")),
+		"fired_trigger": fired_trigger,
 		"tools": _string_array(spec.get("tools", [])),
 		"step_count": spec.get("steps", []).size() if typeof(spec.get("steps", [])) == TYPE_ARRAY else 0,
 		"success_check_type": str(success_check.get("type", "")),
@@ -165,6 +181,7 @@ func _result_from_run(run: Dictionary, directive: Dictionary, status_text: Strin
 	return {
 		"status": status_text,
 		"can_run": status_text == "started",
+		"block_code": str(run.get("block_code", "")),
 		"run": run,
 		"directive": directive,
 		"validation": validation,
@@ -189,6 +206,7 @@ func _event_payload(run: Dictionary, status_text: String) -> Dictionary:
 		"agent_name": str(run.get("agent_name", "Crew")),
 		"target_tile": run.get("target_tile", Vector2i(-1, -1)),
 		"trigger_type": str(run.get("trigger_type", "manual")),
+		"fired_trigger": str(run.get("fired_trigger", "manual")),
 		"action": str(run.get("action", "")),
 		"directive_id": str(run.get("directive_id", "")),
 		"directive_kind": str(run.get("directive_kind", "")),
@@ -244,6 +262,22 @@ func _blocked_field_log_line(run: Dictionary, validation: Dictionary) -> String:
 		str(run.get("drift", {}).get("level", "hallucinating")),
 		suggestion
 	]
+
+
+func _trigger_mismatch_field_log_line(run: Dictionary) -> String:
+	return "Skill Forge blocked %s for %s: declared trigger %s cannot fire as %s." % [
+		str(run.get("skill_name", "Skill Run")),
+		str(run.get("agent_name", "Crew")),
+		_readable_trigger(str(run.get("trigger_type", ""))),
+		_readable_trigger(str(run.get("fired_trigger", "")))
+	]
+
+
+func _readable_trigger(trigger_type: String) -> String:
+	var normalized := trigger_type.strip_edges()
+	if normalized == "":
+		return "<missing>"
+	return normalized
 
 
 func _completion_field_log_line(run: Dictionary, passed: bool) -> String:
