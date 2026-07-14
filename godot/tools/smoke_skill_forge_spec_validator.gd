@@ -11,6 +11,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_tend_crop_spec_passes()
+	_test_trigger_allowlist()
 	_test_unknown_tools_are_blocked()
 	_test_unknown_conditions_are_blocked()
 	_test_safe_warnings_create_drift_state()
@@ -36,6 +37,30 @@ func _test_tend_crop_spec_passes() -> void:
 	var normalized: Dictionary = result.get("normalized", {})
 	if str(normalized.get("receipt_template", "")) == "":
 		_fail("Valid Tend Crops spec did not normalize a receipt template. result=%s" % str(result))
+		return
+
+
+func _test_trigger_allowlist() -> void:
+	var validator = SkillSpecValidatorScript.new()
+	if validator.supported_triggers() != ["manual", "day_start"]:
+		_fail("Trigger allowlist drifted. triggers=%s" % str(validator.supported_triggers()))
+		return
+
+	var day_start_spec := _valid_tend_crop_spec()
+	day_start_spec["trigger"] = {"type": "  day_start  "}
+	var day_start_result: Dictionary = validator.validate(day_start_spec)
+	if not bool(day_start_result.get("valid", false)):
+		_fail("Day-start trigger did not pass validation. result=%s" % str(day_start_result))
+		return
+	if str(day_start_result.get("normalized", {}).get("trigger", {}).get("type", "")) != "day_start":
+		_fail("Day-start trigger was not normalized. result=%s" % str(day_start_result))
+		return
+
+	var unknown_spec := _valid_tend_crop_spec()
+	unknown_spec["trigger"] = {"type": "crop_ready"}
+	var unknown_result: Dictionary = validator.validate(unknown_spec)
+	if not bool(unknown_result.get("hard_blocked", false)) or not _issue_code_exists(unknown_result.get("errors", []), "unsupported_trigger"):
+		_fail("Unknown event did not hard block at the validator. result=%s" % str(unknown_result))
 		return
 
 

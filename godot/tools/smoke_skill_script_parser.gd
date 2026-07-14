@@ -14,6 +14,9 @@ func _run() -> void:
 	_test_canonical_program_compiles_cleanly()
 	if _failed:
 		return
+	_test_day_start_trigger_compiles_and_maps_source()
+	if _failed:
+		return
 	_test_each_starter_action_gets_matching_defaults()
 	if _failed:
 		return
@@ -21,6 +24,9 @@ func _run() -> void:
 	if _failed:
 		return
 	_test_unknown_tool_and_condition_reach_validator()
+	if _failed:
+		return
+	_test_unknown_event_reaches_validator()
 	if _failed:
 		return
 	_test_parse_errors_are_positional_and_teaching_ready()
@@ -73,6 +79,26 @@ func _test_canonical_program_compiles_cleanly() -> void:
 	var validation: Dictionary = SkillSpecValidatorScript.new().validate(spec)
 	if not bool(validation.get("valid", false)) or not validation.get("warnings", []).is_empty():
 		_fail("Canonical compiled spec did not validate cleanly. validation=%s" % str(validation))
+		return
+
+
+func _test_day_start_trigger_compiles_and_maps_source() -> void:
+	var source := "agent \"Marigold\" {\n  on day_start\n  observe selected_tile\n  when tile.empty {\n    use plant_seed(selected_tile)\n  }\n  verify crop_state\n  receipt \"Morning Plant run\"\n}"
+	var result: Dictionary = SkillScriptParserScript.new().parse(source)
+	if not bool(result.get("ok", false)):
+		_fail("Day-start program did not parse. result=%s" % str(result))
+		return
+	var spec: Dictionary = result.get("spec", {})
+	if spec.get("trigger", {}) != {"type": "day_start"}:
+		_fail("Day-start statement did not compile to the declared trigger. spec=%s" % str(spec))
+		return
+	var validation: Dictionary = SkillSpecValidatorScript.new().validate(spec)
+	if not bool(validation.get("valid", false)):
+		_fail("Day-start program did not pass the trigger allowlist. validation=%s" % str(validation))
+		return
+	var trigger_location: Dictionary = result.get("source_map", {}).get("trigger.type", {})
+	if int(trigger_location.get("line", 0)) != 2 or int(trigger_location.get("col", 0)) != 6 or str(trigger_location.get("token", "")) != "day_start":
+		_fail("Day-start source map did not point at the authored event token. location=%s" % str(trigger_location))
 		return
 
 
@@ -139,6 +165,26 @@ func _test_unknown_tool_and_condition_reach_validator() -> void:
 		return
 
 
+func _test_unknown_event_reaches_validator() -> void:
+	var source := "agent \"Chuck\" {\n  on crop_ready\n  observe selected_tile\n  when inspect.has_brush {\n    use clear_brush(selected_tile)\n  }\n  verify tile_state\n  receipt \"Reactive Clear run\"\n}"
+	var result: Dictionary = SkillScriptParserScript.new().parse(source)
+	if not bool(result.get("ok", false)):
+		_fail("Unknown event should parse before validation. result=%s" % str(result))
+		return
+	if str(result.get("spec", {}).get("trigger", {}).get("type", "")) != "crop_ready":
+		_fail("Parser did not preserve the authored unknown event for validation. result=%s" % str(result))
+		return
+	var validation: Dictionary = SkillSpecValidatorScript.new().validate(result.get("spec", {}))
+	var issue := _issue_for_code(validation, "unsupported_trigger")
+	if issue.is_empty() or str(issue.get("field", "")) != "trigger.type":
+		_fail("Unknown event did not reach the validator trigger field. validation=%s" % str(validation))
+		return
+	var trigger_location: Dictionary = result.get("source_map", {}).get(str(issue.get("field", "")), {})
+	if int(trigger_location.get("line", 0)) != 2 or int(trigger_location.get("col", 0)) != 6 or str(trigger_location.get("token", "")) != "crop_ready":
+		_fail("Unknown-event validation could not resolve the authored event token. location=%s" % str(trigger_location))
+		return
+
+
 func _test_parse_errors_are_positional_and_teaching_ready() -> void:
 	_expect_error("agent \"Rose\" {\n observe selected_tile\n use clear_brush(selected_tile)\n verify tile_state\n receipt \"Clear run\"\n}", 1, "Unknown agent")
 	_expect_error("agent \"Bert\" {\n observe selected_tile\n use clear_brush(selected_tile)\n verify tile_state\n receipt \"Clear run\n}", 5, "Unterminated string")
@@ -148,6 +194,8 @@ func _test_parse_errors_are_positional_and_teaching_ready() -> void:
 	_expect_error("agent \"Bert\" {\n observe selected_tile\n use clear_brush(selected_tile)\n receipt \"Clear run\"\n}", 5, "missing a verify")
 	_expect_error("agent \"Bert\" {\n observe selected_tile use clear_brush(selected_tile)\n verify tile_state\n receipt \"Clear run\"\n}", 2, "newline or semicolon")
 	_expect_error("agent \"Bert\" {\n observe selected_tile\n use clear_brush(@)\n verify tile_state\n receipt \"Clear run\"\n}", 3, "Unexpected character")
+	_expect_error("agent \"Bert\" {\n on\n observe selected_tile\n use clear_brush(selected_tile)\n verify tile_state\n receipt \"Clear run\"\n}", 2, "Expected an event name")
+	_expect_error("agent \"Bert\" {\n on day_start\n on crop_ready\n observe selected_tile\n use clear_brush(selected_tile)\n verify tile_state\n receipt \"Clear run\"\n}", 3, "more than one on")
 
 
 func _expect_error(source: String, expected_line: int, message_fragment: String) -> void:
@@ -174,13 +222,17 @@ func _expect_error(source: String, expected_line: int, message_fragment: String)
 
 
 func _issue_exists(validation: Dictionary, code: String) -> bool:
+	return not _issue_for_code(validation, code).is_empty()
+
+
+func _issue_for_code(validation: Dictionary, code: String) -> Dictionary:
 	for issue_list in [validation.get("errors", []), validation.get("warnings", [])]:
 		if typeof(issue_list) != TYPE_ARRAY:
 			continue
 		for issue in issue_list:
 			if typeof(issue) == TYPE_DICTIONARY and str(issue.get("code", "")) == code:
-				return true
-	return false
+				return issue
+	return {}
 
 
 func _canonical_program() -> String:

@@ -17,6 +17,7 @@ func _run() -> void:
 	_test_build_fence_builds_work_order_directive()
 	_test_plant_seed_builds_work_order_directive()
 	_test_tend_crops_builds_work_order_directive()
+	_test_declared_trigger_must_match_fire()
 	_test_invalid_spec_blocks_with_drift_receipt()
 	_test_runtime_guard_block_receipt()
 	_test_pass_and_fail_completion_receipts()
@@ -208,6 +209,43 @@ func _test_plant_seed_builds_work_order_directive() -> void:
 		return
 	if not _event_exists(result, "skill_forge_run", "started"):
 		_fail("Plant Seed run did not create a start event. result=%s" % str(result))
+		return
+
+
+func _test_declared_trigger_must_match_fire() -> void:
+	var library = SkillForgeTemplateLibraryScript.new()
+	var harness = SkillForgeRunHarnessScript.new()
+	var day_start_spec: Dictionary = library.get_template_spec("plant_seed_starter")
+	day_start_spec["trigger"] = {"type": "day_start"}
+	var request := {
+		"agent_id": "marigold",
+		"agent_name": "Marigold",
+		"target_tile": Vector2i(3, 4),
+		"day": 11
+	}
+	var fired: Dictionary = harness.start_run(day_start_spec, request, "day_start")
+	if str(fired.get("status", "")) != "started" or not bool(fired.get("can_run", false)):
+		_fail("Matching day-start fire did not start. result=%s" % str(fired))
+		return
+	if str(fired.get("run", {}).get("trigger_type", "")) != "day_start" or str(fired.get("run", {}).get("fired_trigger", "")) != "day_start":
+		_fail("Day-start run did not preserve declared and fired triggers. result=%s" % str(fired))
+		return
+
+	var manual_mismatch: Dictionary = harness.start_manual_run(day_start_spec, request)
+	if str(manual_mismatch.get("status", "")) != "blocked" or str(manual_mismatch.get("block_code", "")) != "trigger_mismatch":
+		_fail("Manual wrapper did not reject a day-start spec. result=%s" % str(manual_mismatch))
+		return
+	if not manual_mismatch.get("directive", {}).is_empty():
+		_fail("Trigger mismatch still produced a directive. result=%s" % str(manual_mismatch))
+		return
+	if not _field_log_contains(manual_mismatch, "declared trigger day_start cannot fire as manual"):
+		_fail("Trigger mismatch did not explain the declared and fired events. result=%s" % str(manual_mismatch))
+		return
+
+	var manual_spec: Dictionary = library.get_template_spec("plant_seed_starter")
+	var event_mismatch: Dictionary = harness.start_run(manual_spec, request, "day_start")
+	if str(event_mismatch.get("status", "")) != "blocked" or str(event_mismatch.get("block_code", "")) != "trigger_mismatch":
+		_fail("Day-start fire did not reject a manual spec. result=%s" % str(event_mismatch))
 		return
 
 
