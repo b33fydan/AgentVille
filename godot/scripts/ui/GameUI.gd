@@ -186,7 +186,7 @@ func set_selected_work_order_tool(action_id: String) -> void:
 
 func set_day(day: int) -> void:
 	if _day_label:
-		_day_label.text = "DAY %s / 10:00 AM" % day
+		_day_label.text = "DAY %s · MORNING" % day
 
 
 func set_money(amount: int) -> void:
@@ -980,9 +980,9 @@ func _build_title_card() -> void:
 	panel.name = "TitleCard"
 	panel.anchor_left = 0.018
 	panel.anchor_top = 0.026
-	panel.anchor_right = 0.195
+	panel.anchor_right = 0.270
 	panel.anchor_bottom = 0.118
-	panel.custom_minimum_size = Vector2(240, 0)
+	panel.custom_minimum_size = Vector2(320, 0)
 	panel.add_theme_stylebox_override("panel", _panel_style(14, 1))
 	_root.add_child(panel)
 	_register_ui_hit_region(panel)
@@ -1021,13 +1021,15 @@ func _build_title_card() -> void:
 	row.add_child(text_stack)
 
 	var title := Label.new()
+	title.name = "BrandTitle"
 	title.text = "AgentVille"
 	title.add_theme_font_size_override("font_size", 30)
 	title.add_theme_color_override("font_color", Color("#201d18"))
 	text_stack.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Voxel Farm Editor"
+	subtitle.name = "BrandSubtitle"
+	subtitle.text = "Build agents. Prove their work."
 	subtitle.add_theme_font_size_override("font_size", 16)
 	subtitle.add_theme_color_override("font_color", Color("#756f64"))
 	text_stack.add_child(subtitle)
@@ -1057,22 +1059,16 @@ func _build_toolbar() -> void:
 	margin.add_child(stack)
 
 	var header := HBoxContainer.new()
+	header.name = "CommandDockHeader"
 	header.add_theme_constant_override("separation", 8)
 	stack.add_child(header)
 
 	var rail_label := Label.new()
+	rail_label.name = "CommandDockLabel"
 	rail_label.text = "COMMAND DOCK"
 	rail_label.add_theme_font_size_override("font_size", 13)
 	rail_label.add_theme_color_override("font_color", Color("#5e422f"))
 	header.add_child(rail_label)
-
-	var ready_chip := Label.new()
-	ready_chip.text = "READY"
-	ready_chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	ready_chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ready_chip.add_theme_font_size_override("font_size", 10)
-	ready_chip.add_theme_color_override("font_color", Color("#67863b"))
-	header.add_child(ready_chip)
 
 	var tabs := GridContainer.new()
 	tabs.name = "CommandTabBar"
@@ -1613,6 +1609,7 @@ func _build_settings_panel() -> void:
 	panel.add_child(margin)
 
 	var stack := VBoxContainer.new()
+	stack.name = "StatusPanelStack"
 	stack.add_theme_constant_override("separation", 7)
 	margin.add_child(stack)
 
@@ -1627,7 +1624,8 @@ func _build_settings_panel() -> void:
 	stack.add_child(top_row)
 
 	_day_label = Label.new()
-	_day_label.text = "DAY 1 / 10:00 AM"
+	_day_label.name = "DayLabel"
+	_day_label.text = "DAY 1 · MORNING"
 	_day_label.add_theme_font_size_override("font_size", 19)
 	_day_label.add_theme_color_override("font_color", Color("#201d18"))
 	top_row.add_child(_day_label)
@@ -1639,16 +1637,6 @@ func _build_settings_panel() -> void:
 	_money_label.add_theme_font_size_override("font_size", 16)
 	_money_label.add_theme_color_override("font_color", Color("#9b7433"))
 	top_row.add_child(_money_label)
-
-	var progress := ProgressBar.new()
-	progress.min_value = 0
-	progress.max_value = 100
-	progress.value = 38
-	progress.show_percentage = false
-	progress.custom_minimum_size = Vector2(0, 8)
-	progress.add_theme_stylebox_override("background", _soft_box(Color("#eee8d9"), 7, 1))
-	progress.add_theme_stylebox_override("fill", _soft_box(Color("#f2c94c"), 7, 0))
-	stack.add_child(progress)
 
 	_build_inventory_strip(stack)
 	_build_status_queue_summary(stack)
@@ -1721,7 +1709,7 @@ func _build_code_workbench() -> void:
 	_workbench_compile_button = Button.new()
 	_workbench_compile_button.name = "WorkbenchCompileButton"
 	_workbench_compile_button.text = "COMPILE"
-	_workbench_compile_button.tooltip_text = "Compile and run · Cmd/Ctrl+Enter"
+	_workbench_compile_button.tooltip_text = "Compile Skill Script · Cmd/Ctrl+Enter"
 	_workbench_compile_button.custom_minimum_size = Vector2(82, 18)
 	_workbench_compile_button.add_theme_font_size_override("font_size", 10)
 	_workbench_compile_button.add_theme_color_override("font_color", Color("#f0e6c9"))

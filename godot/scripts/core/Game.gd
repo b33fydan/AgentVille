@@ -12,6 +12,7 @@ const SkillSpecValidatorScript: Script = preload("res://scripts/systems/SkillSpe
 const SkillTriggerSchedulerScript: Script = preload("res://scripts/systems/SkillTriggerScheduler.gd")
 const SkillTutorLibraryScript: Script = preload("res://scripts/systems/SkillTutorLibrary.gd")
 const PlayerProgressScript: Script = preload("res://scripts/systems/PlayerProgress.gd")
+const PRODUCT_WINDOW_TITLE := "AgentVille — Learn-to-Code Voxel Farm"
 const RECIPES: Dictionary = {
 	"fence_kit": {
 		"label": "Fence Kit",
@@ -146,6 +147,7 @@ var _hustle_hands_charges: int = 0
 
 
 func _ready() -> void:
+	get_window().title = PRODUCT_WINDOW_TITLE
 	RenderingServer.set_default_clear_color(Color("#f6f3ec"))
 	_setup_environment()
 	_setup_ai_layer()

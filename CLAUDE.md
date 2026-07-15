@@ -1,4 +1,11 @@
-# AgentVille — Current State
+# Legacy Browser Prototype — Not Live Product Instructions
+
+> **Stop:** This file documents the retired React/Three.js browser prototype only.
+> The live AgentVille product is the Godot learn-to-code game under `godot/`.
+> Read `AGENTS.md`, `docs/sol-sessions/HANDOFF.md`, and `godot/README.md` before working.
+> Do not apply the architecture or “DO NOT TOUCH” rules below to the Godot game.
+
+# AgentVille — Legacy Browser Prototype State
 
 **Last Updated:** March 16, 2026
 **Phase 3:** Complete (Living World)

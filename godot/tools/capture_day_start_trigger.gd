@@ -122,7 +122,7 @@ func _capture() -> void:
 	_scroll_command_page_to_control(game_ui, end_day_button)
 	end_day_button.pressed.emit()
 	await _wait_for_frames(2)
-	if int(grid.day) != day_before + 1 or int(grid.day) != 2 or day_label.text != "DAY 2 / 10:00 AM":
+	if int(grid.day) != day_before + 1 or int(grid.day) != 2 or day_label.text != "DAY 2 · MORNING":
 		_fail("Production End Day did not advance the live world and UI to Day 2.")
 		return
 	if bool(scheduler.call("has_armed")) or disarm_button.visible:

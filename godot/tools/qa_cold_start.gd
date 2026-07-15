@@ -195,7 +195,7 @@ func _run() -> void:
 		return
 	var day_label = game_ui.get("_day_label") as Label
 	var toast_label = game_ui.get("_toast_label") as Label
-	if day_label == null or day_label.text != "DAY 2 / 10:00 AM":
+	if day_label == null or day_label.text != "DAY 2 · MORNING":
 		_fail("END DAY did not refresh the live day label to day 2.")
 		return
 	if toast_label == null or toast_label.text != DAY_ADVANCE_COPY:
