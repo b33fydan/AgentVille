@@ -6,6 +6,7 @@ Godot 4 learn-to-code game where a cozy voxel farm is the classroom: players wri
 
 - Open `project.godot` in Godot 4.
 - Run `scenes/Main.tscn`.
+- The title card states the product promise directly: `Build agents. Prove their work.` The Field Desk reports the live day as morning without placeholder readiness or progress decorations.
 - Use the left `FARM` command tab to till, plant, harvest, erase, place, or pan, and choose terrain, crops, roads, decor, structures, or tools from its embedded voxel catalog.
 - Use the left `CREW` command tab for marked jobs, Parley, supply crafting, live demand actions, and crew-order actions.
 - Use the left `AGENT` command tab for the ordered lesson ladder, Skill Forge starter workflows, and saved compiled programs; use the left `WORLD` tab for view controls, camera zoom/recenter, and End Day.
@@ -207,8 +208,8 @@ Godot 4 learn-to-code game where a cozy voxel farm is the classroom: players wri
 - `tools/smoke_workbench_compile.gd` exercises the complete local compiler pipeline, named-agent execution, pending/retry/cancel/replacement/timeout lifecycle, arrival-time guard recheck, a verified ready-crop pass, and the same program blocking on an empty tile.
 - `tools/smoke_selected_tile_target.gd` exercises persistent `selected_tile` coordinates taking priority over starter fallbacks and flowing into the compiled crew order.
 - `tools/smoke_workbench_ui_controls.gd` exercises the Compile button, shared Cmd/Ctrl+Enter path, ready/edit state, and safe plain-text teaching trace.
-- `tools/smoke_workbench_trigger_controls.gd` exercises the Workbench's visible armed-once state, captured target copy, and explicit Disarm control without disturbing the existing compile shortcut.
-- `tools/smoke_day_start_trigger.gd` exercises the integrated one-shot route: Compile captures without an order or mutation, End Day advances first, the named crew route fires without Send, busy runs skip without replacement, and terminal guard/action outcomes cannot leave a stuck activation.
+- `tools/smoke_workbench_trigger_controls.gd` exercises the Workbench's visible armed-once state, edit-after-arm state, and explicit Disarm control without disturbing the existing compile shortcut.
+- `tools/smoke_day_start_trigger.gd` exercises the integrated one-shot route: Compile captures immutable source, target, and trace evidence without an order or mutation; selection can then move safely; End Day advances first; the named crew route fires without Send; busy runs skip without replacement; and terminal guard/action outcomes cannot leave a stuck activation.
 - `tools/smoke_workbench_feedback.gd` exercises distinct compile, dispatch, passed-receipt, and lesson-completion sound profiles plus their visible deterministic pulse targets and feedback state.
 - `tools/smoke_persistent_tile_selection.gd` exercises the independent selected-tile voxel frame surviving hover refreshes and navigation-tool changes.
 - `tools/smoke_world_reason_feedback.gd` exercises in-world NPC reason badges for idle plans, social-memory work, and assigned mission work.
@@ -272,6 +273,7 @@ Godot 4 learn-to-code game where a cozy voxel farm is the classroom: players wri
 - `tools/smoke_crafting.gd` exercises resource spending and Fence Kit crafting.
 - `tools/smoke_ui_field_targeting.gd` exercises opening the left `CREW` tab, selecting a crew-order command, and then clicking the farm field.
 - `tools/smoke_ui_overhaul.gd` exercises the four command tabs, voxel-icon/fallback contract, strict 1600x900 and 1280x720 layout, status-only right rail, editable live Workbench, camera-key isolation, and UI pointer blocking.
+- `tools/smoke_product_identity.gd` exercises the save-compatible internal project name, visible product window title, exact title-card promise, Compile tooltip, morning day state, title-card containment at 1600×900 and 1280×720, and removal of the static Command Dock readiness chip and meaningless Field Desk progress bar.
 - `tools/smoke_camera_navigation.gd` exercises expanded zoom/pan bounds, wheel zoom, left-dock camera commands, voxel icons, default-view recentering, real View-tool drag over a tile, text-focus isolation, release-over-panel cleanup, persistent selection, and ray-selectable corner clearance at 1600×900 and 1280×720.
 - `tools/smoke_onboarding.gd` exercises fresh Lesson 1 landing, target/source/tutor setup, locked farm mutation and day controls, real Workbench/Send/NPC completion, sandbox unlock, and exact Lesson 2 resume after reload.
 - `tools/smoke_skill_lessons.gd` exercises the ten ordered lessons, prerequisite gates, distinct first-three programs, and evaluable completion contracts.
@@ -301,6 +303,7 @@ Godot 4 learn-to-code game where a cozy voxel farm is the classroom: players wri
 - `tools/capture_skill_lessons.gd` captures `artifacts/screenshots/agentville-skill-lessons.png` at 1600×900 with the lesson ladder, current goal, tutor layer, and technical trace.
 - `tools/capture_workbench_compile.gd` captures `artifacts/screenshots/agentville-workbench-compile.png` at 1600×900 with a selected ready crop and the real pending compiler trace.
 - `tools/capture_day_start_trigger.gd` captures `artifacts/screenshots/agentville-day-start-trigger.png` at 1600×900 from the real Workbench with a one-shot `day_start` program and its captured target visible.
+- `tools/capture_product_identity.gd` captures `artifacts/screenshots/agentville-product-identity.png` at 1600×900 with the exact title-card promise, live Agent Workbench, and morning Field Desk state after exercising the production End Day control.
 - `tools/capture_session3_portfolio.gd` captures the fresh 1600×900 Session 3 portfolio set: Workbench mid-lesson, failed-run teaching trace, passed receipt, and unobstructed farm view.
 - `tools/capture_skill_forge_drift_visuals.gd` captures `artifacts/screenshots/agentville-skill-forge-drift-visuals.png` at 1600×900 with Bert's sandbox-blocked hallucinating Drift reaction, `x_x` face, purple tint, observer badge, and the real allowlist failure context.
 - `tools/capture_work_order.gd` captures `artifacts/screenshots/agentville-work-order.png`.
