@@ -29,3 +29,4 @@ window/stretch/aspect="expand"
 
 anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.984314, 0.976471, 0.941176, 1)
+renderer/rendering_method.web="gl_compatibility"

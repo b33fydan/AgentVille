@@ -4,6 +4,7 @@ dist/
 .DS_Store
 ._*
 godot/.godot/
+godot/build/
 godot/assets/megavoxpack_local_preview/
 godot/artifacts/screenshots/megavoxpack-local-preview.png*
 godot/artifacts/screenshots/megavoxpack-in-game-preview.png*

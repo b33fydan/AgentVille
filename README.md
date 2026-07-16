@@ -32,6 +32,20 @@ That boots the configured main scene, `godot/scenes/Main.tscn`. No npm install, 
 
 Optional licensed MEGAVOX GLBs are local-only. When they are absent, the game silently uses its procedural voxel fallbacks.
 
+## Build for the browser
+
+AgentVille has a static Godot Web export path for browser playtests. It keeps the desktop renderer unchanged, selects Godot's Compatibility renderer only on Web, and deliberately excludes the local licensed MEGAVOX folder.
+
+After installing the matching Godot 4.6.3 export templates:
+
+```bash
+export GODOT="${GODOT:-/Users/beefymacmini/Downloads/Godot.app/Contents/MacOS/Godot}"
+GODOT="$GODOT" ./godot/tools/export_web.sh
+python3 -m http.server 8060 --directory godot/build/web
+```
+
+Open `http://127.0.0.1:8060/`. The generated `godot/build/web` directory is the Vercel-ready static artifact; do not point Vercel at the repository root, which still contains the dead React/Vite prototype. See [`godot/docs/web_export.md`](godot/docs/web_export.md) for browser acceptance checks and the deployment boundary.
+
 ## Validate the project
 
 Run the headless project sanity check and the complete smoke registry:
@@ -66,7 +80,7 @@ Visual capture scripts must run windowed, never with `--headless`:
 
 ## Current boundaries
 
-Skill Script v1 intentionally supports one selected tile, one named agent, one farm action, an optional single guard, and one concrete success check per run. Runs are either manual or a single in-memory, one-shot `day_start` arm. It has no repeating schedules, other events, loops, branching beyond that guard, multi-tile or multi-agent programs, arbitrary scripting, runtime model calls, cloud sync, or distribution/export package yet.
+Skill Script v1 intentionally supports one selected tile, one named agent, one farm action, an optional single guard, and one concrete success check per run. Runs are either manual or a single in-memory, one-shot `day_start` arm. It has no repeating schedules, other events, loops, branching beyond that guard, multi-tile or multi-agent programs, arbitrary scripting, runtime model calls, cloud sync, or automatic Web deployment pipeline yet.
 
 ## Legacy browser prototype
 

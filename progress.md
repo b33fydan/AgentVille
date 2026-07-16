@@ -158,6 +158,7 @@ Day 4 update:
 
 Validation:
 - `npm run build` passes.
+
 - Could not run runtime Playwright validation because `playwright` package is unavailable in this sandbox (`ERR_MODULE_NOT_FOUND`).
 - Could not start Vite dev server for live viewport checks due sandbox socket restriction (`listen EPERM` on localhost ports).
 - Could not install `tone` package due network DNS failure (`ENOTFOUND registry.npmjs.org`), so sound synthesis is implemented via Web Audio procedural generators in `soundManager`.
@@ -219,6 +220,7 @@ Day 7 bugfix update (Dan post-launch bugs):
 
 Validation:
 - `npm run build` passes.
+
 - Verified onboarding handler constraints in source: `setStep` only in flow transitions; `setIncome` only on Continue.
 - Node simulation for XP progression confirms expected cumulative behavior:
   - 0 XP -> level 1
@@ -319,3 +321,20 @@ Day 8 bugfix update (spawn radius + idle monster roaming):
 
 Validation:
 - `npm run build` passes.
+
+## AgentVille Godot Web export readiness — 2026-07-16
+
+Original prompt for this slice: make the live Godot AgentVille browser-hostable so it can later be wired to an existing Vercel project.
+
+- Verified that the live product is `godot/`; the root Vite build is a dead legacy prototype and must not be the Vercel target.
+- Verified that the project was Forward+ only and had no `export_presets.cfg` or installed 4.6.3 export templates.
+- Added a Web-only Compatibility-renderer override, an unthreaded Web preset, repeatable export tooling, licensed-MEGAVOX exclusion, an artifact-local Vercel config, and a configuration smoke.
+- Guarded camera depth of field on Compatibility so Web pan/zoom does not repeatedly apply an unsupported renderer feature.
+- Routed wheel zoom through the same camera-transform refresh as pan after browser captures exposed stale Compatibility redraw regions on the size-only path.
+- Diagnosed Godot's blank export-configuration error as an unprepared ETC2/ASTC mobile texture target; kept this desktop-browser slice on the valid desktop texture target.
+- Kept live Vercel project linking and automatic Git rebuilds out of this slice pending a verified browser artifact and the exact existing Vercel target.
+- Installed the official Godot 4.6.3 unthreaded Web templates locally and produced a clean `godot/build/web` artifact; the generated directory is ignored and measured 42 MB.
+- Final Godot validation passed: project sanity exited `0`, the focused Web-export/camera smokes exited `0`, and `godot/tools/run_all_smokes.sh` passed `118/118` with zero failures.
+- Headed Chromium validation at 1600×900 passed clean boot, keyboard pan, wheel zoom, and a real Compile click that drafted a crew order without console or page errors.
+- Browser persistence validation changed the Grid setting, confirmed `agentville_progress.json` in IndexedDB-backed `user://`, reloaded the page, and recovered identical schema-version-1 JSON with `grid: true`.
+- Remaining boundary: no Vercel project was linked or deployed, and Vercel's standard build image is not yet provisioned with Godot 4.6.3 plus export templates for automatic repository builds.

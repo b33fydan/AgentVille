@@ -128,7 +128,11 @@ func center_on_farm() -> void:
 func adjust_zoom(step_direction: int) -> void:
 	if camera == null or step_direction == 0:
 		return
-	camera.size = clampf(camera.size + zoom_step * float(step_direction), min_zoom, max_zoom)
+	var next_size := clampf(camera.size + zoom_step * float(step_direction), min_zoom, max_zoom)
+	if is_equal_approx(next_size, camera.size):
+		return
+	camera.size = next_size
+	_apply_transform()
 
 
 func focus_world_position(world_position: Vector3, zoom_size: float = -1.0) -> void:
@@ -168,13 +172,14 @@ func _apply_transform() -> void:
 
 func _setup_camera_atmosphere() -> void:
 	_camera_attributes = CameraAttributesPractical.new()
-	_set_property_if_present(_camera_attributes, "dof_blur_amount", 0.065)
+	if _supports_depth_of_field():
+		_set_property_if_present(_camera_attributes, "dof_blur_amount", 0.065)
 	_set_property_if_present(_camera_attributes, "auto_exposure_enabled", false)
 	_set_property_if_present(camera, "attributes", _camera_attributes)
 
 
 func _update_depth_of_field() -> void:
-	if _camera_attributes == null or camera == null:
+	if _camera_attributes == null or camera == null or not _supports_depth_of_field():
 		return
 
 	var focus_distance := camera.global_position.distance_to(target_position)
@@ -184,6 +189,10 @@ func _update_depth_of_field() -> void:
 	_set_property_if_present(_camera_attributes, "dof_blur_far_enabled", true)
 	_set_property_if_present(_camera_attributes, "dof_blur_far_distance", focus_distance + 3.2)
 	_set_property_if_present(_camera_attributes, "dof_blur_far_transition", 5.8)
+
+
+func _supports_depth_of_field() -> bool:
+	return RenderingServer.get_current_rendering_method() != "gl_compatibility"
 
 
 func _set_property_if_present(target: Object, property_name: StringName, value) -> void:
