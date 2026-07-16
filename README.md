@@ -44,7 +44,7 @@ GODOT="$GODOT" ./godot/tools/export_web.sh
 python3 -m http.server 8060 --directory godot/build/web
 ```
 
-Open `http://127.0.0.1:8060/`. The generated `godot/build/web` directory is the Vercel-ready static artifact; do not point Vercel at the repository root, which still contains the dead React/Vite prototype. See [`godot/docs/web_export.md`](godot/docs/web_export.md) for browser acceptance checks and the deployment boundary.
+Open `http://127.0.0.1:8060/`. For the Git-connected Vercel project, run `./godot/tools/publish_web.sh` to refresh the reviewed static snapshot under `godot/deploy/vercel`. The root `vercel.json` skips the retired npm/Vite build and serves only that snapshot. See [`godot/docs/web_export.md`](godot/docs/web_export.md) for browser acceptance checks and the publication contract.
 
 ## Validate the project
 

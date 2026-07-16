@@ -161,7 +161,8 @@ Godot 4 learn-to-code game where a cozy voxel farm is the classroom: players wri
 - `scripts/systems/SkillCheckEvaluator.gd` snapshots the selected tile and inventory, evaluates runtime guards, and compares post-action world state with the requested success check.
 - `tools/run_all_smokes.sh` runs every registered `smoke_*.gd` script with `$GODOT` or the documented local fallback and fails on non-zero exits or engine/script errors.
 - `tools/export_web.sh` creates the unthreaded Compatibility-renderer Web release under `build/web`, copies its artifact-local Vercel config, verifies the required Godot files, and rejects an export log that stores a licensed local MEGAVOX asset.
-- `tools/smoke_web_export_config.gd` exercises the Web renderer override, single-threaded export contract, licensed-asset exclusion, Compatibility-safe camera depth-of-field guard, export-script guards, and artifact-local Vercel configuration.
+- `tools/publish_web.sh` rebuilds the Web release, copies only its runtime files into the reviewed `deploy/vercel` snapshot, removes AppleDouble metadata, and records deterministic SHA-256 values for the four core artifacts.
+- `tools/smoke_web_export_config.gd` exercises the Web renderer override, single-threaded export contract, generated/licensed-asset exclusions, Compatibility-safe camera depth-of-field guard, both export scripts, artifact-local and repository Vercel configurations, and the reviewed publish snapshot.
 - `tools/smoke_receipts.gd` exercises player-action receipts, agent reactions, and day summaries.
 - `tools/smoke_agents.gd` exercises NPC harvesting, coin updates, and brush clearing.
 - `tools/smoke_agent_movement_physics.gd` exercises bounded structure-safe routes, adjacent interaction and fence-building standoffs, dynamic obstacle replanning, packed-surface foot contact, exact angry-speed travel, work-speed isolation, and the prototype opposing-limb gait.

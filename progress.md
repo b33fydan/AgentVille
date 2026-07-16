@@ -338,3 +338,15 @@ Original prompt for this slice: make the live Godot AgentVille browser-hostable 
 - Headed Chromium validation at 1600×900 passed clean boot, keyboard pan, wheel zoom, and a real Compile click that drafted a crew order without console or page errors.
 - Browser persistence validation changed the Grid setting, confirmed `agentville_progress.json` in IndexedDB-backed `user://`, reloaded the page, and recovered identical schema-version-1 JSON with `grid: true`.
 - Remaining boundary: no Vercel project was linked or deployed, and Vercel's standard build image is not yet provisioned with Godot 4.6.3 plus export templates for automatic repository builds.
+
+## AgentVille Vercel publication follow-on — 2026-07-16
+
+Original prompt for this follow-on: retire the old AgentVille Vercel build to a back-burner reference and publish the current Godot version from `b33fydan/AgentVille`.
+
+- Verified the production site still served the legacy React/Vite bundle from `main@a93455a`; pushing only the Godot feature branch would not replace it because the root build inputs were unchanged.
+- Published `agentville-v4-godot-fresh@98feb36` and preserved the former production commit on the remote branch `legacy/react-v3` before changing any production routing.
+- The local Vercel CLI token is expired. Chose a Git-preview route that does not need it: a reviewed tracked artifact under `godot/deploy/vercel`, with root `vercel.json` explicitly skipping npm/Vite and serving that directory.
+- Added repeatable reviewed-artifact generation, SHA-256 output, recursive build/deploy export exclusions, root/artifact Vercel contract checks, and AppleDouble cleanup.
+- The tracked artifact is byte-identical to the verified local Web build; all four recorded hashes pass and the focused publish smoke plus project sanity exit `0`.
+- Browser validation on the tracked directory passed clean boot, pan, wheel zoom, and Compile. Playwright's direct headed WebGL element readback briefly showed undefined black regions; an OS-level capture of the exact active Compile frame was fully rendered, proving the game window itself was clean.
+- TODO: commit and push the publication artifact, validate its Vercel feature-branch preview, then fast-forward `main` and validate the production URL.

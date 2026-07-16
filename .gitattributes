@@ -1,0 +1,2 @@
+# Reviewed Godot Web output is generated and verified by artifact-sha256.txt.
+godot/deploy/vercel/** -diff linguist-generated=true

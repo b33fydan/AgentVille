@@ -11,7 +11,8 @@ AgentVille can ship as a static Godot Web build. The browser version uses the sa
 - Texture target: desktop browser compression only. Mobile Web texture imports are not part of this checkpoint.
 - Public assets: `assets/megavoxpack_local_preview/` is excluded. The browser build intentionally uses the procedural voxel fallbacks.
 - Output: `build/web/index.html`, `index.js`, `index.wasm`, and `index.pck`.
-- Hosting: `web/vercel.json` is copied into the artifact. Vercel must target the generated artifact directory, never the repository root's legacy Vite app.
+- Direct hosting: `web/vercel.json` is copied into the local artifact for CLI previews.
+- Git hosting: `deploy/vercel/` is the reviewed, tracked production snapshot. The repository-root `vercel.json` explicitly skips npm/Vite and serves that directory.
 
 ## Export locally
 
@@ -40,12 +41,24 @@ Open `http://127.0.0.1:8060/` in a Chromium browser. Confirm that:
 4. Reloading the same origin restores browser-local progress.
 5. A private/incognito window is treated as disposable storage; persistence is not promised there.
 
-## Vercel boundary
+## Publish the reviewed Git artifact
 
-The generated `godot/build/web` directory is a complete static Vercel project. Link or deploy that directory, not `/Volumes/beefybackup/AgentVille`, because the repository root still contains the dead React/Vite prototype:
+The existing Vercel project is connected to this repository. Refresh its tracked static snapshot only after the local browser checks pass:
+
+```bash
+GODOT="$GODOT" ./godot/tools/publish_web.sh
+```
+
+The script rebuilds first, copies only runtime files into `godot/deploy/vercel`, excludes the nested artifact-local config, and writes `artifact-sha256.txt`. Commit the reviewed snapshot together with source changes. The repository-root `vercel.json` skips dependency installation and the retired Vite build, then serves this exact directory.
+
+The legacy React/Vite code remains in history and on its archive branch for rollback, but it is not a production build input.
+
+## Direct Vercel preview
+
+The generated `godot/build/web` directory remains a complete standalone static Vercel project for CLI previews:
 
 ```bash
 vercel --cwd godot/build/web
 ```
 
-Connecting Git for automatic rebuilds is a separate deployment slice. It requires choosing the exact Vercel project and a build-artifact strategy, because Vercel's standard image does not include Godot or its export templates.
+The checked-in snapshot is an intentional bridge for Git deployments because Vercel's standard image does not include Godot or its export templates. A later CI slice can replace tracked binaries with an authenticated prebuilt deployment while preserving the same browser acceptance gate.
