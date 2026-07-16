@@ -152,11 +152,14 @@
 - Half-done: no external Vercel project has been linked or deployed, and no Git-triggered build environment installs Godot/templates yet. Those are intentionally separate from browser-runtime readiness.
 - Exact next step: identify the intended existing Vercel project, deploy the already-generated `godot/build/web` directory as a preview, and validate the HTTPS URL. Only then choose whether production should publish reviewed artifacts or add a reproducible Godot-equipped CI build.
 
-## 2026-07-16 — Godot Web production release gate
+## 2026-07-16 — Godot Web production live
 
 - Preserved the former React/Vite production source exactly at remote branch `legacy/react-v3@a93455a820340bacefa27a663b77d8e49dfdfb6b` before changing `main`.
 - Published `agentville-v4-godot-fresh@7d440c4e1b51db1339e3669d69c3637992c78526`. Its root Vercel contract skips npm/Vite and serves the reviewed, hash-manifested artifact under `godot/deploy/vercel`.
 - Vercel completed a feature-branch Preview deployment for that exact SHA. Anonymous requests redirect to Vercel SSO because Deployment Protection is enabled, so preview acceptance combines the provider's successful deployment status with the already-passed local browser run against byte-identical tracked files.
-- Fast-forwarded `main` from archived legacy commit `a93455a` to reviewed Godot commit `7d440c4`. Vercel did not create a Production deployment for the reused preview SHA, and the production alias still served the legacy bundle at the time of this record.
+- Fast-forwarded `main` from archived legacy commit `a93455a` to reviewed Godot commit `7d440c4`. Because Vercel did not create a Production deployment for the reused preview SHA, release-record commit `60f6f5679410c2a8fe8285d5bf22023492df188f` supplied a unique production-branch event without changing the reviewed game artifact.
+- Vercel reports the `60f6f56` Production deployment successful. `https://agent-ville-kappa.vercel.app` now returns the Godot loader, including the expected `index.wasm` and `index.pck` sizes, instead of the former React bundle.
+- A fresh Chromium run against the public HTTPS production alias at 1600×900 passed boot, keyboard pan, wheel zoom, and Compile. The final frame was fully rendered at `PENDING · WORLD CHECK` with one crew order, and the run emitted no captured console or page errors.
 - Validation remains green: all four artifact hashes pass, the focused publish smoke and project sanity exit `0`, and `godot/tools/run_all_smokes.sh` passes `118/118`. A real browser window passed boot, pan, zoom, and Compile with no user-visible redraw gap.
-- Exact next step: publish this release-record commit to both the feature branch and `main` to give the Git integration a unique production SHA; then require a successful Production deployment plus browser validation at `https://agent-ville-kappa.vercel.app` before declaring the replacement live.
+- Half-done: nothing in the publication slice. The expired local Vercel CLI token is no longer a launch blocker because the repository integration deploys the reviewed tracked artifact; replacing the roughly 39 MiB tracked snapshot with an authenticated, Godot-equipped artifact pipeline remains future repository-hygiene work.
+- Exact next step: freeze this production URL and commit SHA as the first QC campaign build, then run `docs/sol-sessions/PLAYTEST-1.md` with an unfamiliar participant before changing gameplay or presentation.
