@@ -151,3 +151,12 @@
 - New shipping surfaces are `godot/tools/export_web.sh`, `godot/export_presets.cfg`, `godot/web/vercel.json`, `godot/docs/web_export.md`, and `godot/tools/smoke_web_export_config.gd`.
 - Half-done: no external Vercel project has been linked or deployed, and no Git-triggered build environment installs Godot/templates yet. Those are intentionally separate from browser-runtime readiness.
 - Exact next step: identify the intended existing Vercel project, deploy the already-generated `godot/build/web` directory as a preview, and validate the HTTPS URL. Only then choose whether production should publish reviewed artifacts or add a reproducible Godot-equipped CI build.
+
+## 2026-07-16 — Godot Web production release gate
+
+- Preserved the former React/Vite production source exactly at remote branch `legacy/react-v3@a93455a820340bacefa27a663b77d8e49dfdfb6b` before changing `main`.
+- Published `agentville-v4-godot-fresh@7d440c4e1b51db1339e3669d69c3637992c78526`. Its root Vercel contract skips npm/Vite and serves the reviewed, hash-manifested artifact under `godot/deploy/vercel`.
+- Vercel completed a feature-branch Preview deployment for that exact SHA. Anonymous requests redirect to Vercel SSO because Deployment Protection is enabled, so preview acceptance combines the provider's successful deployment status with the already-passed local browser run against byte-identical tracked files.
+- Fast-forwarded `main` from archived legacy commit `a93455a` to reviewed Godot commit `7d440c4`. Vercel did not create a Production deployment for the reused preview SHA, and the production alias still served the legacy bundle at the time of this record.
+- Validation remains green: all four artifact hashes pass, the focused publish smoke and project sanity exit `0`, and `godot/tools/run_all_smokes.sh` passes `118/118`. A real browser window passed boot, pan, zoom, and Compile with no user-visible redraw gap.
+- Exact next step: publish this release-record commit to both the feature branch and `main` to give the Git integration a unique production SHA; then require a successful Production deployment plus browser validation at `https://agent-ville-kappa.vercel.app` before declaring the replacement live.
