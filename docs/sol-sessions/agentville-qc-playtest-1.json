@@ -1,0 +1,1052 @@
+{
+  "format": "agentville-qc-protocol@1",
+  "schema_version": "1.0.0",
+  "protocol": {
+    "protocol_key": "agentville-playtest-1",
+    "version": "1.0.0",
+    "title": "AgentVille Playtest 1 — Human Learning and Runtime Evidence",
+    "product": {
+      "id": "agentville",
+      "name": "AgentVille",
+      "product_promise": "Build agents. Prove their work."
+    },
+    "authored_against": {
+      "branch": "agentville-v4-godot-fresh",
+      "commit": "33160831ed9b03c9941c292b006e33623b332968",
+      "godot_version": "4.6.3.stable"
+    },
+    "participant_target": {
+      "minimum": 2,
+      "preferred": 3,
+      "profile": "Unfamiliar player; non-programmers are especially useful."
+    },
+    "study_duration_minutes": {
+      "required_minimum": 40,
+      "required_maximum": 52,
+      "with_optional_minimum": 48,
+      "with_optional_maximum": 62
+    },
+    "freeze_build_between_participants": true,
+    "default_step_required_once_assignment_starts": true,
+    "default_on_prerequisite_failure": "skipped_with_reason",
+    "field_merge_policy": "union_common_capture_fields_with_step_capture_fields",
+    "stop_rule_precedence": "step_specific_overrides_global",
+    "assistance_policy": "Routine planned actions such as starting a timer, reading a prompt, or asking the participant to press a control are not assistance. Hints, syntax reveals, references or solutions, assisted drafting, facilitator completion, and every unscripted intervention are assistance and must be recorded even when scheduled by the protocol.",
+    "answer_visibility_policy": "For an unaided probe, expected_source, expected answers, success criteria, and failure signals stay in a collapsed operator-only panel until the response is captured or the unaided window ends. Any early reveal is assistance. A controlled reveal may show only the authorized fragment.",
+    "assignment_terminal_states": [
+      "passed",
+      "failed",
+      "blocked",
+      "aborted",
+      "skipped_with_reason"
+    ],
+    "global_facilitator_rules": [
+      "Ask the participant to think aloud.",
+      "Read player prompts exactly as written.",
+      "Do not point, click, select, edit, or finish a step unless its coaching policy permits it.",
+      "Record the exact hint before giving it.",
+      "Do not change the build between participants.",
+      "Preserve positive evidence, contradictions, and errors.",
+      "Never silently complete a blocked step for the participant."
+    ],
+    "operator_setup": {
+      "build_freeze": {
+        "repository": "/Volumes/beefybackup/AgentVille",
+        "commands": [
+          "git status --short --branch",
+          "git rev-parse HEAD",
+          "git rev-parse @{upstream}"
+        ],
+        "rules": [
+          "Record branch, full commit, upstream commit, and tracked dirty state in the campaign.",
+          "Use the same commit and protocol version for every participant.",
+          "Do not change the build during the campaign."
+        ]
+      },
+      "launch": {
+        "precondition": "Set GODOT to the recorded Godot 4.6.3 executable for this machine.",
+        "command": "$GODOT --path /Volumes/beefybackup/AgentVille/godot",
+        "main_scene": "res://scenes/Main.tscn"
+      },
+      "save_safety": {
+        "logical_progress_path": "user://agentville_progress.json",
+        "macos_location_hint": "Godot app_userdata/AgentVille Voxel Farm Prototype/agentville_progress.json",
+        "steps": [
+          "Close the game before moving a progress file.",
+          "If the owner's progress exists, rename it to an opaque timestamped owner-backup code in the same directory.",
+          "Launch with no active progress file and confirm Lesson 1 is NOW.",
+          "After each participant, close the game and rename that participant's file using only the anonymous participant code.",
+          "Start the next participant with no active progress file.",
+          "Restore the owner backup only after the campaign finishes."
+        ],
+        "export_rule": "Never store raw save contents or a personal filesystem path in the QC export."
+      }
+    },
+    "campaign_order": [
+      {
+        "sequence": 1,
+        "assignment_id": "AV-P1-R1",
+        "required": true,
+        "target_minutes": 12
+      },
+      {
+        "sequence": 2,
+        "assignment_id": "AV-P1-R2",
+        "required": true,
+        "target_minutes": 20
+      },
+      {
+        "sequence": 3,
+        "assignment_id": "AV-P1-R3",
+        "required": true,
+        "target_minutes": 12
+      },
+      {
+        "sequence": 4,
+        "assignment_id": "AV-P1-R4",
+        "required": false,
+        "target_minutes": 10
+      },
+      {
+        "sequence": 5,
+        "assignment_id": "AV-P1-R5",
+        "required": true,
+        "target_minutes": 8,
+        "run_order_rule": "Always last after every started assignment reaches a terminal disposition."
+      }
+    ],
+    "prerequisite_handling": {
+      "evaluate_before_run_start": true,
+      "on_failure": "skipped_with_reason",
+      "record": [
+        "failed_predicate",
+        "upstream_assignment_id",
+        "operator_note"
+      ],
+      "rule": "Do not improvise or manufacture downstream state. A skipped dependent assignment is not itself a product failure; preserve the upstream cause."
+    },
+    "global_stop_rules": [
+      "Crash or corrupted save.",
+      "Required target is missing.",
+      "No terminal actor result after 60 seconds.",
+      "Five minutes pass without meaningful progress unless a step defines a shorter stop rule.",
+      "A resume-selection attempt mutates the farm."
+    ],
+    "participant_fields": [
+      "participant_code",
+      "coding_experience",
+      "game_experience",
+      "agent_tool_experience",
+      "quote_consent",
+      "recording_consent"
+    ],
+    "common_capture_fields": [
+      "step_started_at",
+      "step_ended_at",
+      "elapsed_ms",
+      "prompt_delivery",
+      "first_action",
+      "attempt_count",
+      "repeated_actions",
+      "outcome",
+      "assistance_level",
+      "assistance_text",
+      "expected",
+      "observed_fact",
+      "interpretation",
+      "player_quote",
+      "target_coordinates",
+      "agent_id",
+      "compiler_stage",
+      "runtime_status",
+      "receipt_label",
+      "lesson_state",
+      "workbench_trace_read",
+      "field_log_read",
+      "error",
+      "evidence_ids",
+      "tags"
+    ],
+    "assignments": [
+      {
+        "id": "AV-P1-R1",
+        "sequence": 1,
+        "title": "Cold start and manual lifecycle",
+        "objective": "Measure product identity and discovery of Workbench to Compile to crew order to Send to world check.",
+        "target_minutes": 12,
+        "required": true,
+        "depends_on": [],
+        "required_terminal_state_predicates": [
+          "fresh_save=true",
+          "lesson_1=NOW"
+        ],
+        "on_prerequisite_failure": "skipped_with_reason",
+        "prerequisites": [
+          "Fresh save.",
+          "Unfamiliar participant.",
+          "Lesson 1 is NOW.",
+          "No coaching before an allowed hint."
+        ],
+        "coaching_policy": "No pointing or UI explanation. Only the exact timed hint in R1-S04 is allowed.",
+        "steps": [
+          {
+            "code": "R1-S01",
+            "sequence": 1,
+            "title": "Ten-second identity read",
+            "operator_instruction": "Show the untouched game for ten seconds, then ask the player prompt. Do not explain the title, farm, Workbench, or lesson ladder.",
+            "player_prompt": "What do you think this game is, and what is it asking you to learn?",
+            "success_criteria": [
+              "Participant mentions agents, code or programming, instructions or workflows, or proving work rather than only a farm builder."
+            ],
+            "failure_signals": [
+              "Participant describes only farming, building, decoration, or management.",
+              "Participant cannot identify any learning objective."
+            ],
+            "capture_fields": [
+              "player_quote",
+              "observed_fact",
+              "interpretation",
+              "tags"
+            ]
+          },
+          {
+            "code": "R1-S02",
+            "sequence": 2,
+            "title": "Unassisted starter goal",
+            "operator_instruction": "Start the assignment timer. Do not point to AGENT, COMPILE, CREW, Send, the brush target, Workbench trace, or Field Log. Record first action, dead time, and misclicks.",
+            "player_prompt": "Make the starter do its job and show me proof that it worked.",
+            "success_criteria": [
+              "Participant notices the starter source and prepared brush target.",
+              "Participant initiates Compile without facilitator action."
+            ],
+            "failure_signals": [
+              "Participant treats locked FARM controls as the required lesson route.",
+              "Participant cannot identify the Workbench action.",
+              "Facilitator must click or select for the participant."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "first_action",
+              "attempt_count",
+              "repeated_actions",
+              "assistance_level",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R1-S03",
+            "sequence": 3,
+            "title": "Compile mental model",
+            "operator_instruction": "Ask all questions immediately after Compile and before Send.",
+            "player_prompt": "Has the farm changed yet? What do you think is waiting now? What did Compile do?",
+            "expected": "Brush remains unchanged; an order is drafted; the world check is pending; Compile is understood as validation and drafting, not completed execution.",
+            "success_criteria": [
+              "Participant says the farm has not changed.",
+              "Participant identifies waiting or drafted work.",
+              "Participant does not claim Compile completed the job."
+            ],
+            "failure_signals": [
+              "Participant believes Compile executed the farm action.",
+              "Participant cannot distinguish code validation from crew dispatch."
+            ],
+            "capture_fields": [
+              "player_quote",
+              "compiler_stage",
+              "runtime_status",
+              "observed_fact",
+              "interpretation",
+              "tags"
+            ]
+          },
+          {
+            "code": "R1-S04",
+            "sequence": 4,
+            "title": "Send discovery",
+            "operator_instruction": "Let the participant search. After three minutes only, the allowed hint may be given. Let Chuck finish after Send.",
+            "player_prompt": null,
+            "allowed_hint_after_ms": 180000,
+            "allowed_hint": "Look for an outstanding crew order.",
+            "success_criteria": [
+              "Participant opens CREW and finds Send.",
+              "Chuck receives and completes the correlated order."
+            ],
+            "failure_signals": [
+              "Participant repeatedly presses Compile instead of finding Send.",
+              "Participant requires direct pointing or facilitator action.",
+              "No terminal actor result within 60 seconds after Send."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "attempt_count",
+              "assistance_level",
+              "assistance_text",
+              "agent_id",
+              "runtime_status",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R1-S05",
+            "sequence": 5,
+            "title": "Proof debrief",
+            "operator_instruction": "Ask all proof questions after the terminal world check.",
+            "player_prompt": "Where is the proof? What exactly does it prove? What was the difference between Compile and Send?",
+            "expected": "Participant can cite the changed world, Workbench world check, or Field Log receipt and explain that Compile prepared work while Send executed it.",
+            "success_criteria": [
+              "Participant identifies at least one real proof surface.",
+              "Participant accurately distinguishes Compile and Send."
+            ],
+            "failure_signals": [
+              "Participant treats flavor dialogue as the only proof.",
+              "Participant cannot explain what was verified."
+            ],
+            "capture_fields": [
+              "player_quote",
+              "receipt_label",
+              "workbench_trace_read",
+              "field_log_read",
+              "lesson_state",
+              "observed_fact",
+              "tags"
+            ]
+          }
+        ],
+        "expected_terminal_state": [
+          "Chuck clears the selected brush.",
+          "World check passes.",
+          "Lesson 1 becomes DONE.",
+          "Lesson 2 becomes NOW.",
+          "FARM and End Day unlock."
+        ],
+        "confounds": [
+          "Source and target are preloaded, so success does not prove selection or authorship.",
+          "FARM being locked is intentional.",
+          "Autonomous NPC movement is not the correlated Chuck order."
+        ]
+      },
+      {
+        "id": "AV-P1-R2",
+        "sequence": 2,
+        "title": "Lessons 2–4 and blank transfer",
+        "objective": "Measure lesson transition discovery, bounded edits, selected context, and blank recombination of taught vocabulary.",
+        "target_minutes": 20,
+        "required": true,
+        "depends_on": [
+          "AV-P1-R1"
+        ],
+        "required_terminal_state_predicates": [
+          "AV-P1-R1.lesson_1=DONE",
+          "AV-P1-R1.lesson_2=NOW",
+          "process_relaunched=false",
+          "placement_tool=SELECT"
+        ],
+        "on_prerequisite_failure": "skipped_with_reason",
+        "prerequisites": [
+          "Continue immediately after AV-P1-R1.",
+          "Do not close or relaunch the game.",
+          "Preserve active Select state."
+        ],
+        "coaching_policy": "No tile selection or code edits by the facilitator. The NOW-lesson hint is allowed after two minutes. The blank probe remains unaided for five minutes.",
+        "steps": [
+          {
+            "code": "R2-S01",
+            "sequence": 1,
+            "title": "Find the next lesson",
+            "operator_instruction": "Observe whether the participant clicks the new NOW lesson to load its starter.",
+            "player_prompt": "Continue through the next three lessons.",
+            "allowed_hint_after_ms": 120000,
+            "allowed_hint": "Open the current NOW lesson.",
+            "success_criteria": [
+              "Participant discovers that the NOW row loads the next lesson starter."
+            ],
+            "failure_signals": [
+              "Participant assumes the editor automatically changed lessons.",
+              "Participant edits the previous lesson while the new goal is active."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "first_action",
+              "assistance_level",
+              "lesson_state",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R2-S02",
+            "sequence": 2,
+            "title": "Lesson 2 — Name the proof",
+            "operator_instruction": "Let the participant select fresh brush, change the receipt to Brush Proof run, Compile, Send, and identify the proof.",
+            "player_prompt": null,
+            "expected": "Clear Patch run becomes Brush Proof run while the rest of the clear-brush contract remains intact.",
+            "success_criteria": [
+              "Lesson 2 completes with receipt Brush Proof run.",
+              "Participant describes the receipt as named evidence."
+            ],
+            "failure_signals": [
+              "Participant changes unrelated program lines.",
+              "Participant cannot deliberately select fresh brush.",
+              "Participant cannot find Send after Compile."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "attempt_count",
+              "target_coordinates",
+              "receipt_label",
+              "lesson_state",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R2-S03",
+            "sequence": 3,
+            "title": "Lesson 3 — Reassign the farmhand",
+            "operator_instruction": "Let the participant open the NOW lesson, select fresh brush, change Chuck to Bert, Compile, Send, and observe the actor.",
+            "player_prompt": null,
+            "expected": "Bert performs the same guarded clear-brush contract.",
+            "success_criteria": [
+              "Lesson 3 completes under Bert.",
+              "Participant notices the named agent changed while the contract did not."
+            ],
+            "failure_signals": [
+              "Participant changes the tool, guard, verifier, or receipt unnecessarily.",
+              "Participant does not notice which farmhand executed."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "agent_id",
+              "target_coordinates",
+              "lesson_state",
+              "player_quote",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R2-S04",
+            "sequence": 4,
+            "title": "Lesson 4 — Move the context",
+            "operator_instruction": "Do not select the tile. Ask the participant to Compile and Send after choosing genuinely empty ground, then confirm Marigold plants on that selected tile. Stop if the participant cannot deliberately change target after two attempts.",
+            "player_prompt": "Use this program on genuinely empty ground.",
+            "expected": "Marigold plants on deliberately selected ground with no crop, decor, structure, or dirt path.",
+            "success_criteria": [
+              "Participant selects a truly empty tile.",
+              "Lesson 4 completes with Marigold and crop-state proof."
+            ],
+            "failure_signals": [
+              "Target cannot be deliberately changed after two attempts.",
+              "Participant selects occupied or path ground.",
+              "Facilitator must choose the tile."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "attempt_count",
+              "target_coordinates",
+              "agent_id",
+              "lesson_state",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R2-S05",
+            "sequence": 5,
+            "title": "Blank transfer probe",
+            "operator_instruction": "Ask the participant to select fresh brush and record its coordinates before clearing the editor. Read the prompt. Give no syntax, starter, or vocabulary help for five minutes. The participant may use Compile as normal compiler feedback. Preserve the exact first draft, every compiler response, and whether a valid compiled order was drafted.",
+            "player_prompt": "From memory, write a program that tells Chuck to clear selected brush, verifies the tile state, and names the receipt Blank Brush run.",
+            "stop_after_ms": 300000,
+            "answer_visibility": "operator_only_reveal_after_response_captured_or_unaided_window_end",
+            "expected_source": "agent \"Chuck\" {\n  observe selected_tile\n  when inspect.has_brush {\n    use clear_brush(selected_tile)\n  }\n  verify tile_state\n  receipt \"Blank Brush run\"\n}",
+            "success_criteria": [
+              "Participant reconstructs agent, context, guard, tool, verifier, and receipt without assistance.",
+              "Source parses and validates against the deliberately selected brush.",
+              "A valid compiled order is drafted during the probe."
+            ],
+            "failure_signals": [
+              "No meaningful source after five minutes.",
+              "Participant cannot assemble the taught vocabulary.",
+              "Reference or solution is required."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "attempt_count",
+              "assistance_level",
+              "target_coordinates",
+              "compiler_stage",
+              "error",
+              "observed_fact",
+              "interpretation",
+              "tags"
+            ]
+          },
+          {
+            "code": "R2-S06",
+            "sequence": 6,
+            "title": "Execute and preserve the transfer",
+            "operator_instruction": "Use the selected brush and valid compiled order already produced in R2-S05. Ask the participant to Send without compiling a second time, read the proof, and save the exact valid source as Playtest Blank Brush. If R2-S05 did not produce a valid compiled order, label a separate reference-assisted drafting attempt before execution and never count it as unaided transfer.",
+            "player_prompt": null,
+            "success_criteria": [
+              "Blank program clears brush and passes.",
+              "Lesson 5 does not falsely complete.",
+              "Playtest Blank Brush is saved."
+            ],
+            "failure_signals": [
+              "World action passes without the intended selected target.",
+              "Program cannot be saved after a valid compile."
+            ],
+            "capture_fields": [
+              "target_coordinates",
+              "runtime_status",
+              "receipt_label",
+              "lesson_state",
+              "observed_fact",
+              "tags"
+            ]
+          }
+        ],
+        "expected_terminal_state": [
+          "Lessons 2–4 are DONE.",
+          "Blank Brush run passes without completing Lesson 5.",
+          "Playtest Blank Brush is saved."
+        ],
+        "confounds": [
+          "Lesson 4 already demonstrates the overall program shape.",
+          "Reference-assisted success is not unaided transfer.",
+          "The process must remain open to preserve Select state."
+        ]
+      },
+      {
+        "id": "AV-P1-R3",
+        "sequence": 3,
+        "title": "Captured-once trigger mental model",
+        "objective": "Separate trigger discoverability from comprehension and test immutable one-shot source and target capture.",
+        "target_minutes": 12,
+        "required": true,
+        "depends_on": [
+          "AV-P1-R2"
+        ],
+        "required_terminal_state_predicates": [
+          "lessons_1_through_4=DONE",
+          "saved_program.Playtest Blank Brush=available",
+          "placement_tool=SELECT",
+          "available_brush_tiles>=3"
+        ],
+        "on_prerequisite_failure": "skipped_with_reason",
+        "prerequisites": [
+          "Continue in the same process after AV-P1-R2.",
+          "Sandbox unlocked.",
+          "Select still active.",
+          "At least three brush tiles remain."
+        ],
+        "coaching_policy": "No syntax help for three minutes. Then reveal only on day_start and record the reveal as assistance.",
+        "steps": [
+          {
+            "code": "R3-S01",
+            "sequence": 1,
+            "title": "Discoverability probe",
+            "operator_instruction": "Ask the participant to select a fresh brush as Target A. Give three minutes with no syntax clue. Record searches, edits, and explanation. Do not score failed discovery as failed comprehension.",
+            "player_prompt": "Make Chuck clear this brush tomorrow morning without you pressing Send tomorrow.",
+            "stop_after_ms": 180000,
+            "success_criteria": [
+              "Participant independently discovers or recalls day-start syntax."
+            ],
+            "failure_signals": [
+              "Participant cannot find any trigger affordance.",
+              "Participant tries to use ordinary Send as tomorrow scheduling."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "first_action",
+              "attempt_count",
+              "player_quote",
+              "observed_fact",
+              "interpretation",
+              "tags"
+            ]
+          },
+          {
+            "code": "R3-S02",
+            "sequence": 2,
+            "title": "Controlled syntax reveal",
+            "operator_instruction": "Reveal only on day_start. Let the participant place it before observe selected_tile.",
+            "player_prompt": "Add this statement: on day_start",
+            "answer_visibility": "operator_only_reveal_after_response_captured",
+            "expected_source": "agent \"Chuck\" {\n  on day_start\n  observe selected_tile\n  when inspect.has_brush {\n    use clear_brush(selected_tile)\n  }\n  verify tile_state\n  receipt \"Morning Brush run\"\n}",
+            "success_criteria": [
+              "Participant inserts the supplied trigger without unrelated changes."
+            ],
+            "failure_signals": [
+              "Participant still cannot place or interpret the supplied statement."
+            ],
+            "capture_fields": [
+              "assistance_level",
+              "assistance_text",
+              "elapsed_ms",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R3-S03",
+            "sequence": 3,
+            "title": "Predict Compile",
+            "operator_instruction": "Ask all questions before allowing Compile.",
+            "player_prompt": "What will Compile do now? Will the farm change immediately? Will a crew order exist immediately? Will Send be required tomorrow?",
+            "expected": "Compile arms a snapshot without guard check, order draft, actor assignment, or world mutation; End Day later fires without Send.",
+            "success_criteria": [
+              "Participant predicts arming rather than immediate execution.",
+              "Participant predicts no immediate order and no Send tomorrow."
+            ],
+            "failure_signals": [
+              "Participant predicts immediate world mutation.",
+              "Participant expects a normal pending crew order.",
+              "Participant believes Send will be required after End Day."
+            ],
+            "capture_fields": [
+              "player_quote",
+              "observed_fact",
+              "interpretation",
+              "tags"
+            ]
+          },
+          {
+            "code": "R3-S04",
+            "sequence": 4,
+            "title": "Arm and inspect evidence",
+            "operator_instruction": "Record Target A coordinates, have the participant press Compile, and inspect armed status, captured target, DISARM, and arm receipt.",
+            "player_prompt": "Which source, farmhand, and tile are now scheduled?",
+            "expected": "ARMED ONCE · DAY START with Chuck and captured Target A; no world mutation or crew order.",
+            "success_criteria": [
+              "Participant identifies the captured source, Chuck, and Target A."
+            ],
+            "failure_signals": [
+              "Participant cannot find captured-target evidence.",
+              "Participant believes the current editor is the live arm."
+            ],
+            "capture_fields": [
+              "target_coordinates",
+              "agent_id",
+              "compiler_stage",
+              "runtime_status",
+              "field_log_read",
+              "player_quote",
+              "tags"
+            ]
+          },
+          {
+            "code": "R3-S05",
+            "sequence": 5,
+            "title": "Edit and retarget after arming",
+            "operator_instruction": "Ask the participant, without recompiling, to change the receipt to Edited Morning Brush run and select a different Target B. Ask the prediction questions.",
+            "player_prompt": "Which receipt text will run? Which tile will Chuck visit? Why?",
+            "expected": "Original Morning Brush run and Target A remain captured.",
+            "success_criteria": [
+              "Participant predicts original source and Target A."
+            ],
+            "failure_signals": [
+              "Participant believes editing changes the arm.",
+              "Participant believes moving selection retargets the arm."
+            ],
+            "capture_fields": [
+              "target_coordinates",
+              "receipt_label",
+              "player_quote",
+              "observed_fact",
+              "interpretation",
+              "tags"
+            ]
+          },
+          {
+            "code": "R3-S06",
+            "sequence": 6,
+            "title": "Fire once",
+            "operator_instruction": "Have the participant press End Day, wait for Chuck and terminal check, verify Target A changed and Target B did not, then ask for explanation.",
+            "player_prompt": "Explain which program and tile ran, and why Send was not required.",
+            "expected": "World advances, original captured source fires against Target A without Send, and the arm is consumed.",
+            "success_criteria": [
+              "Target A clears; Target B does not.",
+              "Original compiled receipt runs.",
+              "Participant explains captured snapshot and automatic dispatch."
+            ],
+            "failure_signals": [
+              "Wrong tile changes.",
+              "Edited receipt runs without recompilation.",
+              "Participant cannot explain the result."
+            ],
+            "capture_fields": [
+              "target_coordinates",
+              "agent_id",
+              "runtime_status",
+              "receipt_label",
+              "player_quote",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R3-S07",
+            "sequence": 7,
+            "title": "Prove one-shot consumption",
+            "operator_instruction": "Have the participant press End Day again and ask why nothing fired.",
+            "player_prompt": "Why did nothing fire this time?",
+            "success_criteria": [
+              "No repeat run occurs.",
+              "Participant explains one-shot consumption."
+            ],
+            "failure_signals": [
+              "Participant expects persistence or repetition.",
+              "Trigger fires twice."
+            ],
+            "capture_fields": [
+              "runtime_status",
+              "player_quote",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R3-S08",
+            "sequence": 8,
+            "title": "Prove explicit disarm",
+            "operator_instruction": "Ask the participant to select fresh brush and press Compile. Confirm ARMED ONCE · DAY START, ask the participant to use DISARM, and confirm the arm is disarmed. Ask the player prompt before End Day. Have the participant press End Day, verify no automatic run, then ask the follow-up prompt.",
+            "player_prompt": "What will happen when you press End Day now, and why?",
+            "follow_up_prompt": "What happened, and what did DISARM cancel?",
+            "success_criteria": [
+              "No automatic run occurs after DISARM.",
+              "Participant predicts no run before End Day.",
+              "Participant explains afterward that DISARM cancelled the captured one-shot run."
+            ],
+            "failure_signals": [
+              "Disarmed run fires.",
+              "Participant cannot predict disarm behavior."
+            ],
+            "capture_fields": [
+              "runtime_status",
+              "player_quote",
+              "observed_fact",
+              "tags"
+            ]
+          }
+        ],
+        "expected_terminal_state": [
+          "Original source and Target A fire once without Send.",
+          "Later edit and Target B do not retarget the arm.",
+          "Second End Day does not repeat.",
+          "Disarmed run does not fire."
+        ],
+        "confounds": [
+          "Trigger discoverability and trigger comprehension are separate measurements.",
+          "Brush avoids crop-growth timing contamination.",
+          "If a crop is used, it must be stage 0 or stage 1."
+        ]
+      },
+      {
+        "id": "AV-P1-R4",
+        "sequence": 4,
+        "title": "Busy pipeline and camera recovery",
+        "objective": "Measure safe trigger skipping and viewport navigation around fixed panels.",
+        "target_minutes": 10,
+        "required": false,
+        "depends_on": [
+          "AV-P1-R3"
+        ],
+        "required_terminal_state_predicates": [
+          "AV-P1-R3=terminal",
+          "saved_program.Playtest Blank Brush=available",
+          "placement_tool=SELECT",
+          "trigger_arm=none",
+          "pending_order=none"
+        ],
+        "on_prerequisite_failure": "skipped_with_reason",
+        "prerequisites": [
+          "Continue in the same process.",
+          "Select remains active.",
+          "No trigger is armed and no crew order is pending.",
+          "Playtest Blank Brush is available.",
+          "Run only if time permits.",
+          "Complete before the relaunch probe."
+        ],
+        "coaching_policy": "No explanation of busy-pipeline behavior before prediction. For camera, record first discovered method before verifying the full control set.",
+        "steps": [
+          {
+            "code": "R4-S01",
+            "sequence": 1,
+            "title": "Create authoritative pending work",
+            "operator_instruction": "Ask the participant to load Playtest Blank Brush from the shelf and confirm the source contains no on day_start line. Then ask the participant to select brush, Compile the loaded manual program, and not Send it.",
+            "player_prompt": null,
+            "source_reference": "saved_program.Playtest Blank Brush",
+            "success_criteria": [
+              "Manual order is drafted and world check remains pending."
+            ],
+            "failure_signals": [
+              "Participant accidentally Sends or cancels the order.",
+              "No pending run exists."
+            ],
+            "capture_fields": [
+              "target_coordinates",
+              "compiler_stage",
+              "runtime_status",
+              "observed_fact",
+              "tags"
+            ]
+          },
+          {
+            "code": "R4-S02",
+            "sequence": 2,
+            "title": "Arm conflicting automatic work",
+            "operator_instruction": "Show the participant the provided source, ask them to select empty ground and Compile it, then ask what should happen to the existing unsent brush order.",
+            "player_prompt": "What should happen to the unsent brush order at day start?",
+            "provided_source": "agent \"Marigold\" {\n  on day_start\n  observe selected_tile\n  when tile.empty {\n    use plant_seed(selected_tile)\n  }\n  verify crop_state\n  receipt \"Morning Plant run\"\n}",
+            "success_criteria": [
+              "Participant predicts that existing work remains authoritative or that the new run should not replace it."
+            ],
+            "failure_signals": [
+              "Participant expects automatic replacement or cancellation of pending work."
+            ],
+            "capture_fields": [
+              "player_quote",
+              "target_coordinates",
+              "observed_fact",
+              "interpretation",
+              "tags"
+            ]
+          },
+          {
+            "code": "R4-S03",
+            "sequence": 3,
+            "title": "Observe safe skip",
+            "operator_instruction": "Have the participant press End Day. Verify skipped trigger, surviving manual order, and no seed; then ask the participant to Send the brush order and explain the result.",
+            "player_prompt": "Why did the automatic run skip instead of replacing the existing work?",
+            "expected": "Trigger is consumed as SKIPPED · PIPELINE BUSY; manual work survives and can later pass.",
+            "success_criteria": [
+              "Manual order remains authoritative.",
+              "No trigger seed is planted.",
+              "Participant explains safe non-replacement."
+            ],
+            "failure_signals": [
+              "Pending manual work is replaced or cancelled.",
+              "Trigger plants despite busy pipeline.",
+              "Participant interprets skip as silent failure."
+            ],
+            "capture_fields": [
+              "runtime_status",
+              "player_quote",
+              "observed_fact",
+              "error",
+              "tags"
+            ]
+          },
+          {
+            "code": "R4-S04",
+            "sequence": 4,
+            "title": "Camera discovery",
+            "operator_instruction": "Record the first method discovered, then verify all listed control paths.",
+            "player_prompt": "Move the farm so you can inspect tiles hidden behind every fixed panel.",
+            "expected_controls": [
+              "mouse wheel zoom",
+              "WASD or arrows",
+              "right or middle drag",
+              "FARM → View then left-drag",
+              "WORLD → Zoom +",
+              "WORLD → Zoom -",
+              "WORLD → Center"
+            ],
+            "success_criteria": [
+              "Participant discovers at least one method without coaching.",
+              "All control paths move or restore the view as documented."
+            ],
+            "failure_signals": [
+              "Participant cannot reveal obscured tiles.",
+              "A documented camera control fails."
+            ],
+            "capture_fields": [
+              "first_action",
+              "elapsed_ms",
+              "observed_fact",
+              "player_quote",
+              "tags"
+            ]
+          },
+          {
+            "code": "R4-S05",
+            "sequence": 5,
+            "title": "Input ownership",
+            "operator_instruction": "Ask the participant to focus the editor, press movement keys, then use Center.",
+            "player_prompt": null,
+            "success_criteria": [
+              "Text input owns movement keys while editor is focused.",
+              "Center restores default view."
+            ],
+            "failure_signals": [
+              "Camera moves while editing text.",
+              "Center fails to restore view."
+            ],
+            "capture_fields": [
+              "observed_fact",
+              "error",
+              "tags"
+            ]
+          }
+        ],
+        "expected_terminal_state": [
+          "Busy trigger is safely consumed without replacing manual work.",
+          "Manual work completes after Send.",
+          "Participant can expose obscured tiles and recenter."
+        ],
+        "confounds": [
+          "FARM → View leaves the placement tool in a navigation state, so this assignment must follow all same-process target tests."
+        ]
+      },
+      {
+        "id": "AV-P1-R5",
+        "sequence": 5,
+        "title": "Resume-selection truth probe",
+        "objective": "Measure whether a returning player can intentionally select a lesson target after reload without mutating the farm.",
+        "target_minutes": 8,
+        "required": true,
+        "depends_on": [
+          "AV-P1-R2"
+        ],
+        "run_order_rule": "Run last after every assignment that was started has reached a terminal disposition.",
+        "required_terminal_state_predicates": [
+          "lessons_1_through_4=DONE",
+          "saved_program.Playtest Blank Brush=available",
+          "same_participant_save_relaunched=true"
+        ],
+        "on_prerequisite_failure": "skipped_with_reason",
+        "prerequisites": [
+          "Quit and relaunch the same participant save.",
+          "AV-P1-R2 ended with Lessons 1–4 complete and Playtest Blank Brush saved.",
+          "Do not manipulate PlacementTool through debug code.",
+          "Do not reveal a workaround before measurement."
+        ],
+        "known_hypothesis": {
+          "status": "code_derived_not_human_confirmed",
+          "statement": "An unlocked resumed save may start in TILL while AGENT is active and expose no visible side-effect-free Select route. Existing automation forces Select and may mask this."
+        },
+        "coaching_policy": "No coaching during the two-minute selection measurement. Stop immediately on world mutation.",
+        "steps": [
+          {
+            "code": "R5-S01",
+            "sequence": 1,
+            "title": "Persistence inventory",
+            "operator_instruction": "Record persisted curriculum, saved program, and view toggles separately from expected world/session resets.",
+            "player_prompt": null,
+            "expected_persisted": [
+              "Lessons 1–4 are DONE.",
+              "Lesson 5 is NOW.",
+              "Lesson 5 starter source is loaded.",
+              "Playtest Blank Brush is available.",
+              "Changed view toggles persist."
+            ],
+            "expected_resets": [
+              "Day and farm world restart.",
+              "Pending order does not return.",
+              "Trigger arm does not return.",
+              "Prior selected tile does not return."
+            ],
+            "success_criteria": [
+              "Persisted and reset state match documented product boundaries."
+            ],
+            "failure_signals": [
+              "Lesson progress or saved program is lost.",
+              "Pending work or trigger arm unexpectedly returns.",
+              "Farm state is mistaken for a persistence promise."
+            ],
+            "capture_fields": [
+              "lesson_state",
+              "observed_fact",
+              "error",
+              "tags"
+            ]
+          },
+          {
+            "code": "R5-S02",
+            "sequence": 2,
+            "title": "Side-effect-free target selection",
+            "operator_instruction": "Give two minutes without coaching. Record first action, active-looking control, tile click, toast, world mutation, and selected-target trace. Stop immediately if the farm changes.",
+            "player_prompt": "Select a ready crop for Lesson 5 without changing the farm.",
+            "stop_after_ms": 120000,
+            "success_criteria": [
+              "Participant finds a visible intentional Select route.",
+              "TARGET SELECTED trace appears.",
+              "Farm does not mutate."
+            ],
+            "failure_signals": [
+              "First attempted selection tills or otherwise mutates a tile.",
+              "No visible Select route is found.",
+              "No selected-target trace appears.",
+              "Facilitator or debug code is required."
+            ],
+            "capture_fields": [
+              "elapsed_ms",
+              "first_action",
+              "attempt_count",
+              "observed_fact",
+              "error",
+              "evidence_ids",
+              "tags"
+            ]
+          },
+          {
+            "code": "R5-S03",
+            "sequence": 3,
+            "title": "Strict result classification",
+            "operator_instruction": "Pass only with a visible, side-effect-free intentional Select route. Do not coach around failure or accept template fallback as selection.",
+            "player_prompt": "What tells you the crop is now the selected context?",
+            "success_criteria": [
+              "Participant identifies a TARGET SELECTED trace or equivalent visible selected context.",
+              "Selection is deliberate and non-mutating."
+            ],
+            "failure_signals": [
+              "Compile falls back to a template target without deliberate selected_tile.",
+              "World action passes but lesson mastery cannot complete because target source is not selected_tile.",
+              "on day_start cannot arm because no selected tile exists."
+            ],
+            "capture_fields": [
+              "player_quote",
+              "target_coordinates",
+              "compiler_stage",
+              "runtime_status",
+              "observed_fact",
+              "interpretation",
+              "tags"
+            ]
+          }
+        ],
+        "expected_terminal_state": [
+          "Every resume fact is explicitly classified.",
+          "The selection path either passes strictly or ends with preserved failure evidence."
+        ],
+        "confounds": [
+          "This is a code-derived risk and must not be revealed to the participant.",
+          "Template fallback is not equivalent to deliberate selected_tile.",
+          "Expected world/session resets are not automatically defects."
+        ]
+      }
+    ],
+    "campaign_acceptance_criteria": [
+      "At least two unfamiliar participants each give every required assignment exactly one terminal disposition from passed, failed, blocked, aborted, or skipped_with_reason.",
+      "All participants use the same AgentVille commit and protocol version.",
+      "Every dependent assignment with an unmet predicate is skipped_with_reason rather than run against invented state.",
+      "Every required step has an outcome.",
+      "Every hint and facilitator action is recorded.",
+      "Facts remain distinct from interpretation.",
+      "Positive outcomes and contradictions are retained.",
+      "Recurring findings use counts such as 2 of 3.",
+      "A frozen Markdown and JSON checkpoint is exported with matching IDs and counts.",
+      "Exactly one next bounded product slice is selected from linked evidence."
+    ],
+    "post_campaign_priority_order": [
+      "Crash, corruption, or inability to continue.",
+      "Repeatable inability to create or select the intended target.",
+      "Wrong Compile, Send, or trigger mental model across two or more participants.",
+      "Inability to compose the blank transfer with taught vocabulary.",
+      "Proof and receipt discoverability.",
+      "Navigation or presentation polish."
+    ]
+  }
+}
